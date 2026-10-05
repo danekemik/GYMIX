@@ -1,0 +1,14 @@
+.DS_Store
+Thumbs.db
+
+# временные файлы
+*.tmp
+*.bak
+~$*.docx
+
+# зависимости и сборка
+node_modules/
+dist/
+build/
+.env
+.env.local
