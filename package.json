@@ -1,0 +1,21 @@
+{
+  "name": "gymix",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "turbo test",
+    "typecheck": "turbo typecheck",
+    "check": "pnpm typecheck && pnpm test && python3 scripts/verify_sync.py",
+    "sync:check": "python3 scripts/verify_sync.py"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "turbo": "^2.11.7",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

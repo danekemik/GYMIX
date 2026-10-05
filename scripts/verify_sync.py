@@ -319,6 +319,91 @@ def verify(rep: Report, docs: dict[str, str]) -> None:
               "exercise_catalog_v1.md: «Пресс» не помечен как только каталог")
 
 
+MATRIX_CLAIM = re.compile(
+    r"Full Body 7/9/10, Upper Body 6/7/9, Lower Body 5/6/8, "
+    r"Push 4/6/7, Pull 4/6/7, Legs 5/6/8, Muscle Group Split 3/4/5"
+)
+
+MATRIX_FILES = (
+    "exercise_database.md",
+    "Спецификация_трекер_для_спортзала_V1.docx",
+)
+
+#: Числа, закодированные в packages/structures/src/matrix.ts.
+CODE_MATRIX: dict[tuple[str, str], int] = {
+    ("Full Body", "Компактная"): 7,
+    ("Full Body", "Стандартная"): 9,
+    ("Full Body", "Расширенная"): 10,
+    ("Upper Body", "Компактная"): 6,
+    ("Upper Body", "Стандартная"): 7,
+    ("Upper Body", "Расширенная"): 9,
+    ("Lower Body", "Компактная"): 5,
+    ("Lower Body", "Стандартная"): 6,
+    ("Lower Body", "Расширенная"): 8,
+    ("Push", "Компактная"): 4,
+    ("Push", "Стандартная"): 6,
+    ("Push", "Расширенная"): 7,
+    ("Pull", "Компактная"): 4,
+    ("Pull", "Стандартная"): 6,
+    ("Pull", "Расширенная"): 7,
+    ("Legs", "Компактная"): 5,
+    ("Legs", "Стандартная"): 6,
+    ("Legs", "Расширенная"): 8,
+    ("Muscle Group Split", "Компактная"): 3,
+    ("Muscle Group Split", "Стандартная"): 4,
+    ("Muscle Group Split", "Расширенная"): 5,
+}
+
+TYPES_ORDER = (
+    "Full Body", "Upper Body", "Lower Body",
+    "Push", "Pull", "Legs", "Muscle Group Split",
+)
+VOLUMES_ORDER = ("Компактная", "Стандартная", "Расширенная")
+
+MATRIX_SOURCE = "packages/structures/src/matrix.ts"
+
+
+def check_matrix_in_code() -> list[str]:
+    """Кодовая матрица должна совпадать и с каноном, и с MATRIX_CLAIM."""
+    path = ROOT / MATRIX_SOURCE
+    if not path.exists():
+        return []
+    source = path.read_text(encoding="utf-8")
+    problems: list[str] = []
+
+    match = re.search(r"export const MATRIX[^=]*=\s*\{(.*?)\n\};", source, re.S)
+    if not match:
+        return [f"{MATRIX_SOURCE}: не найден объект MATRIX"]
+
+    block = match.group(1)
+    for workout_type in TYPES_ORDER:
+        type_match = re.search(
+            rf"'{re.escape(workout_type)}':\s*\{{([^}}]*)\}}", block
+        )
+        if not type_match:
+            problems.append(f"{MATRIX_SOURCE}: нет строки {workout_type!r}")
+            continue
+        numbers = re.findall(r"(\d+)", type_match.group(1))
+        expected = [str(CODE_MATRIX[(workout_type, v)]) for v in VOLUMES_ORDER]
+        if numbers != expected:
+            problems.append(
+                f"{MATRIX_SOURCE}: {workout_type} = {numbers}, ожидалось {expected}"
+            )
+
+    # Объекты в коде, которых нет в утверждённых типах, — лишние строки.
+    # Проверяем явно, иначе `Core: { Компактная: 1 }` проходит молча.
+    known = set(TYPES_ORDER)
+    for found in re.findall(r"'([^']+)':\s*\{[^}]*\d", block):
+        if found not in known:
+            problems.append(f"{MATRIX_SOURCE}: лишний тип {found!r} в MATRIX")
+
+    if len(CODE_MATRIX) != 21:
+        problems.append(
+            f"{MATRIX_SOURCE}: в таблице {len(CODE_MATRIX)} комбинаций, а должно быть 21"
+        )
+    return problems
+
+
 def main() -> int:
     rep = Report()
     try:
@@ -328,6 +413,24 @@ def main() -> int:
         return 2
 
     verify(rep, docs)
+
+    code_problems = check_matrix_in_code()
+    for problem in code_problems:
+        rep.check(False, "матрица в коде расходится с каноном", problem)
+    rep.check(
+        not code_problems,
+        f"матрица объёмов в {MATRIX_SOURCE} совпадает с каноном",
+    )
+
+    matrix_docs = [
+        name for name, text in docs.items()
+        if name in MATRIX_FILES and MATRIX_CLAIM.search(text)
+    ]
+    rep.check(
+        bool(matrix_docs),
+        "каноническая формулировка матрицы не найдена",
+        f"ни в одном из {len(MATRIX_FILES)} файлов",
+    )
 
     print()
     if rep.failures:

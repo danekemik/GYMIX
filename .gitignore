@@ -1,3 +1,8 @@
+node_modules/
+dist/
+.turbo/
+coverage/
+*.tsbuildinfo
 .DS_Store
 Thumbs.db
 
@@ -7,12 +12,15 @@ Thumbs.db
 ~$*.docx
 
 # зависимости и сборка
-node_modules/
-dist/
-build/
 .env
 .env.local
 
 # Python
 __pycache__/
 *.pyc
+
+# SQLite локальной разработки
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
