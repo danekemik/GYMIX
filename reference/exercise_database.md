@@ -222,7 +222,7 @@ normalized_data:
 8. `Shoulder Flexion` — сгибание плеча
 9. `Shoulder Extension` — разгибание плеча
 10. `Shoulder Elevation` — подъём плеча
-11. `Shoulder Horizontal Movement` — горизонтальное движение плеча
+11. `Horizontal Shoulder Movement` — горизонтальное движение плеча
 
 #### Низ тела
 

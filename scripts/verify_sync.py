@@ -171,6 +171,10 @@ CLAIMS: list[tuple[str, tuple[str, ...], str]] = [
      ("product_logic.md", "exercise_database.md",
       "Спецификация_трекер_для_спортзала_V1.docx"),
      r"involvement"),
+    ("паттерн Horizontal Shoulder Movement",
+     ("exercise_database.md", "exercise_catalog_v1.md",
+      "Спецификация_трекер_для_спортзала_V1.docx"),
+     r"Horizontal Shoulder Movement"),
 ]
 
 # Утверждения, которых не должно быть ни в одном файле.
@@ -190,6 +194,9 @@ FORBIDDEN: list[tuple[str, str, str]] = [
      r"$^"),
     ("разметка ~~ не разобрана",
      r"~~",
+     r"$^"),
+    ("инвертированное имя паттерна",
+     r"Shoulder Horizontal Movement",
      r"$^"),
 ]
 
