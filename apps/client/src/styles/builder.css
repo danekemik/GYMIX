@@ -1,0 +1,233 @@
+/* S02-подвыбор MGS, S04 объём, S05 структура */
+
+.volume-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-s);
+  padding: var(--space-xs) 0 var(--space-s);
+}
+
+.volume-head__group {
+  font-size: var(--step--1);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.volume-head__meta {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.volume-grid {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.volume-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-s);
+  text-align: left;
+  border: var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  color: var(--ink);
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+
+.volume-card:hover {
+  border-color: var(--ink-3);
+}
+
+.volume-card--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.volume-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.volume-card__name {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.volume-card__check {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.volume-card__check svg {
+  width: 18px;
+  height: 18px;
+}
+
+.volume-card__sub {
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+.volume-card__bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-s);
+  margin-top: var(--space-2xs);
+}
+
+.volume-card__count {
+  font-family: var(--font-mono);
+  font-size: var(--step-0);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.volume-card__groups {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* MGS — категории и группы */
+
+.mgs-cats {
+  display: flex;
+  gap: var(--space-2xs);
+  margin-bottom: var(--space-s);
+  flex-wrap: wrap;
+}
+
+.mgs-cat {
+  padding: var(--space-2xs) var(--space-s);
+  border-radius: var(--radius-s);
+  border: var(--border);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: var(--step--1);
+  font-weight: 600;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
+}
+
+.mgs-cat:hover {
+  color: var(--ink);
+  border-color: var(--ink-3);
+}
+
+.mgs-cat--on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.mgs-groups {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.mgs-group {
+  padding: var(--space-s);
+  text-align: left;
+  border: var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  color: var(--ink);
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+
+.mgs-group:hover {
+  border-color: var(--ink-3);
+}
+
+.mgs-group:active {
+  transform: scale(0.98);
+}
+
+.mgs-group__name {
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+/* S05 — структура */
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  margin-bottom: var(--space-s);
+}
+
+.progress__label {
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+.progress__track {
+  height: 4px;
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.progress__bar {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-s);
+  background: var(--accent);
+  transition: width var(--dur) var(--ease);
+}
+
+.structure {
+  list-style: none;
+  border-top: var(--border);
+}
+
+.structure__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-s);
+  padding: var(--space-xs) 0;
+  border-bottom: var(--border);
+}
+
+.structure__group {
+  font-weight: 500;
+  font-size: var(--step-0);
+}
+
+.structure__side {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  flex-shrink: 0;
+}
+
+.structure__status {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.note {
+  margin-top: var(--space-s);
+  padding: var(--space-s);
+  border: var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  font-size: var(--step--1);
+  line-height: 1.5;
+  color: var(--ink-2);
+}

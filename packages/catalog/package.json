@@ -8,6 +8,10 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./parse": {
+      "types": "./src/parse.ts",
+      "default": "./src/parse.ts"
     }
   },
   "scripts": {

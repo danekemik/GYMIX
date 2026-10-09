@@ -1,0 +1,50 @@
+:root {
+  --btn-pad: 15px;
+  --btn-radius: var(--radius-m);
+  --btn-h: 50px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--btn-h);
+  padding: 0 var(--space-s);
+  border-radius: var(--btn-radius);
+  font-family: var(--font-text);
+  font-size: var(--step-0);
+  font-weight: 600;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-s);
+}
+
+.btn--primary:hover {
+  background: #b8f04a;
+}
+
+.btn--ghost {
+  border: var(--border);
+  color: var(--ink-2);
+}
+
+.btn--ghost:hover {
+  color: var(--ink);
+  border-color: var(--ink-3);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: default;
+  pointer-events: none;
+}

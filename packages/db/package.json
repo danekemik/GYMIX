@@ -7,6 +7,22 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./parse": {
+      "types": "./src/parse.ts",
+      "default": "./src/parse.ts"
+    },
+    "./seed-data": {
+      "types": "./src/seed-data.ts",
+      "default": "./src/seed-data.ts"
+    },
+    "./schema": {
+      "types": "./src/schema.ts",
+      "default": "./src/schema.ts"
+    },
+    "./browser": {
+      "types": "./src/browser.ts",
+      "default": "./src/browser.ts"
     }
   },
   "scripts": {
@@ -16,11 +32,11 @@
   },
   "dependencies": {
     "@gymix/catalog": "workspace:*",
+    "@gymix/structures": "workspace:*",
     "drizzle-orm": "^0.45.3"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
-    "@gymix/structures": "workspace:*",
     "drizzle-kit": "^0.31.11",
     "vitest": "^3.2.7"
   }

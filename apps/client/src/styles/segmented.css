@@ -1,0 +1,24 @@
+.segmented {
+  display: flex;
+  gap: var(--space-3xs);
+  padding: var(--space-3xs);
+  background: var(--surface-2);
+  border: var(--border);
+  border-radius: var(--radius-m);
+}
+
+.segmented__item {
+  flex: 1;
+  padding: var(--space-2xs) 0;
+  border-radius: var(--radius-s);
+  font-size: var(--step--1);
+  font-weight: 600;
+  color: var(--ink-2);
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+
+.segmented__item--on {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-s);
+}
