@@ -95,15 +95,12 @@ export function WorkoutsScreen({ onStart, onCreate, onOpenProfile }: WorkoutsScr
           </div>
 
           <div className="hero__art" aria-hidden>
-            <svg viewBox="0 0 96 96" fill="none">
-              <path
-                d="M14 52h68M22 40v20M40 44v14"
-                stroke="currentColor"
-                strokeWidth="5"
-                strokeLinecap="round"
-              />
-              <rect x="10" y="42" width="8" height="20" rx="3" fill="currentColor" />
-              <rect x="78" y="42" width="8" height="20" rx="3" fill="currentColor" />
+            <svg viewBox="0 0 96 96" fill="currentColor">
+              <rect x="20" y="44.5" width="56" height="7" rx="3.5" />
+              <rect x="12" y="32" width="10" height="32" rx="4" />
+              <rect x="74" y="32" width="10" height="32" rx="4" />
+              <rect x="24" y="38" width="8" height="20" rx="3" />
+              <rect x="64" y="38" width="8" height="20" rx="3" />
             </svg>
           </div>
         </section>
@@ -198,27 +195,22 @@ function SectionHead({ title, more }: { title: string; more: string }) {
 function QuickIcon({ type }: { type: WorkoutType }) {
   if (type === 'Full Body') {
     return (
-      <svg className="quick-card__icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="16" cy="8" r="3.5" />
-        <path d="M6 30c0-5 4.5-8 10-8s10 3 10 8" strokeLinecap="round" />
-        <path d="M10 14l-4 4M22 14l4 4M10 14v6M22 14v6M16 14v8" strokeLinecap="round" />
+      <svg className="quick-card__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <circle cx="12" cy="3.7" r="2.2" />
+        <path d="M9.6 6.6 6 8.3a1.5 1.5 0 0 0-.8 1.5l.3 3.2a1.1 1.1 0 0 0 2.2-.1l-.1-2.3 1.9 1.1-.1 2-1 5.2a1.15 1.15 0 0 0 2.25.5l1.35-4.9h.5l1.35 4.9a1.15 1.15 0 0 0 2.25-.5l-1-5.2-.1-2 1.9-1.1-.1 2.3a1.1 1.1 0 0 0 2.2.1l.3-3.2a1.5 1.5 0 0 0-.8-1.5L14.4 6.6a2.9 2.9 0 0 1-4.8 0z" />
       </svg>
     );
   }
   if (type === 'Upper Body') {
     return (
-      <svg className="quick-card__icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="16" cy="6" r="3.5" />
-        <path d="M6 30c0-5 4.5-8 10-8s10 3 10 8" strokeLinecap="round" />
-        <path d="M11 12l-5 4M21 12l5 4M11 12v7M21 12v7M16 12v10" strokeLinecap="round" />
+      <svg className="quick-card__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M8.8 3.4 4.7 5.6A1.6 1.6 0 0 0 4 7.7l.9 2.5a1.3 1.3 0 0 0 1.7.8l1-.4v6.9a1.4 1.4 0 0 0 1.4 1.4h6a1.4 1.4 0 0 0 1.4-1.4v-6.9l1 .4a1.3 1.3 0 0 0 1.7-.8l.9-2.5a1.6 1.6 0 0 0-.7-2.1L15.2 3.4a3.2 3.2 0 0 1-6.4 0z" />
       </svg>
     );
   }
   return (
-    <svg className="quick-card__icon" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M8 6l8 4 8-4M8 6v6M24 6v6" strokeLinecap="round" />
-      <path d="M6 18c4 3 6 9 10 9s6-6 10-9" strokeLinecap="round" />
-      <path d="M16 14v13M8 12v7M24 12v7" strokeLinecap="round" />
+    <svg className="quick-card__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M7 3.4h10a1.3 1.3 0 0 1 1.3 1.5l-.9 13.2a1.5 1.5 0 0 1-1.5 1.4h-1.8a1.5 1.5 0 0 1-1.5-1.4L12 12.9l-.6 5.2a1.5 1.5 0 0 1-1.5 1.4H8.1a1.5 1.5 0 0 1-1.5-1.4L5.7 4.9A1.3 1.3 0 0 1 7 3.4z" />
     </svg>
   );
 }

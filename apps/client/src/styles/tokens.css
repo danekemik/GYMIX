@@ -6,6 +6,7 @@
   --font-text: 'Barlow', 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
+  --step--2: 0.75rem;
   --step--1: 0.875rem;
   --step-0: 1rem;
   --step-1: 1.25rem;
@@ -16,6 +17,7 @@
   --step-6: 3.815rem;
 
   /* SPACE — базовая единица и кратные */
+  --space-4xs: 0.125rem;
   --space-3xs: 0.25rem;
   --space-2xs: 0.5rem;
   --space-xs: 0.75rem;
