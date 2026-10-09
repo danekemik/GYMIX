@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import type { GeneratorMuscleGroup, VolumeLevel, WorkoutType } from '@gymix/structures';
+import type { GeneratedWorkout } from '@gymix/generator';
 import { TabBar } from './components/TabBar';
 import { DbProvider } from './hooks/useDb';
 import { isMgs } from './lib/workoutTypes';
 import type { Draft } from './lib/draft';
+import { ExecuteScreen } from './screens/ExecuteScreen';
 import { MgsGroupScreen } from './screens/MgsGroupScreen';
+import { PreviewScreen } from './screens/PreviewScreen';
+import { RandomizerScreen } from './screens/RandomizerScreen';
 import { StructureScreen } from './screens/StructureScreen';
 import { TypeScreen } from './screens/TypeScreen';
 import { VolumeScreen } from './screens/VolumeScreen';
@@ -51,8 +55,12 @@ const TABS = [
   },
 ];
 
-type Step = 'home' | 'type' | 'mgs' | 'volume' | 'structure';
+type Step = 'home' | 'type' | 'mgs' | 'volume' | 'structure' | 'randomizer' | 'preview' | 'execute';
 type Nullable<T> = T | undefined;
+
+function randomSeed(): number {
+  return Math.floor(Math.random() * 0xffffffff);
+}
 
 export function App() {
   const [tab, setTab] = useState('workouts');
@@ -61,11 +69,14 @@ export function App() {
   const [stepType, setStepType] = useState<WorkoutType>('Full Body');
   const [stepMgsGroup, setStepMgsGroup] = useState<Nullable<GeneratorMuscleGroup>>(undefined);
   const [stepVolume, setStepVolume] = useState<VolumeLevel>('Стандартная');
+  const [seed, setSeed] = useState<number>(randomSeed);
+  const [generated, setGenerated] = useState<Nullable<GeneratedWorkout>>(undefined);
 
   const exitBuilder = () => {
     setStep('home');
     setStepMgsGroup(undefined);
     setStepVolume('Стандартная');
+    setGenerated(undefined);
   };
 
   const startBuilder = (type: WorkoutType) => {
@@ -119,8 +130,40 @@ export function App() {
         draft={draft}
         onBackVolume={() => setStep('volume')}
         onBack={() => setStep('volume')}
+        onGenerate={() => {
+          setSeed(randomSeed());
+          setGenerated(undefined);
+          setStep('randomizer');
+        }}
       />
     );
+  } else if (step === 'randomizer') {
+    body = (
+      <RandomizerScreen
+        draft={draft}
+        seed={seed}
+        onContinue={(workout) => {
+          setGenerated(workout);
+          setStep('preview');
+        }}
+        onRegenerate={() => setSeed(randomSeed())}
+        onBack={() => setStep('structure')}
+      />
+    );
+  } else if (step === 'preview' && generated) {
+    body = (
+      <PreviewScreen
+        workout={generated}
+        onStart={() => setStep('execute')}
+        onRegenerate={() => {
+          setSeed(randomSeed());
+          setStep('randomizer');
+        }}
+        onBack={() => setStep('randomizer')}
+      />
+    );
+  } else if (step === 'execute' && generated) {
+    body = <ExecuteScreen workout={generated} onFinish={exitBuilder} onExit={exitBuilder} />;
   } else if (tab === 'workouts') {
     body = (
       <WorkoutsScreen

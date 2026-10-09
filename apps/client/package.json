@@ -12,6 +12,7 @@
   "dependencies": {
     "@gymix/catalog": "workspace:*",
     "@gymix/db": "workspace:*",
+    "@gymix/generator": "workspace:*",
     "@gymix/structures": "workspace:*",
     "@electric-sql/pglite": "^0.5.8",
     "drizzle-orm": "^0.45.3",

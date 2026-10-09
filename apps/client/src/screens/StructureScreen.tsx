@@ -4,9 +4,10 @@ interface StructureScreenProps {
   draft: Draft;
   onBack: () => void;
   onBackVolume: () => void;
+  onGenerate: () => void;
 }
 
-export function StructureScreen({ draft, onBack, onBackVolume }: StructureScreenProps) {
+export function StructureScreen({ draft, onBack, onBackVolume, onGenerate }: StructureScreenProps) {
   const structure = structureFor(draft);
   const rows = rosterRows(structure.slots);
   const filled = 0;
@@ -61,7 +62,10 @@ export function StructureScreen({ draft, onBack, onBackVolume }: StructureScreen
         </aside>
 
         <div className="screen__cta">
-          <button className="btn btn--ghost" onClick={onBackVolume}>
+          <button className="btn btn--primary" onClick={onGenerate}>
+            Сгенерировать тренировку
+          </button>
+          <button className="btn btn--ghost cta-row__second" onClick={onBackVolume}>
             Изменить объём
           </button>
         </div>

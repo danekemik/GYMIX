@@ -1,0 +1,335 @@
+/* S07 генерация, S08 предпросмотр, S10 выполнение */
+
+/* --- S07: индикатор подбора --- */
+
+.gen-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-m);
+}
+
+.gen-steps {
+  display: flex;
+  gap: var(--space-xs);
+  list-style: none;
+}
+
+.gen-step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2xs);
+  text-align: center;
+}
+
+.gen-step__dot {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--ink-3);
+}
+
+.gen-step__dot svg {
+  width: 15px;
+  height: 15px;
+}
+
+.gen-step__label {
+  font-size: var(--step--2);
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.gen-step--active .gen-step__dot {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.gen-step--active .gen-step__label {
+  color: var(--ink);
+}
+
+.gen-step--done .gen-step__dot {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.gen-step--done .gen-step__label {
+  color: var(--ink-2);
+}
+
+.gen-step--error .gen-step__dot {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.gen-step--error .gen-step__label {
+  color: var(--danger);
+}
+
+.gen-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3xs);
+  padding: var(--space-l);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-m);
+  background: var(--accent-soft);
+}
+
+.gen-result__count {
+  font-family: var(--font-display);
+  font-size: var(--step-3);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.gen-result__hint {
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+.note--error {
+  border-color: var(--danger);
+}
+
+.note__title {
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: var(--space-4xs);
+}
+
+.note__action {
+  margin-top: var(--space-s);
+}
+
+/* --- S08: список сборки --- */
+
+.plan {
+  list-style: none;
+}
+
+.plan__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  padding: var(--space-xs) 0;
+  border-bottom: var(--border);
+}
+
+.plan__index {
+  flex-shrink: 0;
+  width: 24px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  color: var(--ink-3);
+}
+
+.plan__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4xs);
+}
+
+.plan__exercise {
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.plan__group {
+  font-size: var(--step--2);
+  color: var(--ink-3);
+}
+
+.plan__badge {
+  flex-shrink: 0;
+  padding: var(--space-4xs) var(--space-2xs);
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--step--2);
+  font-weight: 500;
+}
+
+/* --- S10: выполнение --- */
+
+.exec-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs) var(--space-m) var(--space-s);
+}
+
+.exec-progress__label {
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+.exec-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+  padding: 0 var(--space-m) var(--space-m);
+}
+
+.exec-card {
+  padding: var(--space-s);
+  border: var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
+.exec-card--done {
+  border-color: var(--accent);
+}
+
+.exec-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4xs);
+  margin-bottom: var(--space-s);
+}
+
+.exec-card__group {
+  font-size: var(--step--2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--accent);
+}
+
+.exec-card__name {
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.exec-card__add {
+  margin-top: var(--space-s);
+  font-size: var(--step--1);
+  font-weight: 600;
+  color: var(--ink-2);
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.exec-card__add:hover {
+  color: var(--ink);
+}
+
+.set-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.set-row__num {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--step--2);
+  color: var(--ink-2);
+}
+
+.set-field {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: 0 var(--space-2xs);
+  border: var(--border);
+  border-radius: var(--radius-s);
+  background: var(--base);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.set-field:focus-within {
+  border-color: var(--accent);
+}
+
+.set-field__label {
+  flex-shrink: 0;
+  font-size: var(--step--2);
+  color: var(--ink-2);
+}
+
+.set-input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--step-0);
+  font-weight: 600;
+  text-align: center;
+}
+
+.set-input:focus-visible {
+  outline: none;
+}
+
+.set-check {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: var(--border);
+  border-radius: var(--radius-s);
+  color: var(--ink-3);
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease);
+}
+
+.set-check svg {
+  width: 18px;
+  height: 18px;
+}
+
+.set-check--on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.exec-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  padding: var(--space-s) var(--space-m) calc(var(--space-s) + env(safe-area-inset-bottom));
+  border-top: var(--border);
+  background: var(--base);
+}
+
+.exec-footer__hint {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.exec-footer__cta {
+  margin-left: auto;
+}

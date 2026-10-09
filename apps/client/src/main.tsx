@@ -5,6 +5,7 @@ import './styles/app.css';
 import './styles/builder.css';
 import './styles/button.css';
 import './styles/device.css';
+import './styles/flow.css';
 import './styles/global.css';
 import './styles/screen.css';
 import './styles/segmented.css';

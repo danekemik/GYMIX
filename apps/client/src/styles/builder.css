@@ -176,8 +176,8 @@
 }
 
 .progress__track {
-  height: 4px;
-  border-radius: var(--radius-s);
+  height: 6px;
+  border-radius: 999px;
   background: var(--surface-2);
   overflow: hidden;
 }
@@ -185,7 +185,7 @@
 .progress__bar {
   display: block;
   height: 100%;
-  border-radius: var(--radius-s);
+  border-radius: 999px;
   background: var(--accent);
   transition: width var(--dur) var(--ease);
 }

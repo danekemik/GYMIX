@@ -12,7 +12,11 @@
 }
 
 .screen__cta {
-  margin-top: var(--space-m);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  margin-top: auto;
+  padding-top: var(--space-m);
 }
 
 .context {

@@ -32,6 +32,9 @@ importers:
       '@gymix/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@gymix/generator':
+        specifier: workspace:*
+        version: link:../../packages/generator
       '@gymix/structures':
         specifier: workspace:*
         version: link:../../packages/structures

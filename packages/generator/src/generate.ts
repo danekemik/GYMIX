@@ -7,7 +7,7 @@ import {
   type VolumeLevel,
   type WorkoutType,
 } from '@gymix/structures';
-import { matchesSlot, type Catalog, type CatalogExercise } from '@gymix/catalog';
+import { matchesSlot, type Catalog, type CatalogExercise } from '@gymix/catalog/parse';
 
 export interface GenerateOptions {
   readonly type: WorkoutType;
