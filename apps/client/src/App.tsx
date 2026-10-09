@@ -5,7 +5,8 @@ import { TabBar } from './components/TabBar';
 import { DbProvider } from './hooks/useDb';
 import { isMgs } from './lib/workoutTypes';
 import type { Draft } from './lib/draft';
-import { ExecuteScreen } from './screens/ExecuteScreen';
+import { ExecuteScreen, type FinishPayload } from './screens/ExecuteScreen';
+import { FinishScreen } from './screens/FinishScreen';
 import { MgsGroupScreen } from './screens/MgsGroupScreen';
 import { PreviewScreen } from './screens/PreviewScreen';
 import { RandomizerScreen } from './screens/RandomizerScreen';
@@ -55,7 +56,7 @@ const TABS = [
   },
 ];
 
-type Step = 'home' | 'type' | 'mgs' | 'volume' | 'structure' | 'randomizer' | 'preview' | 'execute';
+type Step = 'home' | 'type' | 'mgs' | 'volume' | 'structure' | 'randomizer' | 'preview' | 'execute' | 'finish';
 type Nullable<T> = T | undefined;
 
 function randomSeed(): number {
@@ -71,12 +72,14 @@ export function App() {
   const [stepVolume, setStepVolume] = useState<VolumeLevel>('Стандартная');
   const [seed, setSeed] = useState<number>(randomSeed);
   const [generated, setGenerated] = useState<Nullable<GeneratedWorkout>>(undefined);
+  const [finished, setFinished] = useState<Nullable<FinishPayload>>(undefined);
 
   const exitBuilder = () => {
     setStep('home');
     setStepMgsGroup(undefined);
     setStepVolume('Стандартная');
     setGenerated(undefined);
+    setFinished(undefined);
   };
 
   const startBuilder = (type: WorkoutType) => {
@@ -163,7 +166,18 @@ export function App() {
       />
     );
   } else if (step === 'execute' && generated) {
-    body = <ExecuteScreen workout={generated} onFinish={exitBuilder} onExit={exitBuilder} />;
+    body = (
+      <ExecuteScreen
+        workout={generated}
+        onFinish={(payload) => {
+          setFinished(payload);
+          setStep('finish');
+        }}
+        onExit={exitBuilder}
+      />
+    );
+  } else if (step === 'finish' && finished) {
+    body = <FinishScreen payload={finished} onDone={exitBuilder} />;
   } else if (tab === 'workouts') {
     body = (
       <WorkoutsScreen
