@@ -7,6 +7,7 @@ import { isMgs } from './lib/workoutTypes';
 import type { Draft } from './lib/draft';
 import { ExecuteScreen, type FinishPayload } from './screens/ExecuteScreen';
 import { FinishScreen } from './screens/FinishScreen';
+import { HistoryScreen } from './screens/HistoryScreen';
 import { MgsGroupScreen } from './screens/MgsGroupScreen';
 import { PreviewScreen } from './screens/PreviewScreen';
 import { RandomizerScreen } from './screens/RandomizerScreen';
@@ -177,15 +178,24 @@ export function App() {
       />
     );
   } else if (step === 'finish' && finished) {
-    body = <FinishScreen payload={finished} onDone={exitBuilder} />;
+    body = (
+      <FinishScreen
+        payload={finished}
+        onDone={exitBuilder}
+        onOpenHistory={() => openTab('history')}
+      />
+    );
   } else if (tab === 'workouts') {
     body = (
       <WorkoutsScreen
         onStart={startBuilder}
         onCreate={() => setStep('type')}
         onOpenProfile={() => openTab('profile')}
+        onOpenActivity={() => openTab('history')}
       />
     );
+  } else if (tab === 'history') {
+    body = <HistoryScreen />;
   } else {
     body = <SoonScreen tab={tab} />;
   }

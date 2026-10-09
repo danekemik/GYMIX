@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GeneratedWorkout } from '@gymix/generator';
+import { useDb } from '../hooks/useDb';
 import { plural } from '../lib/draft';
+import { saveSession } from '../lib/session';
 
 export interface SetEntry {
   readonly weight: string;
@@ -8,12 +10,16 @@ export interface SetEntry {
   readonly done: boolean;
 }
 
-/** Снимок выполненной сессии для экрана итога (S12). */
-export interface FinishPayload {
+/** Снимок выполненной сессии: расширяется флагом сохранения для итога. */
+export interface SessionSnapshot {
   readonly workout: GeneratedWorkout;
   readonly sets: readonly (readonly SetEntry[])[];
   readonly startedAt: number;
   readonly endedAt: number;
+}
+
+export interface FinishPayload extends SessionSnapshot {
+  readonly saved: boolean;
 }
 
 interface ExecuteScreenProps {
@@ -27,6 +33,7 @@ type Modal = 'exit' | 'finish' | null;
 const DEFAULT_SETS = 3;
 
 export function ExecuteScreen({ workout, onFinish, onExit }: ExecuteScreenProps) {
+  const { db } = useDb();
   const [sets, setSets] = useState<SetEntry[][]>(() =>
     workout.entries.map(() => makeSets(DEFAULT_SETS)),
   );
@@ -59,14 +66,22 @@ export function ExecuteScreen({ workout, onFinish, onExit }: ExecuteScreenProps)
     setSets((prev) => prev.map((group, i) => (i === ex ? [...group, makeSet()] : group)));
   };
 
-  const finish = () => {
+  const finish = async () => {
     // LOCKED (2026-10-05): при 0 выполненных упражнений «Завершить» показывает
     // предупреждение — пустая сессия не засчитывается, кнопки «всё равно» нет.
     if (completed === 0) {
       setModal('finish');
       return;
     }
-    onFinish({ workout, sets, startedAt: startedAt.current, endedAt: Date.now() });
+    const payload: SessionSnapshot = {
+      workout,
+      sets,
+      startedAt: startedAt.current,
+      endedAt: Date.now(),
+    };
+    const saved =
+      db !== undefined ? await saveSession(db, payload).then(() => true).catch(() => false) : false;
+    onFinish({ ...payload, saved });
   };
 
   return (

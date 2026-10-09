@@ -1,12 +1,15 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { WorkoutType } from '@gymix/structures';
 import { useDb } from '../hooks/useDb';
+import { formatDay, formatDurationMs } from '../lib/format';
+import { latestSession, type HistoryItem } from '../lib/session';
 import { workoutTypeCards } from '../lib/workoutTypes';
 
 interface WorkoutsScreenProps {
   onStart: (type: WorkoutType) => void;
   onCreate: () => void;
   onOpenProfile: () => void;
+  onOpenActivity: () => void;
 }
 
 const QUICK_START: readonly WorkoutType[] = ['Full Body', 'Upper Body', 'Lower Body'];
@@ -40,17 +43,26 @@ const SAVED_EXAMPLE = {
   tags: ['Грудь', 'Спина', 'Плечи', 'Руки'] as const,
 };
 
-/* Пример из активности: Full Body, вчера. */
-const ACTIVITY_EXAMPLE = {
-  type: 'Full Body',
-  when: 'Вчера',
-  exerciseCount: 8,
-  duration: '52 мин',
-};
-
-export function WorkoutsScreen({ onStart, onCreate, onOpenProfile }: WorkoutsScreenProps) {
-  const { error } = useDb();
+export function WorkoutsScreen({
+  onStart,
+  onCreate,
+  onOpenProfile,
+  onOpenActivity,
+}: WorkoutsScreenProps) {
+  const { db, error } = useDb();
   const cards = useMemo(() => workoutTypeCards(), []);
+  const [recent, setRecent] = useState<HistoryItem | null | 'loading'>('loading');
+
+  useEffect(() => {
+    if (db === undefined) return;
+    let alive = true;
+    latestSession(db)
+      .then((row) => alive && setRecent(row ?? null))
+      .catch(() => alive && setRecent(null));
+    return () => {
+      alive = false;
+    };
+  }, [db]);
 
   const quick = QUICK_START.map((type) => cards.find((c) => c.type === type)).filter(
     (c): c is NonNullable<typeof c> => c !== undefined,
@@ -154,23 +166,29 @@ export function WorkoutsScreen({ onStart, onCreate, onOpenProfile }: WorkoutsScr
         </section>
 
         <section className="recent" aria-label="Недавняя активность">
-          <SectionHead title="Недавняя активность" more="Вся активность" />
+          <SectionHead title="Недавняя активность" more="Вся активность" onMore={onOpenActivity} />
           <div className="recent-list">
-            <article className="act-card">
-              <div className="act-card__body">
-                <p className="act-card__title">{ACTIVITY_EXAMPLE.type}</p>
-                <p className="act-card__meta">
-                  {ACTIVITY_EXAMPLE.when} • {ACTIVITY_EXAMPLE.exerciseCount} упражнений
-                </p>
+            {recent === null ? (
+              <div className="act-card act-card--empty">
+                Здесь появится последняя тренировка
               </div>
-              <p className="act-card__duration">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M12 7v5l3.5 2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                {ACTIVITY_EXAMPLE.duration}
-              </p>
-            </article>
+            ) : recent === 'loading' ? null : (
+              <article className="act-card">
+                <div className="act-card__body">
+                  <p className="act-card__title">{recent.type}</p>
+                  <p className="act-card__meta">
+                    {formatDay(recent.completedAt)} · {recent.done}/{recent.total} упражнений
+                  </p>
+                </div>
+                <p className="act-card__duration">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3.5 2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {formatDurationMs(recent.durationMs)}
+                </p>
+              </article>
+            )}
           </div>
         </section>
       </div>
@@ -178,16 +196,33 @@ export function WorkoutsScreen({ onStart, onCreate, onOpenProfile }: WorkoutsScr
   );
 }
 
-function SectionHead({ title, more }: { title: string; more: string }) {
+function SectionHead({
+  title,
+  more,
+  onMore,
+}: {
+  title: string;
+  more: string;
+  onMore?: () => void;
+}) {
   return (
     <div className="section-head">
       <h2 className="section-title">{title}</h2>
-      <span className="section-more">
-        {more}
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
-          <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </span>
+      {onMore !== undefined ? (
+        <button className="section-more" onClick={onMore}>
+          {more}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+            <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      ) : (
+        <span className="section-more">
+          {more}
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+            <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      )}
     </div>
   );
 }

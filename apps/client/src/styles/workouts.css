@@ -137,6 +137,15 @@
   height: 16px;
 }
 
+button.section-more {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+}
+
 .quick {
   margin-bottom: var(--space-m);
 }
@@ -311,6 +320,15 @@
 .act-card__duration svg {
   width: 20px;
   height: 20px;
+}
+
+.act-card--empty {
+  justify-content: center;
+  border-style: dashed;
+  border-color: var(--line);
+  color: var(--ink-3);
+  font-size: var(--step--1);
+  text-align: center;
 }
 
 .context-hint {

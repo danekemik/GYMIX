@@ -7,6 +7,7 @@ import './styles/button.css';
 import './styles/device.css';
 import './styles/flow.css';
 import './styles/global.css';
+import './styles/history.css';
 import './styles/screen.css';
 import './styles/segmented.css';
 import './styles/slots.css';

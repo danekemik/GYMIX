@@ -5,9 +5,10 @@ import type { FinishPayload } from './ExecuteScreen';
 interface FinishScreenProps {
   payload: FinishPayload;
   onDone: () => void;
+  onOpenHistory: () => void;
 }
 
-export function FinishScreen({ payload, onDone }: FinishScreenProps) {
+export function FinishScreen({ payload, onDone, onOpenHistory }: FinishScreenProps) {
   const { workout, sets } = payload;
   const total = workout.entries.length;
   const completed = sets.filter((group) => group.length > 0 && group.every((s) => s.done)).length;
@@ -38,6 +39,13 @@ export function FinishScreen({ payload, onDone }: FinishScreenProps) {
           <div className="note">
             Тренировка завершена частично — пропущенные упражнения не будут
             засчитаны.
+          </div>
+        )}
+
+        {payload.saved === false && (
+          <div className="note note--error" role="alert">
+            Запись не сохранилась в историю. Проверь подключение и повтори
+            позже.
           </div>
         )}
 
@@ -72,6 +80,9 @@ export function FinishScreen({ payload, onDone }: FinishScreenProps) {
         <div className="screen__cta">
           <button className="btn btn--primary" onClick={onDone}>
             Готово
+          </button>
+          <button className="btn btn--ghost" onClick={onOpenHistory}>
+            Открыть историю
           </button>
         </div>
       </div>

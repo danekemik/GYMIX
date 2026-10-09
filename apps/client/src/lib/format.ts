@@ -13,3 +13,12 @@ export function formatDate(date: Date): string {
     year: 'numeric',
   });
 }
+
+/** Сегодня/вчера/дата — для ленты «Истории» и карточки активности. */
+export function formatDay(date: Date): string {
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const days = Math.round((startOfDay(new Date()).getTime() - startOfDay(date).getTime()) / 86_400_000);
+  if (days <= 0) return 'Сегодня';
+  if (days === 1) return 'Вчера';
+  return formatDate(date);
+}
