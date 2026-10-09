@@ -21,6 +21,25 @@ const TABS = [
     ),
   },
   {
+    id: 'progress',
+    label: 'Прогресс',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    id: 'history',
+    label: 'История',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3.5 2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+  },
+  {
     id: 'profile',
     label: 'Профиль',
     icon: (
@@ -62,6 +81,11 @@ export function App() {
     ...(stepMgsGroup ? { mgsGroup: stepMgsGroup } : {}),
   };
 
+  const openTab = (id: string) => {
+    setTab(id);
+    if (step !== 'home') exitBuilder();
+  };
+
   let body;
   if (step === 'type') {
     body = (
@@ -97,21 +121,38 @@ export function App() {
         onBack={() => setStep('volume')}
       />
     );
-  } else {
+  } else if (tab === 'workouts') {
     body = (
       <WorkoutsScreen
         onStart={startBuilder}
         onCreate={() => setStep('type')}
+        onOpenProfile={() => openTab('profile')}
       />
     );
+  } else {
+    body = <SoonScreen tab={tab} />;
   }
 
   return (
     <DbProvider>
       <div className="app">
         <main className="app__main">{body}</main>
-        {step === 'home' && <TabBar tabs={TABS} active={tab} onChange={setTab} />}
+        {step === 'home' && <TabBar tabs={TABS} active={tab} onChange={openTab} />}
       </div>
     </DbProvider>
+  );
+}
+
+function SoonScreen({ tab }: { tab: string }) {
+  const label = TABS.find((t) => t.id === tab)?.label ?? 'Раздел';
+  return (
+    <div className="screen">
+      <header className="topbar">
+        <h1 className="topbar__title">{label}</h1>
+      </header>
+      <div className="screen__body">
+        <p className="body-muted">Раздел «{label}» появится в ближайших шагах.</p>
+      </div>
+    </div>
   );
 }

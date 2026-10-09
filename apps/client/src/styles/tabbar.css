@@ -6,12 +6,13 @@
 }
 
 .tabbar__tab {
+  position: relative;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-3xs);
-  padding: var(--space-2xs) 0 var(--space-xs);
+  gap: var(--space-2xs);
+  padding: var(--space-xs) 0 var(--space-xs);
   color: var(--ink-3);
   font-size: var(--step--1);
   font-weight: 600;
@@ -22,6 +23,18 @@
   color: var(--accent);
 }
 
+.tabbar__tab--on::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 44px;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: var(--accent);
+}
+
 .tabbar__icon {
   display: grid;
   place-items: center;
@@ -30,4 +43,9 @@
 .tabbar__icon svg {
   width: 22px;
   height: 22px;
+}
+
+.tabbar__label {
+  font-size: 0.7rem;
+  letter-spacing: 0.01em;
 }
