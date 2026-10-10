@@ -5,28 +5,40 @@
 
 ## Что в репозитории
 
-Репозиторий: спецификация зафиксирована, генератор тренировок и каталог
-работают как код, сервер (`apps/server`) реализует аккаунты, синхронизацию и
-API. UI ещё не написан. Демонстрационный прототип `index.html` удалён
-2026-10-05 по решению владельца: визуальное направление можно использовать,
-но реализация новая.
+Монорепозиторий: домен вынесен в переиспользуемые пакеты, `apps/client` и
+`apps/server` — приложения, `reference/` — спецификация и данные.
 
-| Папка | Что это |
-|---|---|
-| `packages/structures/` | Матрица 21 комбинации «формат × объём» и модель слота |
-| `packages/catalog/` | Чтение `reference/exercise_catalog_v1.md` в типизированные данные |
-| `packages/generator/` | Заполнение слотов с учётом исключений и повторов |
-| `packages/db/` | Схема Drizzle для клиента (SQLite/PGlite) и сервера (PostgreSQL) |
-| `apps/server/` | REST-бэкенд: аккаунты, устройства, синхронизация, API — см. `apps/server/README.md` |
-| `reference/` | Заметки и памятка: принятые решения, модель данных, каталог, спецификации. **Начинать отсюда** |
+```text
+.
+├── apps/
+│   ├── client/          React + Vite + PGlite — локальный UI
+│   └── server/          Hono + PostgreSQL — REST API
+├── packages/
+│   ├── structures/      Матрица «формат × объём», модель слота
+│   ├── catalog/         Каталог упражнений из reference/ в типы
+│   ├── generator/       Заполнение слотов упражнениями
+│   └── db/              Схема Drizzle, миграции, seed (PostgreSQL + PGlite)
+├── reference/           Канон: спецификации, решения, каталог, данные
+├── scripts/             verify_sync.py — проверка канона
+└── .github/workflows/   CI
+```
+
+| Путь | Что это | README |
+|---|---|---|
+| `apps/client/` | Клиент на React + Vite, локальная БД в браузере | `apps/client/README.md` |
+| `apps/server/` | REST-бэкенд: аккаунты, устройства, синхронизация | `apps/server/README.md` |
+| `packages/structures/` | Матрица 21 комбинации «формат × объём» и модель слота | `packages/structures/README.md` |
+| `packages/catalog/` | Чтение `reference/exercise_catalog_v1.md` в типизированные данные | `packages/catalog/README.md` |
+| `packages/generator/` | Заполнение слотов с учётом исключений и повторов | `packages/generator/README.md` |
+| `packages/db/` | Схема Drizzle и миграции, одни для PostgreSQL и PGlite | `packages/db/README.md` |
+| `reference/` | Заметки и канон: решения, модель данных, каталог, спецификации. **Начинать отсюда** | `reference/README.md` |
 
 ### Стек
 
 TypeScript везде, один монорепозиторий на pnpm workspaces + Turborepo.
 Сервер и клиент на одном языке, чтобы модель данных не расходилась в двух
-местах. База — SQLite на клиенте (оффлайн в зале) и PostgreSQL на сервере,
-одна схема на Drizzle. Планируется PWA с Workbox и SQLite: пуш и виджеты
-не нужны в V1, а оффлайн нужен сразу.
+местах. База — PGlite (PostgreSQL в WASM) на клиенте для оффлайна в зале и
+PostgreSQL на сервере, одна схема на Drizzle и одни миграции для обоих.
 
 ## Команды
 
@@ -39,16 +51,35 @@ pnpm check       # типы + тесты + проверка канона, то �
 pnpm server:dev  # бэкенд в режиме разработки
 pnpm server:build
 pnpm server:start
+
+pnpm --filter @gymix/client dev   # клиент, http://localhost:5173
+pnpm --filter @gymix/client build
 ```
 
 Пакеты отдают друг другу исходники напрямую (JIT), отдельная сборка нужна
-только серверу — он собирается в один ESM-бандл через tsup.
+только серверу (`tsup`, один ESM-бандл) и клиенту (`vite`).
 
 Папки-дубли нет намеренно: раньше `sources/` была копией `reference/`, и держать
 два одинаковых набора файлов смысла не имело.
 
 Ключевые решения, структура каталога и что уже закрыто — в
 [`reference/README.md`](reference/README.md).
+
+## Соглашения разработки
+
+- **Пакеты `packages/*` — домен и данные**, без побочных эффектов на импорте;
+  приложения `apps/*` собираются из них. Направление зависимостей только
+  «вниз»: `apps → packages`, `generator → catalog → structures`, без циклов.
+- **Один пакет — один `tsconfig.json`** (в `packages/*` — `noEmit` для
+  проверки, сборка не нужна). Общая база — `tsconfig.base.json`.
+- **Тесты рядом с кодом**, в `test/` внутри пакета, `vitest run`. Один `test`
+  на пакет; турбо гоняет их параллельно.
+- **Каждый пакет объявляет свои зависимости сам** (включая `typescript`,
+  `vitest`, `@types/node`) — манифест самодостаточен.
+- **`exports` отдаёт `./src/*.ts`.** Публичная поверхность пакета — только то,
+  что перечислено в `exports` и в его `src/index.ts`.
+- **Стиль:** 2 пробела, LF, финальный перевод строки — см. `.editorconfig`.
+  Версия Node зафиксирована в `.nvmrc` (22) и в `engines`.
 
 ## Канон
 
