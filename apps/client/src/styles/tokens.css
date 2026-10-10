@@ -1,9 +1,8 @@
 :root {
-  /* TYPE — ratios: одна шкала на весь интерфейс.
-   * Display: Barlow Condensed (спортивная плотность);
-   * Text: Barlow; Mono: JetBrains Mono (цифры весов, таймер). */
-  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-  --font-text: 'Barlow', 'Segoe UI', sans-serif;
+  /* TYPE — одна широконогая гротескная семья на весь интерфейс
+   * (Inter): заголовки-дисплеи и текст; Mono — цифры весов и таймер. */
+  --font-display: 'Inter', 'SF Pro Display', 'Manrope', 'Segoe UI', system-ui, sans-serif;
+  --font-text: 'Inter', 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   --step--2: 0.75rem;

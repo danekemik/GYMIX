@@ -9,8 +9,6 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-}
-
-.app .tabbar {
-  flex: none;
+  /* контент прокручивается за фиксированной полупрозрачной навигацией */
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }

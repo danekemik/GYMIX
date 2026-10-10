@@ -123,26 +123,53 @@ export function IconLegs({ className }: IconProps) {
   );
 }
 
-/* Объёмная гантель для карточки создания: чёрные диски с тонкими
- * лаймовыми кольцами, мягкая тень и полупрозрачные дуги на фоне. */
+/* Объёмная гантель для лаймовой карточки: металлический гриф с бликом,
+ * крупные чёрные диски с тонкими лаймовыми кольцами, мягкая тень и
+ * полупрозрачные дуги на фоне. */
 export function IconDumbbellArt({ className }: IconProps) {
   return (
-    <svg className={className} viewBox="0 0 124 116" fill="none" aria-hidden="true">
-      <circle cx="100" cy="14" r="46" stroke="rgba(10,12,8,0.16)" strokeWidth="2.5" />
-      <circle cx="100" cy="14" r="32" stroke="rgba(10,12,8,0.13)" strokeWidth="2" />
-      <ellipse cx="62" cy="102" rx="40" ry="6" fill="rgba(10,12,8,0.22)" />
-      <g transform="rotate(-16 62 58)">
-        <rect x="56" y="40" width="12" height="36" rx="6" fill="#0b0d0e" />
-        <rect x="58" y="43" width="8" height="30" rx="4" fill="#23272b" />
-        <rect x="36" y="37" width="20" height="42" rx="8" fill="#0b0d0e" />
-        <rect x="39" y="40" width="14" height="36" rx="6" fill="none" stroke="#a8f53a" strokeWidth="1.6" />
-        <rect x="20" y="32" width="16" height="52" rx="7.5" fill="#0b0d0e" />
-        <rect x="22.5" y="35" width="11" height="46" rx="5" fill="none" stroke="#a8f53a" strokeWidth="1.4" />
-        <rect x="68" y="37" width="20" height="42" rx="8" fill="#0b0d0e" />
-        <rect x="71" y="40" width="14" height="36" rx="6" fill="none" stroke="#a8f53a" strokeWidth="1.6" />
-        <rect x="88" y="32" width="16" height="52" rx="7.5" fill="#0b0d0e" />
-        <rect x="90.5" y="35" width="11" height="46" rx="5" fill="none" stroke="#a8f53a" strokeWidth="1.4" />
-        <circle cx="62" cy="58" r="2" fill="#a8f53a" />
+    <svg className={className} viewBox="0 0 132 96" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="gym-metal" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#41494f" />
+          <stop offset="0.5" stopColor="#7d868d" />
+          <stop offset="1" stopColor="#2f353a" />
+        </linearGradient>
+      </defs>
+
+      <ellipse cx="66" cy="88" rx="44" ry="7" fill="rgba(10,12,8,0.25)" />
+
+      <circle cx="118" cy="18" r="24" stroke="rgba(168,245,58,0.32)" strokeWidth="2" />
+      <path
+        d="M10 66a34 34 0 0 1 40 -14"
+        stroke="rgba(255,255,255,0.4)"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+
+      <g transform="rotate(-16 66 46)">
+        <rect x="34" y="38" width="64" height="13" rx="6.5" fill="url(#gym-metal)" />
+        <rect x="37" y="40.5" width="58" height="3" rx="1.5" fill="rgba(255,255,255,0.32)" />
+        <rect x="56" y="41.5" width="1.6" height="6" rx="0.8" fill="rgba(168,245,58,0.35)" />
+        <rect x="61.5" y="41.5" width="1.6" height="6" rx="0.8" fill="rgba(168,245,58,0.35)" />
+        <rect x="67" y="41.5" width="1.6" height="6" rx="0.8" fill="rgba(168,245,58,0.35)" />
+        <rect x="72.5" y="41.5" width="1.6" height="6" rx="0.8" fill="rgba(168,245,58,0.35)" />
+
+        <rect x="43" y="34.5" width="13" height="20" rx="4.5" fill="#0e1113" stroke="#23272b" strokeWidth="1" />
+        <rect x="76" y="34.5" width="13" height="20" rx="4.5" fill="#0e1113" stroke="#23272b" strokeWidth="1" />
+
+        <rect x="20" y="28" width="18" height="33" rx="7" fill="#0a0c0d" stroke="#262b30" strokeWidth="1.4" />
+        <rect x="25" y="31.5" width="8" height="26" rx="4" fill="none" stroke="#a8f53a" strokeWidth="1.3" />
+
+        <rect x="94" y="28" width="18" height="33" rx="7" fill="#0a0c0d" stroke="#262b30" strokeWidth="1.4" />
+        <rect x="99" y="31.5" width="8" height="26" rx="4" fill="none" stroke="#a8f53a" strokeWidth="1.3" />
+
+        <path
+          d="M20.5 30.5l2.5 4.5M109.5 30.5l-2.5 4.5"
+          stroke="rgba(168,245,58,0.5)"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+        />
       </g>
     </svg>
   );

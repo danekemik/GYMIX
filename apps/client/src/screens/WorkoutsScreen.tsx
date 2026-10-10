@@ -117,18 +117,17 @@ export function WorkoutsScreen({
           <div className="hero__copy">
             <h3 className="hero__title">Новая тренировка</h3>
             <p className="hero__text">
-              <span>Собери занятие из упражнений</span>
-              <span>под свои цели и уровень</span>
+              <span>Собери своё занятие</span>
+              <span>на свои цели и уровень</span>
             </p>
-            <button className="hero__cta" onClick={onCreate}>
-              Создать тренировку
-              <IconArrowRight className="hero__cta-arrow" />
-            </button>
           </div>
-
           <div className="hero__art" aria-hidden>
             <IconDumbbellArt />
           </div>
+          <button className="hero__cta" onClick={onCreate}>
+            <span className="hero__cta-label">Создать тренировку</span>
+            <IconArrowRight className="hero__cta-arrow" />
+          </button>
         </section>
 
         <section className="quick" aria-label="Быстрый старт">
@@ -139,9 +138,11 @@ export function WorkoutsScreen({
               return (
                 <button key={card.type} className="quick-card" onClick={() => onStart(card.type)}>
                   <Icon className="quick-card__icon" />
-                  <span className="quick-card__name">{TYPE_LABEL[card.type]}</span>
+                  <span className="quick-card__head">
+                    <span className="quick-card__name">{TYPE_LABEL[card.type]}</span>
+                    <IconChevronRight className="quick-card__chevron" />
+                  </span>
                   <span className="quick-card__subtitle">{QUICK_SUBTITLE[card.type]}</span>
-                  <IconChevronRight className="quick-card__chevron" />
                 </button>
               );
             })}
