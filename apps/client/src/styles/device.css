@@ -1,9 +1,45 @@
-/* Оболочка приложения: всегда на весь экран, без фрейма устройства.
- * Мобильные и десктоп одновременно: интерфейс растянут на всю ширину,
- * скроллит только `app__main` внутри; навигация — фиксированная снизу. */
+/* Оболочка приложения.
+ * На телефоне: без рамки — на всю ширину экрана, высота подстраивается
+ * под любую высоту (100dvh), навигация — фиксированная снизу.
+ * На десктопе (≥600px): центрированная рамка-предпросмотр с мобильным
+ * контрольным размером экрана 393×852 CSS px. Рамка сделана через
+ * outline/box-shadow, поэтому внутренний вьюпорт остаётся ровно 393×852.
+ * Если окно ниже 852px — рамка сжимается (адаптивный предпросмотр),
+ * скроллит только `app__main`. */
 
 .device {
+  position: relative;
   height: 100dvh;
   width: 100%;
   background: var(--base);
+}
+
+@media (min-width: 600px) {
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(1100px 700px at 50% 28%, #16191c, #0a0c0d 72%);
+  }
+
+  #root {
+    flex: 1;
+    display: flex;
+    min-width: 0;
+  }
+
+  .device {
+    width: 393px;
+    height: min(852px, calc(100dvh - 24px));
+    margin: auto;
+    background: var(--base);
+    border-radius: 34px;
+    outline: 6px solid #171a1c;
+    box-shadow:
+      0 0 0 2px rgba(0, 0, 0, 0.9),
+      0 44px 110px rgba(0, 0, 0, 0.6),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+  }
 }
