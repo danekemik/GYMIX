@@ -221,6 +221,132 @@
   color: var(--ink-3);
 }
 
+.structure__status--ok {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* --- S06: ручной выбор упражнений --- */
+
+.manual-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-s);
+}
+
+.manual-group__label {
+  font-size: var(--step-1);
+  font-weight: 700;
+}
+
+.manual-group__count {
+  font-family: var(--font-mono);
+  font-size: var(--step--1);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.manual-filter {
+  margin-bottom: var(--space-2xs);
+}
+
+.manual-grid {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.manual-card {
+  border: var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  padding: var(--space-s);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.manual-card--active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.manual-card__name {
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.manual-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+
+.manual-card__chip {
+  padding: var(--space-3xs) var(--space-2xs);
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--step--2);
+  font-weight: 500;
+}
+
+.manual-card__row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+  margin-top: var(--space-3xs);
+}
+
+.manual-card__pick {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.manual-card__exclude {
+  flex-shrink: 0;
+  padding: var(--space-3xs) var(--space-2xs);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--step--2);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.manual-card__exclude:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.manual-empty {
+  padding: var(--space-m) 0;
+  font-size: var(--step--1);
+  color: var(--ink-3);
+  text-align: center;
+}
+
+.manual-current {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2xs);
+  padding: var(--space-xs) 0;
+}
+
+.manual-current__slot {
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.manual-current__name {
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
 .note {
   margin-top: var(--space-s);
   padding: var(--space-s);

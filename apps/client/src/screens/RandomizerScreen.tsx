@@ -64,6 +64,9 @@ export function RandomizerScreen({
               volume: draft.volume,
               ...(draft.mgsGroup ? { targetGroup: draft.mgsGroup } : {}),
               excludedExerciseNames: names,
+              ...(draft.selections && Object.keys(draft.selections).length > 0
+                ? { lockedSelections: draft.selections }
+                : {}),
               seed,
             });
             setWorkout(result);

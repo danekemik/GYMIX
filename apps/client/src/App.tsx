@@ -1,15 +1,17 @@
 import { useState } from 'react';
+import { generateWorkout, type GeneratedWorkout } from '@gymix/generator';
 import type { GeneratorMuscleGroup, VolumeLevel, WorkoutType } from '@gymix/structures';
-import type { GeneratedWorkout } from '@gymix/generator';
 import { TabBar } from './components/TabBar';
 import { useDb } from './hooks/useDb';
 import { isMgs } from './lib/workoutTypes';
+import { getCatalog } from './lib/catalog';
 import type { Draft } from './lib/draft';
 import type { ResumedSession } from './lib/session';
 import { workoutFromTemplate } from './lib/templates';
 import { ExecuteScreen, type FinishPayload } from './screens/ExecuteScreen';
 import { FinishScreen } from './screens/FinishScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
+import { ManualScreen } from './screens/ManualScreen';
 import { MgsGroupScreen } from './screens/MgsGroupScreen';
 import { PreviewScreen } from './screens/PreviewScreen';
 import { RandomizerScreen } from './screens/RandomizerScreen';
@@ -60,7 +62,7 @@ const TABS = [
   },
 ];
 
-type Step = 'home' | 'type' | 'mgs' | 'volume' | 'structure' | 'randomizer' | 'preview' | 'execute' | 'finish';
+type Step = 'home' | 'type' | 'mgs' | 'volume' | 'structure' | 'manual' | 'randomizer' | 'preview' | 'execute' | 'finish';
 type Nullable<T> = T | undefined;
 
 function randomSeed(): number {
@@ -80,6 +82,7 @@ export function App() {
   const [finished, setFinished] = useState<Nullable<FinishPayload>>(undefined);
   const [resume, setResume] = useState<Nullable<ResumedSession>>(undefined);
   const [fromTemplate, setFromTemplate] = useState(false);
+  const [selections, setSelections] = useState<Record<string, string>>({});
 
   const exitBuilder = () => {
     setStep('home');
@@ -89,12 +92,14 @@ export function App() {
     setFinished(undefined);
     setResume(undefined);
     setFromTemplate(false);
+    setSelections({});
   };
 
   const startBuilder = (type: WorkoutType) => {
     setStepType(type);
     setStepMgsGroup(undefined);
     setStepVolume('Стандартная');
+    setSelections({});
     setStep(isMgs(type) ? 'mgs' : 'volume');
   };
 
@@ -102,6 +107,7 @@ export function App() {
     type: stepType,
     volume: stepVolume,
     ...(stepMgsGroup ? { mgsGroup: stepMgsGroup } : {}),
+    ...(Object.keys(selections).length > 0 ? { selections } : {}),
   };
 
   const openTab = (id: string) => {
@@ -144,7 +150,10 @@ export function App() {
       <VolumeScreen
         draft={draft}
         onVolumeChange={setStepVolume}
-        onContinue={() => setStep('structure')}
+        onContinue={() => {
+          setSelections({});
+          setStep('structure');
+        }}
         onBack={() => setStep(isMgs(stepType) ? 'mgs' : 'type')}
       />
     );
@@ -154,10 +163,41 @@ export function App() {
         draft={draft}
         onBackVolume={() => setStep('volume')}
         onBack={() => setStep('volume')}
+        onManual={() => setStep('manual')}
         onGenerate={() => {
           setSeed(randomSeed());
           setGenerated(undefined);
           setStep('randomizer');
+        }}
+      />
+    );
+  } else if (step === 'manual') {
+    body = (
+      <ManualScreen
+        draft={draft}
+        onSelect={(slotKey, name) => {
+          const next = { ...selections };
+          if (name === '') delete next[slotKey];
+          else next[slotKey] = name;
+          setSelections(next);
+        }}
+        onBack={() => setStep('structure')}
+        onToStructure={() => setStep('structure')}
+        onDone={() => {
+          try {
+            setGenerated(
+              generateWorkout(getCatalog(), {
+                type: stepType,
+                volume: stepVolume,
+                ...(stepMgsGroup ? { targetGroup: stepMgsGroup } : {}),
+                lockedSelections: draft.selections ?? {},
+                seed,
+              }),
+            );
+            setStep('preview');
+          } catch {
+            setStep('structure');
+          }
         }}
       />
     );

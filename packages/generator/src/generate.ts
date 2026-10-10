@@ -22,6 +22,11 @@ export interface GenerateOptions {
    * не являются жёстким запретом: если кандидат только один — берётся он.
    */
   readonly alreadySelected?: readonly CatalogExercise[];
+  /**
+   * Вручную заполненные слоты (S06): slotKey → имя упражнения. Слот с
+   * выбором не рандомизируется, генератор закрывает только пустые слоты.
+   */
+  readonly lockedSelections?: Readonly<Record<string, string>>;
   readonly seed?: number;
 }
 
@@ -58,7 +63,7 @@ export interface InsufficientSlot {
   readonly slotKey: string;
   readonly allowed: readonly GeneratorMuscleGroup[];
   readonly requiredTag?: string;
-  readonly reason: 'пусто' | 'все исключены' | 'только повторы';
+  readonly reason: 'пусто' | 'все исключены' | 'только повторы' | 'выбор вне слота';
 }
 
 /** Детерминированный PRNG: одна сборка воспроизводится по seed. */
@@ -180,6 +185,31 @@ export function generateWorkout(
   const missing: InsufficientSlot[] = [];
 
   for (const slot of slots) {
+    const locked = options.lockedSelections?.[slot.slotKey];
+    if (locked !== undefined) {
+      const lockedExercise = catalog.exercises.find((e) => e.name === locked);
+      const lockedValid =
+        lockedExercise !== undefined &&
+        slotCandidates(slot, catalog, new Set()).some((c) => c.name === locked);
+      if (lockedValid && lockedExercise !== undefined) {
+        entries.push({
+          slotKey: slot.slotKey,
+          exercise: lockedExercise,
+          groupUsed: slotGroupUsed(lockedExercise, slot),
+          isRepeat: usedNames.has(lockedExercise.name),
+        });
+        usedNames.add(lockedExercise.name);
+        continue;
+      }
+      missing.push({
+        slotKey: slot.slotKey,
+        allowed: [...slot.allowedGroupIds, ...slot.alternativeGroupIds],
+        ...(slot.requiredSlotTag ? { requiredTag: slot.requiredSlotTag } : {}),
+        reason: 'выбор вне слота',
+      });
+      continue;
+    }
+
     const candidates = slotCandidates(slot, catalog, excluded);
     if (candidates.length === 0) {
       missing.push({

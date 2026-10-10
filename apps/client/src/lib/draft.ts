@@ -15,6 +15,13 @@ export interface Draft {
   readonly type: WorkoutType;
   readonly volume: VolumeLevel;
   readonly mgsGroup?: GeneratorMuscleGroup;
+  /** Слоты, заполненные вручную (S06): slotKey → имя упражнения. */
+  readonly selections?: Readonly<Record<string, string>>;
+}
+
+/** Сколько слотов уже заполнено вручную. */
+export function filledSlotCount(draft: Draft): number {
+  return Object.keys(draft.selections ?? {}).length;
 }
 
 /** Итоговая структура по черновику. Для MGS слоты заполняются группой. */
