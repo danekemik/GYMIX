@@ -195,6 +195,9 @@ export function PreviewScreen({
                       {entry.groupUsed}
                       {isExcluded ? ' · не предлагать' : ''}
                     </span>
+                    {entry.exercise.equipment.length > 0 && (
+                      <span className="plan__equip">{entry.exercise.equipment.join(', ')}</span>
+                    )}
                   </span>
                   {entry.isRepeat && <span className="plan__badge">повтор</span>}
                 </div>

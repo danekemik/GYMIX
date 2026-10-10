@@ -273,6 +273,44 @@
   box-shadow: 0 0 0 1px var(--accent) inset;
 }
 
+.manual-card__open {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.manual-card__thumb {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  border: var(--border);
+  overflow: hidden;
+}
+
+.manual-card__thumb-art {
+  width: 70%;
+  height: auto;
+}
+
+.manual-card__info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+  min-width: 0;
+}
+
 .manual-card__name {
   font-size: var(--step-0);
   font-weight: 600;

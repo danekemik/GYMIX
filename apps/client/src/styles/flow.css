@@ -198,6 +198,12 @@
   color: var(--ink-3);
 }
 
+.plan__equip {
+  font-size: var(--step--2);
+  color: var(--ink-3);
+  opacity: 0.8;
+}
+
 .plan__badge {
   flex-shrink: 0;
   padding: var(--space-4xs) var(--space-2xs);
@@ -295,6 +301,55 @@
 .dialog__close svg {
   width: 20px;
   height: 20px;
+}
+
+/* --- S16: карточка упражнения --- */
+
+.exercise-detail__photo {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 120px;
+  border-radius: var(--radius-m);
+  background:
+    radial-gradient(120% 90% at 50% 0%, var(--surface-2), var(--surface));
+  border: var(--border);
+  overflow: hidden;
+}
+
+.exercise-detail__art {
+  width: min(60%, 160px);
+  height: auto;
+}
+
+.exercise-detail__facts {
+  display: grid;
+  gap: var(--space-2xs);
+  margin-top: var(--space-s);
+}
+
+.exercise-detail__fact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-s);
+  padding-bottom: var(--space-2xs);
+  border-bottom: var(--border);
+}
+
+.exercise-detail__fact dt {
+  flex-shrink: 0;
+  font-size: var(--step--2);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+}
+
+.exercise-detail__fact dd {
+  margin: 0;
+  text-align: right;
+  font-size: var(--step--1);
+  color: var(--ink);
 }
 
 .replace__search {

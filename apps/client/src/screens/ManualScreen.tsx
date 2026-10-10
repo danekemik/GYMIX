@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { slotCandidates } from '@gymix/generator';
+import type { CatalogExercise } from '@gymix/catalog/parse';
 import { plural, structureFor, type Draft } from '../lib/draft';
 import { getCatalog } from '../lib/catalog';
 import { useDb } from '../hooks/useDb';
 import { excludedExerciseNames, excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
+import { ExerciseDetail } from '../components/ExerciseDetail';
+import { IconDumbbellArt } from '../lib/icons';
 
 interface ManualScreenProps {
   draft: Draft;
@@ -20,6 +23,7 @@ export function ManualScreen({ draft, onSelect, onBack, onDone, onToStructure }:
   const [query, setQuery] = useState('');
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
   const [saving, setSaving] = useState<string | undefined>(undefined);
+  const [detail, setDetail] = useState<CatalogExercise | null>(null);
 
   useEffect(() => {
     if (db === undefined) return;
@@ -141,19 +145,30 @@ export function ManualScreen({ draft, onSelect, onBack, onDone, onToStructure }:
             const isActive = candidate.name === selectedName;
             return (
               <li key={candidate.name} className={`manual-card ${isActive ? 'manual-card--active' : ''}`}>
-                <span className="manual-card__name">{candidate.name}</span>
-                <span className="manual-card__meta">
-                  {candidate.secondaryMuscles.slice(0, 2).map((m) => (
-                    <span className="manual-card__chip" key={m}>
-                      {m}
+                <button
+                  className="manual-card__open"
+                  onClick={() => setDetail(candidate)}
+                  aria-label={`Подробнее: ${candidate.name}`}
+                >
+                  <span className="manual-card__thumb" aria-hidden="true">
+                    <IconDumbbellArt className="manual-card__thumb-art" />
+                  </span>
+                  <span className="manual-card__info">
+                    <span className="manual-card__name">{candidate.name}</span>
+                    <span className="manual-card__meta">
+                      {candidate.secondaryMuscles.slice(0, 2).map((m) => (
+                        <span className="manual-card__chip" key={m}>
+                          {m}
+                        </span>
+                      ))}
+                      {candidate.equipment.map((e) => (
+                        <span className="manual-card__chip" key={e}>
+                          {e}
+                        </span>
+                      ))}
                     </span>
-                  ))}
-                  {candidate.equipment.map((e) => (
-                    <span className="manual-card__chip" key={e}>
-                      {e}
-                    </span>
-                  ))}
-                </span>
+                  </span>
+                </button>
                 <span className="manual-card__row">
                   <button
                     className="btn btn--ghost btn--sm manual-card__exclude"
@@ -203,6 +218,22 @@ export function ManualScreen({ draft, onSelect, onBack, onDone, onToStructure }:
           )}
         </div>
       </div>
+
+      {detail !== null && (
+        <ExerciseDetail
+          exercise={detail}
+          pickLabel={detail.name === selectedName ? 'Выбрано' : 'Выбрать'}
+          picked={detail.name === selectedName}
+          excluded={excluded.has(detail.name)}
+          saving={saving !== undefined}
+          onPick={() => {
+            choose(detail.name);
+            setDetail(null);
+          }}
+          onToggleExclude={() => void toggleExclude(detail.name)}
+          onClose={() => setDetail(null)}
+        />
+      )}
     </div>
   );
 }
