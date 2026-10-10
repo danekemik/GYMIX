@@ -293,6 +293,20 @@ button.section-more {
   background: var(--surface);
 }
 
+.wk-card__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-s);
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
 .wk-card__plate,
 .act-card__plate {
   flex-shrink: 0;
@@ -355,7 +369,26 @@ button.section-more {
 .wk-card__menu {
   flex-shrink: 0;
   margin-top: var(--space-2xs);
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  padding: 0;
   color: var(--ink-3);
+  cursor: pointer;
+  border-radius: var(--radius-m);
+}
+
+.wk-card__menu:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+
+.wk-card__date {
+  color: var(--ink-3);
+  font-size: var(--step--2);
 }
 
 .wk-card__menu svg {
@@ -484,4 +517,145 @@ button.section-more {
   border: 1px solid currentColor;
   border-radius: var(--radius-m);
   margin: var(--space-2xs) 0 var(--space-s);
+}
+
+/* ——— Переключатель «Шаблоны | Мои тренировки» ——— */
+
+.home-segment {
+  margin: var(--space-s) 0 var(--space-m);
+}
+
+/* ——— Баннер восстановления черновика (S11) ——— */
+
+.resume {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+  padding: var(--space-s);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-xl);
+  background: var(--surface-2);
+  margin-bottom: var(--space-s);
+}
+
+.resume__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+}
+
+.resume__plate {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-m);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.resume__plate svg {
+  width: 22px;
+  height: 22px;
+}
+
+.resume__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.resume__title {
+  font-weight: 600;
+  font-size: var(--step-0);
+  line-height: 1.25;
+}
+
+.resume__meta {
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+.resume__actions {
+  display: flex;
+  gap: var(--space-2xs);
+}
+
+.resume__actions .btn--sm {
+  font-size: var(--step--1);
+}
+
+.resume__danger {
+  color: var(--danger);
+}
+
+/* ——— Пустое состояние «Мои тренировки» ——— */
+
+.empty-train {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-s);
+  padding: var(--space-m) var(--space-s);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-xl);
+}
+
+.empty-train__title {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  font-weight: 700;
+}
+
+.empty-train__text {
+  font-size: var(--step--1);
+  color: var(--ink-2);
+  line-height: 1.4;
+  margin-bottom: var(--space-2xs);
+}
+
+/* ——— Меню карточки шаблона (S03) ——— */
+
+.menu-dialog {
+  gap: var(--space-s);
+}
+
+.menu-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-action {
+  min-height: 48px;
+  padding: var(--space-s) 12px;
+  background: none;
+  border: 0;
+  border-top: var(--border);
+  color: var(--ink);
+  text-align: left;
+  font-family: var(--font-text);
+  font-size: var(--step-0);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+
+.menu-action:first-child {
+  border-top: 0;
+}
+
+.menu-action:hover {
+  background: var(--surface-2);
+}
+
+.menu-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.menu-action--danger {
+  color: var(--danger);
 }

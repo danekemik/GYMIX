@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GeneratedWorkout } from '@gymix/generator';
 import { useDb } from '../hooks/useDb';
 import { plural } from '../lib/draft';
+import { createDraft, deleteDraft, persistDraft, type DraftSession, type ResumedSession } from '../lib/session';
 import { saveSession } from '../lib/session';
 
 export interface SetEntry {
@@ -26,19 +27,25 @@ interface ExecuteScreenProps {
   workout: GeneratedWorkout;
   onFinish: (payload: FinishPayload) => void;
   onExit: () => void;
+  /** Восстановление активной сессии (S11): ничего не создаём заново. */
+  resume?: ResumedSession;
 }
 
 type Modal = 'exit' | 'finish' | null;
 
 const DEFAULT_SETS = 3;
+const AUTOSAVE_DELAY = 800;
 
-export function ExecuteScreen({ workout, onFinish, onExit }: ExecuteScreenProps) {
+export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScreenProps) {
   const { db } = useDb();
   const [sets, setSets] = useState<SetEntry[][]>(() =>
-    workout.entries.map(() => makeSets(DEFAULT_SETS)),
+    resume !== undefined
+      ? resume.sets.map((group) => group.map((set) => ({ ...set })))
+      : workout.entries.map(() => makeSets(DEFAULT_SETS)),
   );
   const [modal, setModal] = useState<Modal>(null);
-  const startedAt = useRef(Date.now());
+  const startedAt = useRef<number>(resume?.startedAt ?? Date.now());
+  const [draft, setDraft] = useState<DraftSession | 'created' | null>(resume ?? null);
 
   const total = workout.entries.length;
   const completed = useMemo(
@@ -54,6 +61,31 @@ export function ExecuteScreen({ workout, onFinish, onExit }: ExecuteScreenProps)
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  useEffect(() => {
+    if (resume !== undefined || db === undefined) return;
+    let alive = true;
+    createDraft(db, workout)
+      .then((created) => {
+        if (alive) setDraft(created);
+      })
+      .catch(() => {
+        // Без черновика восстановление недоступно, упражнения всё равно в памяти.
+      });
+    return () => {
+      alive = false;
+    };
+  }, [db, workout, resume]);
+
+  useEffect(() => {
+    if (draft === null || draft === 'created' || db === undefined) return;
+    const handle = setTimeout(() => {
+      persistDraft(db, draft.sessionId, draft.byPosition, sets).catch(() => {
+        // Оффлайн/ошибка записи не блокирует выполнение; следующий сейв догонит.
+      });
+    }, AUTOSAVE_DELAY);
+    return () => clearTimeout(handle);
+  }, [sets, draft, db]);
+
   const update = (ex: number, set: number, patch: Partial<SetEntry>) => {
     setSets((prev) =>
       prev.map((group, i) =>
@@ -64,6 +96,13 @@ export function ExecuteScreen({ workout, onFinish, onExit }: ExecuteScreenProps)
 
   const addSet = (ex: number) => {
     setSets((prev) => prev.map((group, i) => (i === ex ? [...group, makeSet()] : group)));
+  };
+
+  const deleteDraftNow = async () => {
+    if (draft !== null && draft !== 'created' && db !== undefined) {
+      await deleteDraft(db, draft.sessionId).catch(() => {});
+    }
+    onExit();
   };
 
   const finish = async () => {
@@ -79,8 +118,14 @@ export function ExecuteScreen({ workout, onFinish, onExit }: ExecuteScreenProps)
       startedAt: startedAt.current,
       endedAt: Date.now(),
     };
+    const dbNow = db;
     const saved =
-      db !== undefined ? await saveSession(db, payload).then(() => true).catch(() => false) : false;
+      dbNow !== undefined
+        ? await saveSession(dbNow, payload).then(() => true).catch(() => false)
+        : false;
+    if (saved && draft !== null && draft !== 'created' && dbNow !== undefined) {
+      await deleteDraft(dbNow, draft.sessionId).catch(() => {});
+    }
     onFinish({ ...payload, saved });
   };
 
@@ -174,19 +219,22 @@ export function ExecuteScreen({ workout, onFinish, onExit }: ExecuteScreenProps)
         <div className="overlay">
           <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
             <h2 id="dialog-title" className="dialog__title">
-              {modal === 'finish' ? 'Тренировка не будет засчитана' : 'Прервать тренировку?'}
+              {modal === 'finish' ? 'Тренировка не будет засчитана' : 'Выйти из тренировки?'}
             </h2>
             <p className="dialog__text">
               {modal === 'finish'
                 ? 'Ни одно упражнение не выполнено. Пустая сессия не попадёт в историю.'
-                : 'Текущий прогресс не будет сохранён.'}
+                : 'Прогресс сохранится — продолжить можно будет с главного экрана.'}
             </p>
             <div className="dialog__actions">
               <button className="btn btn--primary" onClick={() => setModal(null)} autoFocus>
                 Продолжить тренировку
               </button>
-              <button className="btn btn--ghost dialog__danger" onClick={onExit}>
-                {modal === 'finish' ? 'Удалить тренировку' : 'Выйти'}
+              <button
+                className="btn btn--ghost dialog__danger"
+                onClick={modal === 'finish' ? () => void deleteDraftNow() : onExit}
+              >
+                {modal === 'finish' ? 'Удалить тренировку' : 'Сохранить и выйти'}
               </button>
             </div>
           </div>

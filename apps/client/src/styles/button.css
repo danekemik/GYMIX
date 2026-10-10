@@ -48,3 +48,10 @@
   cursor: default;
   pointer-events: none;
 }
+
+.btn--sm {
+  min-height: 44px;
+  padding: 0 var(--space-s);
+  border-radius: 999px;
+  font-size: var(--step--1);
+}

@@ -4,7 +4,7 @@ interface SegmentedOption<T extends string> {
 }
 
 interface SegmentedProps<T extends string> {
-  options: SegmentedOption<T>[];
+  options: readonly SegmentedOption<T>[];
   value: T;
   onChange: (value: T) => void;
   label?: string;

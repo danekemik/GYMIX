@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { DbProvider } from './hooks/useDb';
 import './styles/app.css';
 import './styles/builder.css';
 import './styles/button.css';
@@ -21,8 +22,10 @@ if (!root) throw new Error('нет #root');
 
 createRoot(root).render(
   <StrictMode>
-    <div className="device">
-      <App />
-    </div>
+    <DbProvider>
+      <div className="device">
+        <App />
+      </div>
+    </DbProvider>
   </StrictMode>,
 );

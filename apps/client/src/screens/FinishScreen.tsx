@@ -1,20 +1,53 @@
+import { useState } from 'react';
 import { plural } from '../lib/draft';
 import { formatDate, formatDurationMs } from '../lib/format';
+import { saveTemplate } from '../lib/templates';
+import { useDb } from '../hooks/useDb';
 import type { FinishPayload } from './ExecuteScreen';
 
 interface FinishScreenProps {
   payload: FinishPayload;
   onDone: () => void;
   onOpenHistory: () => void;
+  onOpenTemplates: () => void;
 }
 
-export function FinishScreen({ payload, onDone, onOpenHistory }: FinishScreenProps) {
+type Dialog = 'idle' | 'naming' | 'saving' | 'error' | 'saved';
+
+export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }: FinishScreenProps) {
+  const { db } = useDb();
   const { workout, sets } = payload;
   const total = workout.entries.length;
   const completed = sets.filter((group) => group.length > 0 && group.every((s) => s.done)).length;
   const partial = completed > 0 && completed < total;
   const duration = formatDurationMs(payload.endedAt - payload.startedAt);
   const date = formatDate(new Date(payload.endedAt));
+  const [dialog, setDialog] = useState<Dialog>('idle');
+  const [name, setName] = useState<string>(workout.type);
+
+  const save = async () => {
+    const title = name.trim();
+    if (title === '') return;
+    if (db === undefined) {
+      setDialog('error');
+      return;
+    }
+    setDialog('saving');
+    try {
+      await saveTemplate(db, {
+        title,
+        type: workout.type,
+        volume: workout.volume,
+        entries: workout.entries.map((entry) => ({
+          slotKey: entry.slotKey,
+          exerciseName: entry.exercise.name,
+        })),
+      });
+      setDialog('saved');
+    } catch {
+      setDialog('error');
+    }
+  };
 
   return (
     <div className="screen">
@@ -81,11 +114,100 @@ export function FinishScreen({ payload, onDone, onOpenHistory }: FinishScreenPro
           <button className="btn btn--primary" onClick={onDone}>
             Готово
           </button>
+          <button className="btn btn--ghost" onClick={() => setDialog('naming')}>
+            Сохранить как шаблон
+          </button>
           <button className="btn btn--ghost" onClick={onOpenHistory}>
             Открыть историю
           </button>
         </div>
       </div>
+
+      {dialog === 'naming' && (
+        <div className="overlay">
+          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="save-title">
+            <h2 id="save-title" className="dialog__title">
+              Сохранить как шаблон
+            </h2>
+            <p className="dialog__text">
+              Шаблон появится на главном экране и будет доступен для повторного
+              старта.
+            </p>
+            <label className="field">
+              <span className="field__label">Название</span>
+              <input
+                className="field__input"
+                type="text"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') void save();
+                }}
+                autoFocus
+                maxLength={60}
+              />
+            </label>
+            <div className="dialog__actions">
+              <button className="btn btn--primary" onClick={() => void save()}>
+                Сохранить
+              </button>
+              <button className="btn btn--ghost" onClick={() => setDialog('idle')}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {dialog === 'saving' && (
+        <div className="overlay">
+          <div className="dialog" role="dialog" aria-modal="true">
+            <h2 className="dialog__title">Сохраняем шаблон…</h2>
+          </div>
+        </div>
+      )}
+
+      {dialog === 'error' && (
+        <div className="overlay">
+          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="save-error">
+            <h2 id="save-error" className="dialog__title">
+              Не удалось сохранить
+            </h2>
+            <p className="dialog__text">
+              Проверь подключение и попробуй ещё раз.
+            </p>
+            <div className="dialog__actions">
+              <button className="btn btn--primary" onClick={() => setDialog('naming')} autoFocus>
+                Повторить
+              </button>
+              <button className="btn btn--ghost" onClick={() => setDialog('idle')}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {dialog === 'saved' && (
+        <div className="overlay">
+          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="save-done">
+            <h2 id="save-done" className="dialog__title">
+              Шаблон сохранён
+            </h2>
+            <p className="dialog__text">
+              «{name.trim()}» теперь в разделе «Мои тренировки».
+            </p>
+            <div className="dialog__actions">
+              <button className="btn btn--primary" onClick={onOpenTemplates} autoFocus>
+                К шаблонам
+              </button>
+              <button className="btn btn--ghost" onClick={onDone}>
+                Готово
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

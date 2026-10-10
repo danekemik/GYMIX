@@ -6,9 +6,11 @@ interface PreviewScreenProps {
   onStart: () => void;
   onRegenerate: () => void;
   onBack: () => void;
+  /** Шаблон не перегенерируется — упражнения зафиксированы. */
+  regenerable?: boolean;
 }
 
-export function PreviewScreen({ workout, onStart, onRegenerate, onBack }: PreviewScreenProps) {
+export function PreviewScreen({ workout, onStart, onRegenerate, onBack, regenerable = true }: PreviewScreenProps) {
   const total = workout.entries.length;
 
   return (
@@ -52,9 +54,11 @@ export function PreviewScreen({ workout, onStart, onRegenerate, onBack }: Previe
           <button className="btn btn--primary" onClick={onStart}>
             Начать тренировку
           </button>
-          <button className="btn btn--ghost cta-row__second" onClick={onRegenerate}>
-            Перегенерировать
-          </button>
+          {regenerable && (
+            <button className="btn btn--ghost cta-row__second" onClick={onRegenerate}>
+              Перегенерировать
+            </button>
+          )}
         </div>
       </div>
     </div>

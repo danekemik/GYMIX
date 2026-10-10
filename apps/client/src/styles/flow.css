@@ -379,6 +379,38 @@
   color: var(--danger);
 }
 
+/* Поле ввода в диалогах (имя шаблона, переименование). */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+
+.field__label {
+  font-size: var(--step--2);
+  color: var(--ink-2);
+  font-weight: 500;
+}
+
+.field__input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 var(--space-s);
+  border-radius: var(--radius-m);
+  border: var(--border);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: var(--step-0);
+  transition: border-color var(--dur-fast) var(--ease);
+}
+
+.field__input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* --- S12: итог тренировки --- */
 
 .finish-hero {

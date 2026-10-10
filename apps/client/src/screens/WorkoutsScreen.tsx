@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import type { WorkoutType } from '@gymix/structures';
+import { Segmented } from '../components/Segmented';
 import { useDb } from '../hooks/useDb';
 import { formatDay, formatDurationMs } from '../lib/format';
 import {
@@ -13,10 +14,24 @@ import {
   IconFigure,
   IconGear,
   IconLegs,
-  IconList,
   IconTorso,
 } from '../lib/icons';
-import { latestSession, type HistoryItem } from '../lib/session';
+import {
+  activeDraft,
+  deleteDraft,
+  latestSession,
+  resumeDraft,
+  type DraftSummary,
+  type HistoryItem,
+  type ResumedSession,
+} from '../lib/session';
+import {
+  copyTemplate,
+  deleteTemplate,
+  renameTemplate,
+  templatesFor,
+  type TemplateCard,
+} from '../lib/templates';
 import { workoutTypeCards } from '../lib/workoutTypes';
 
 interface WorkoutsScreenProps {
@@ -24,7 +39,17 @@ interface WorkoutsScreenProps {
   onCreate: () => void;
   onOpenProfile: () => void;
   onOpenActivity: () => void;
+  onOpenTemplate: (templateId: string) => void;
+  onResume: (session: ResumedSession) => void;
 }
+
+type Segment = 'ready' | 'mine';
+
+const SEGMENT_KEY = 'gymix:home-segment';
+const SEGMENT_OPTIONS = [
+  { value: 'ready', label: 'Шаблоны' },
+  { value: 'mine', label: 'Мои тренировки' },
+] as const;
 
 const QUICK_START: readonly WorkoutType[] = ['Full Body', 'Upper Body', 'Lower Body'];
 
@@ -58,24 +83,31 @@ const QUICK_ICON: Record<WorkoutType, (p: { className: string }) => ReactElement
   'Muscle Group Split': IconFigure,
 };
 
-/* Первая сохранённая тренировка: пример из реальной структуры
- * Upper Body / Стандартная (число упражнений и группы — из MATRIX). */
-const SAVED_EXAMPLE = {
-  type: 'Upper Body' as const,
-  volume: 'Стандартная',
-  exerciseCount: 7,
-  tags: ['Грудь', 'Спина', 'Плечи', 'Руки'] as const,
-};
+type MenuTarget = TemplateCard | null;
 
 export function WorkoutsScreen({
   onStart,
   onCreate,
   onOpenProfile,
   onOpenActivity,
+  onOpenTemplate,
+  onResume,
 }: WorkoutsScreenProps) {
   const { db, error } = useDb();
   const cards = useMemo(() => workoutTypeCards(), []);
+  const [segment, setSegment] = useState<Segment>(() =>
+    localStorage.getItem(SEGMENT_KEY) === 'mine' ? 'mine' : 'ready',
+  );
   const [recent, setRecent] = useState<HistoryItem | null | 'loading'>('loading');
+  const [templates, setTemplates] = useState<TemplateCard[] | 'loading'>('loading');
+  const [draft, setDraft] = useState<DraftSummary | null | 'loading'>('loading');
+
+  const [menuFor, setMenuFor] = useState<MenuTarget>(null);
+  const [renameFor, setRenameFor] = useState<MenuTarget>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [removeFor, setRemoveFor] = useState<MenuTarget>(null);
+  const [removeDraft, setRemoveDraft] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (db === undefined) return;
@@ -87,6 +119,99 @@ export function WorkoutsScreen({
       alive = false;
     };
   }, [db]);
+
+  useEffect(() => {
+    if (db === undefined) return;
+    let alive = true;
+    activeDraft(db)
+      .then((row) => alive && setDraft(row))
+      .catch(() => alive && setDraft(null));
+    return () => {
+      alive = false;
+    };
+  }, [db]);
+
+  const reloadTemplates = useCallback(async () => {
+    if (db === undefined) return;
+    try {
+      setTemplates(await templatesFor(db));
+    } catch {
+      setTemplates([]);
+    }
+  }, [db]);
+
+  useEffect(() => {
+    void reloadTemplates();
+  }, [reloadTemplates]);
+
+  const changeSegment = (value: Segment) => {
+    localStorage.setItem(SEGMENT_KEY, value);
+    setSegment(value);
+  };
+
+  const continueDraft = async () => {
+    if (db === undefined || draft === null || draft === 'loading') return;
+    setBusy(true);
+    try {
+      const resumed = await resumeDraft(db, draft.sessionId);
+      onResume(resumed);
+    } catch {
+      setBusy(false);
+    }
+  };
+
+  const confirmDeleteDraft = async () => {
+    if (db === undefined || draft === null || draft === 'loading') return;
+    setBusy(true);
+    try {
+      await deleteDraft(db, draft.sessionId);
+      setDraft(null);
+    } finally {
+      setBusy(false);
+      setRemoveDraft(false);
+    }
+  };
+
+  const openMenu = (template: TemplateCard) => {
+    setMenuFor(template);
+  };
+
+  const doRename = async () => {
+    const title = renameValue.trim();
+    if (title === '' || db === undefined || renameFor === null) return;
+    setBusy(true);
+    try {
+      await renameTemplate(db, renameFor.id, title);
+      setRenameFor(null);
+      await reloadTemplates();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doCopy = async () => {
+    if (db === undefined || menuFor === null) return;
+    setBusy(true);
+    try {
+      await copyTemplate(db, menuFor.id);
+      setMenuFor(null);
+      await reloadTemplates();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const doDelete = async () => {
+    if (db === undefined || removeFor === null) return;
+    setBusy(true);
+    try {
+      await deleteTemplate(db, removeFor.id);
+      setRemoveFor(null);
+      await reloadTemplates();
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const quick = QUICK_START.map((type) => cards.find((c) => c.type === type)).filter(
     (c): c is NonNullable<typeof c> => c !== undefined,
@@ -113,98 +238,290 @@ export function WorkoutsScreen({
           </p>
         )}
 
-        <section className="hero" aria-label="Новая тренировка">
-          <div className="hero__copy">
-            <h3 className="hero__title">Новая тренировка</h3>
-            <p className="hero__text">
-              <span>Собери своё занятие</span>
-              <span>на свои цели и уровень</span>
-            </p>
-          </div>
-          <div className="hero__art" aria-hidden>
-            <IconDumbbellArt />
-          </div>
-          <button className="hero__cta" onClick={onCreate}>
-            <span className="hero__cta-label">Создать тренировку</span>
-            <IconArrowRight className="hero__cta-arrow" />
-          </button>
-        </section>
+        {draft !== null && draft !== 'loading' && (
+          <section className="resume" aria-label="Незавершённая тренировка">
+            <div className="resume__head">
+              <span className="resume__plate" aria-hidden>
+                <IconClock />
+              </span>
+              <div className="resume__body">
+                <p className="resume__title">
+                  {draft.type} <span className="wk-card__dot">·</span> {draft.volume}
+                </p>
+                <p className="resume__meta">
+                  Начата {formatDay(draft.startedAt)} · {draft.doneSets}/{draft.totalSets} подходов
+                </p>
+              </div>
+            </div>
+            <div className="resume__actions">
+              <button className="btn btn--primary btn--sm" onClick={() => void continueDraft()} disabled={busy}>
+                Продолжить
+              </button>
+              <button
+                className="btn btn--ghost btn--sm resume__danger"
+                onClick={() => setRemoveDraft(true)}
+                disabled={busy}
+              >
+                Удалить черновик
+              </button>
+            </div>
+          </section>
+        )}
 
-        <section className="quick" aria-label="Быстрый старт">
-          <SectionHead title="Быстрый старт" chevronOnly />
-          <div className="quick-grid">
-            {quick.map((card) => {
-              const Icon = QUICK_ICON[card.type];
-              return (
-                <button key={card.type} className="quick-card" onClick={() => onStart(card.type)}>
-                  <Icon className="quick-card__icon" />
-                  <span className="quick-card__head">
-                    <span className="quick-card__name">{TYPE_LABEL[card.type]}</span>
-                    <IconChevronRight className="quick-card__chevron" />
-                  </span>
-                  <span className="quick-card__subtitle">{QUICK_SUBTITLE[card.type]}</span>
+        <div className="home-segment">
+          <Segmented
+            options={SEGMENT_OPTIONS}
+            value={segment}
+            onChange={changeSegment}
+            label="Раздел тренировок"
+          />
+        </div>
+
+        {segment === 'ready' ? (
+          <>
+            <section className="hero" aria-label="Новая тренировка">
+              <div className="hero__copy">
+                <h3 className="hero__title">Новая тренировка</h3>
+                <p className="hero__text">
+                  <span>Собери своё занятие</span>
+                  <span>на свои цели и уровень</span>
+                </p>
+              </div>
+              <div className="hero__art" aria-hidden>
+                <IconDumbbellArt />
+              </div>
+              <button className="hero__cta" onClick={onCreate}>
+                <span className="hero__cta-label">Создать тренировку</span>
+                <IconArrowRight className="hero__cta-arrow" />
+              </button>
+            </section>
+
+            <section className="quick" aria-label="Быстрый старт">
+              <SectionHead title="Быстрый старт" chevronOnly />
+              <div className="quick-grid">
+                {quick.map((card) => {
+                  const Icon = QUICK_ICON[card.type];
+                  return (
+                    <button key={card.type} className="quick-card" onClick={() => onStart(card.type)}>
+                      <Icon className="quick-card__icon" />
+                      <span className="quick-card__head">
+                        <span className="quick-card__name">{TYPE_LABEL[card.type]}</span>
+                        <IconChevronRight className="quick-card__chevron" />
+                      </span>
+                      <span className="quick-card__subtitle">{QUICK_SUBTITLE[card.type]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="recent" aria-label="Недавняя активность">
+              <SectionHead title="Недавняя активность" more="Вся активность" onMore={onOpenActivity} />
+              <div className="recent-list">
+                {recent === null ? (
+                  <div className="act-card act-card--empty">
+                    Здесь появится последняя тренировка
+                  </div>
+                ) : recent === 'loading' ? null : (
+                  <article className="act-card">
+                    <span className="act-card__plate" aria-hidden>
+                      <IconCalendar />
+                    </span>
+                    <div className="act-card__body">
+                      <p className="act-card__title">{recent.type}</p>
+                      <p className="act-card__meta">
+                        {formatDay(recent.completedAt)} · {recent.done}/{recent.total} упражнений
+                      </p>
+                    </div>
+                    <p className="act-card__duration">
+                      <IconClock />
+                      {formatDurationMs(recent.durationMs)}
+                    </p>
+                    <IconChevronRight className="act-card__chevron" />
+                  </article>
+                )}
+              </div>
+            </section>
+          </>
+        ) : (
+          <section className="mine" aria-label="Мои тренировки">
+            <SectionHead title="Мои тренировки" />
+            {templates === 'loading' ? (
+              <p className="body-muted">Загружаем шаблоны…</p>
+            ) : templates.length === 0 ? (
+              <div className="empty-train">
+                <p className="empty-train__title">Пока пусто</p>
+                <p className="empty-train__text">
+                  Сохрани завершённую тренировку как шаблон, чтобы повторить её
+                  в один тап.
+                </p>
+                <button className="btn btn--primary" onClick={onCreate}>
+                  Создать тренировку
                 </button>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="mine" aria-label="Мои тренировки">
-          <SectionHead title="Мои тренировки" more="Все тренировки" />
-          <div className="mine-list">
-            <article className="wk-card">
-              <span className="wk-card__plate" aria-hidden>
-                <IconList />
-              </span>
-              <div className="wk-card__body">
-                <p className="wk-card__title">
-                  {TYPE_LABEL[SAVED_EXAMPLE.type]} <span className="wk-card__dot">·</span>{' '}
-                  {SAVED_EXAMPLE.volume}
-                </p>
-                <p className="wk-card__meta">{SAVED_EXAMPLE.exerciseCount} упражнений</p>
-                <ul className="wk-card__tags">
-                  {SAVED_EXAMPLE.tags.map((tag) => (
-                    <li key={tag} className="wk-card__tag">
-                      {tag}
-                    </li>
-                  ))}
-                </ul>
               </div>
-              <span className="wk-card__menu" aria-hidden>
-                <IconDots />
-              </span>
-            </article>
-          </div>
-        </section>
-
-        <section className="recent" aria-label="Недавняя активность">
-          <SectionHead title="Недавняя активность" more="Вся активность" onMore={onOpenActivity} />
-          <div className="recent-list">
-            {recent === null ? (
-              <div className="act-card act-card--empty">
-                Здесь появится последняя тренировка
+            ) : (
+              <div className="mine-list">
+                {templates.map((template) => (
+                  <article key={template.id} className="wk-card">
+                    <button
+                      className="wk-card__main"
+                      onClick={() => onOpenTemplate(template.id)}
+                      aria-label={`Открыть шаблон «${template.title}»`}
+                    >
+                      <span className="wk-card__plate" aria-hidden>
+                        <IconTorso />
+                      </span>
+                      <span className="wk-card__body">
+                        <span className="wk-card__title">{template.title}</span>
+                        <span className="wk-card__meta">
+                          {template.type} <span className="wk-card__dot">·</span>{' '}
+                          {template.volume}
+                        </span>
+                        <span className="wk-card__tags">
+                          <span className="wk-card__tag">{template.exerciseCount} упражнений</span>
+                          <span className="wk-card__date">{formatDay(template.createdAt)}</span>
+                        </span>
+                      </span>
+                    </button>
+                    <button
+                      className="wk-card__menu"
+                      aria-label="Меню шаблона"
+                      onClick={() => openMenu(template)}
+                    >
+                      <IconDots />
+                    </button>
+                  </article>
+                ))}
               </div>
-            ) : recent === 'loading' ? null : (
-              <article className="act-card">
-                <span className="act-card__plate" aria-hidden>
-                  <IconCalendar />
-                </span>
-                <div className="act-card__body">
-                  <p className="act-card__title">{recent.type}</p>
-                  <p className="act-card__meta">
-                    {formatDay(recent.completedAt)} · {recent.done}/{recent.total} упражнений
-                  </p>
-                </div>
-                <p className="act-card__duration">
-                  <IconClock />
-                  {formatDurationMs(recent.durationMs)}
-                </p>
-                <IconChevronRight className="act-card__chevron" />
-              </article>
             )}
-          </div>
-        </section>
+          </section>
+        )}
       </div>
+
+      {menuFor !== null && (
+        <div className="overlay">
+          <div className="dialog menu-dialog" role="dialog" aria-modal="true" aria-labelledby="menu-title">
+            <h2 id="menu-title" className="dialog__title">
+              {menuFor.title}
+            </h2>
+            <div className="menu-list" role="menu">
+              <button
+                className="menu-action"
+                role="menuitem"
+                onClick={() => {
+                  onOpenTemplate(menuFor.id);
+                  setMenuFor(null);
+                }}
+              >
+                Открыть
+              </button>
+              <button className="menu-action" role="menuitem" onClick={() => void doCopy()} disabled={busy}>
+                Копировать
+              </button>
+              <button
+                className="menu-action"
+                role="menuitem"
+                onClick={() => {
+                  setRenameValue(menuFor.title);
+                  setRenameFor(menuFor);
+                  setMenuFor(null);
+                }}
+              >
+                Переименовать
+              </button>
+              <button
+                className="menu-action menu-action--danger"
+                role="menuitem"
+                onClick={() => {
+                  setRemoveFor(menuFor);
+                  setMenuFor(null);
+                }}
+              >
+                Удалить
+              </button>
+            </div>
+            <button className="btn btn--ghost" onClick={() => setMenuFor(null)}>
+              Отмена
+            </button>
+          </div>
+        </div>
+      )}
+
+      {renameFor !== null && (
+        <div className="overlay">
+          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="rename-title">
+            <h2 id="rename-title" className="dialog__title">
+              Переименовать шаблон
+            </h2>
+            <label className="field">
+              <span className="field__label">Название</span>
+              <input
+                className="field__input"
+                type="text"
+                value={renameValue}
+                onChange={(event) => setRenameValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') void doRename();
+                }}
+                autoFocus
+                maxLength={60}
+              />
+            </label>
+            <div className="dialog__actions">
+              <button className="btn btn--primary" onClick={() => void doRename()} disabled={busy}>
+                Сохранить
+              </button>
+              <button className="btn btn--ghost" onClick={() => setRenameFor(null)}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {removeFor !== null && (
+        <div className="overlay">
+          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="remove-title">
+            <h2 id="remove-title" className="dialog__title">
+              Удалить шаблон?
+            </h2>
+            <p className="dialog__text">
+              «{removeFor.title}» исчезнет без возможности восстановления. История
+              тренировок не изменится.
+            </p>
+            <div className="dialog__actions">
+              <button className="btn btn--primary" onClick={() => void doDelete()} disabled={busy}>
+                Удалить
+              </button>
+              <button className="btn btn--ghost" onClick={() => setRemoveFor(null)}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {removeDraft && (
+        <div className="overlay">
+          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="remove-draft-title">
+            <h2 id="remove-draft-title" className="dialog__title">
+              Удалить черновик?
+            </h2>
+            <p className="dialog__text">
+              Прогресс текущей тренировки будет стёрт. Это действие нельзя
+              отменить.
+            </p>
+            <div className="dialog__actions">
+              <button className="btn btn--primary" onClick={() => void confirmDeleteDraft()} disabled={busy}>
+                Удалить
+              </button>
+              <button className="btn btn--ghost" onClick={() => setRemoveDraft(false)}>
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

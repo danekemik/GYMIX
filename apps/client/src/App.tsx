@@ -2,9 +2,11 @@ import { useState } from 'react';
 import type { GeneratorMuscleGroup, VolumeLevel, WorkoutType } from '@gymix/structures';
 import type { GeneratedWorkout } from '@gymix/generator';
 import { TabBar } from './components/TabBar';
-import { DbProvider } from './hooks/useDb';
+import { useDb } from './hooks/useDb';
 import { isMgs } from './lib/workoutTypes';
 import type { Draft } from './lib/draft';
+import type { ResumedSession } from './lib/session';
+import { workoutFromTemplate } from './lib/templates';
 import { ExecuteScreen, type FinishPayload } from './screens/ExecuteScreen';
 import { FinishScreen } from './screens/FinishScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
@@ -65,6 +67,7 @@ function randomSeed(): number {
 }
 
 export function App() {
+  const { db } = useDb();
   const [tab, setTab] = useState('workouts');
 
   const [step, setStep] = useState<Step>('home');
@@ -74,6 +77,8 @@ export function App() {
   const [seed, setSeed] = useState<number>(randomSeed);
   const [generated, setGenerated] = useState<Nullable<GeneratedWorkout>>(undefined);
   const [finished, setFinished] = useState<Nullable<FinishPayload>>(undefined);
+  const [resume, setResume] = useState<Nullable<ResumedSession>>(undefined);
+  const [fromTemplate, setFromTemplate] = useState(false);
 
   const exitBuilder = () => {
     setStep('home');
@@ -81,6 +86,8 @@ export function App() {
     setStepVolume('Стандартная');
     setGenerated(undefined);
     setFinished(undefined);
+    setResume(undefined);
+    setFromTemplate(false);
   };
 
   const startBuilder = (type: WorkoutType) => {
@@ -99,6 +106,18 @@ export function App() {
   const openTab = (id: string) => {
     setTab(id);
     if (step !== 'home') exitBuilder();
+  };
+
+  const openTemplate = async (templateId: string) => {
+    if (db === undefined) return;
+    try {
+      const workout = await workoutFromTemplate(db, templateId);
+      setFromTemplate(true);
+      setGenerated(workout);
+      setStep('preview');
+    } catch {
+      // Безобидный фолбэк: остаёмся на главной при сбое чтения шаблона.
+    }
   };
 
   let body;
@@ -159,19 +178,31 @@ export function App() {
       <PreviewScreen
         workout={generated}
         onStart={() => setStep('execute')}
+        regenerable={!fromTemplate}
         onRegenerate={() => {
           setSeed(randomSeed());
           setStep('randomizer');
         }}
-        onBack={() => setStep('randomizer')}
+        onBack={() => {
+          if (fromTemplate) {
+            setFromTemplate(false);
+            setGenerated(undefined);
+            setStep('home');
+          } else {
+            setStep('randomizer');
+          }
+        }}
       />
     );
-  } else if (step === 'execute' && generated) {
+  } else if (step === 'execute' && (generated ?? resume)) {
     body = (
       <ExecuteScreen
-        workout={generated}
+        key={resume !== undefined ? `resume-${resume.sessionId}` : 'new'}
+        workout={resume?.workout ?? (generated as GeneratedWorkout)}
+        {...(resume !== undefined ? { resume } : {})}
         onFinish={(payload) => {
           setFinished(payload);
+          setResume(undefined);
           setStep('finish');
         }}
         onExit={exitBuilder}
@@ -183,6 +214,11 @@ export function App() {
         payload={finished}
         onDone={exitBuilder}
         onOpenHistory={() => openTab('history')}
+        onOpenTemplates={() => {
+          localStorage.setItem('gymix:home-segment', 'mine');
+          setTab('workouts');
+          setStep('home');
+        }}
       />
     );
   } else if (tab === 'workouts') {
@@ -192,6 +228,11 @@ export function App() {
         onCreate={() => setStep('type')}
         onOpenProfile={() => openTab('profile')}
         onOpenActivity={() => openTab('history')}
+        onOpenTemplate={(templateId) => void openTemplate(templateId)}
+        onResume={(session) => {
+          setResume(session);
+          setStep('execute');
+        }}
       />
     );
   } else if (tab === 'history') {
@@ -201,12 +242,10 @@ export function App() {
   }
 
   return (
-    <DbProvider>
-      <div className="app">
-        <main className="app__main">{body}</main>
-        {step === 'home' && <TabBar tabs={TABS} active={tab} onChange={openTab} />}
-      </div>
-    </DbProvider>
+    <div className="app">
+      <main className="app__main">{body}</main>
+      {step === 'home' && <TabBar tabs={TABS} active={tab} onChange={openTab} />}
+    </div>
   );
 }
 
