@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   replacementCandidates,
   slotFor,
+  type GeneratedEntry,
   type GeneratedWorkout,
 } from '@gymix/generator';
 import type { CatalogExercise } from '@gymix/catalog/parse';
@@ -18,6 +19,8 @@ interface PreviewScreenProps {
   onBack: () => void;
   /** Упражнение заменено в предпросмотре (S09). */
   onReplace: (index: number, exercise: CatalogExercise) => void;
+  /** Порядок упражнений внутри групп изменён (S08). */
+  onReorder: (entries: readonly GeneratedEntry[]) => void;
   /** Шаблон не перегенерируется — упражнения зафиксированы. */
   regenerable?: boolean;
 }
@@ -29,6 +32,7 @@ export function PreviewScreen({
   onRegenerate,
   onBack,
   onReplace,
+  onReorder,
   regenerable = true,
 }: PreviewScreenProps) {
   const { db } = useDb();
@@ -36,6 +40,7 @@ export function PreviewScreen({
   const [query, setQuery] = useState('');
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
   const [saving, setSaving] = useState<string | undefined>(undefined);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (db === undefined) return;
@@ -94,6 +99,22 @@ export function PreviewScreen({
     }
   };
 
+  const canMove = (from: number, to: number) =>
+    to >= 0 &&
+    to < total &&
+    workout.entries[from] !== undefined &&
+    workout.entries[to] !== undefined &&
+    workout.entries[from]!.groupUsed === workout.entries[to]!.groupUsed;
+
+  const move = (from: number, to: number) => {
+    if (!canMove(from, to)) return;
+    const next = [...workout.entries];
+    const [item] = next.splice(from, 1);
+    if (item === undefined) return;
+    next.splice(to, 0, item);
+    onReorder(next);
+  };
+
   return (
     <div className="screen">
       <header className="topbar">
@@ -113,46 +134,99 @@ export function PreviewScreen({
           </span>
         </div>
 
-        <ol className="plan">
-          {workout.entries.map((entry, index) => (
-            <li key={entry.slotKey} className="plan__row">
-              <span className="plan__index">{index + 1}</span>
-              <span className="plan__body">
-                <span className="plan__exercise">{entry.exercise.name}</span>
-                <span className="plan__group">
-                  {entry.groupUsed}
-                  {excluded.has(entry.exercise.name) ? ' · не предлагать' : ''}
-                </span>
-              </span>
-              {entry.isRepeat && <span className="plan__badge">повтор</span>}
-            </li>
-          ))}
+        <ol className="plan" aria-label="Упражнения по порядку">
+          {workout.entries.map((entry, index) => {
+            const up = canMove(index, index - 1);
+            const down = canMove(index, index + 1);
+            const isExcluded = excluded.has(entry.exercise.name);
+            return (
+              <li
+                key={entry.slotKey}
+                className={`plan__row${dragIndex === index ? ' plan__row--dragging' : ''}`}
+                draggable={up || down}
+                onDragStart={(e) => {
+                  if (!(up || down)) return;
+                  setDragIndex(index);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragOver={(e) => {
+                  if (dragIndex === null || dragIndex === index) return;
+                  if (workout.entries[dragIndex]?.groupUsed !== entry.groupUsed) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                }}
+                onDrop={(e) => {
+                  if (dragIndex === null) return;
+                  e.preventDefault();
+                  move(dragIndex, index);
+                  setDragIndex(null);
+                }}
+                onDragEnd={() => setDragIndex(null)}
+              >
+                <div className="plan__main">
+                  <span className="plan__handle" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <circle cx="9" cy="6" r="1.5" />
+                      <circle cx="15" cy="6" r="1.5" />
+                      <circle cx="9" cy="12" r="1.5" />
+                      <circle cx="15" cy="12" r="1.5" />
+                      <circle cx="9" cy="18" r="1.5" />
+                      <circle cx="15" cy="18" r="1.5" />
+                    </svg>
+                  </span>
+                  <span className="plan__index">{index + 1}</span>
+                  <span className="plan__body">
+                    <span className="plan__exercise">{entry.exercise.name}</span>
+                    <span className="plan__group">
+                      {entry.groupUsed}
+                      {isExcluded ? ' · не предлагать' : ''}
+                    </span>
+                  </span>
+                  {entry.isRepeat && <span className="plan__badge">повтор</span>}
+                </div>
+                <div className="plan__controls">
+                  <span className="plan__move">
+                    <button
+                      className="plan__move-btn"
+                      aria-label={`Переместить выше: ${entry.exercise.name}`}
+                      disabled={!up}
+                      onClick={() => move(index, index - 1)}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                    <button
+                      className="plan__move-btn"
+                      aria-label={`Переместить ниже: ${entry.exercise.name}`}
+                      disabled={!down}
+                      onClick={() => move(index, index + 1)}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  </span>
+                  <button className="btn btn--ghost btn--sm" onClick={() => setReplacing(index)}>
+                    Заменить
+                  </button>
+                  <button
+                    className="btn btn--ghost btn--sm"
+                    aria-pressed={isExcluded}
+                    disabled={saving !== undefined}
+                    onClick={() => void toggleExclude(entry.exercise.name)}
+                  >
+                    {isExcluded ? 'Предлагать снова' : 'Не предлагать'}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
         </ol>
 
-        <div className="plan__actions">
-          {workout.entries.map((entry, index) => (
-            <div className="plan__action" key={entry.slotKey}>
-              <span className="plan__action-name">{entry.exercise.name}</span>
-              <span className="plan__action-buttons">
-                <button className="btn btn--ghost btn--sm" onClick={() => setReplacing(index)}>
-                  Заменить
-                </button>
-                <button
-                  className="btn btn--ghost btn--sm"
-                  aria-pressed={excluded.has(entry.exercise.name)}
-                  disabled={saving !== undefined}
-                  onClick={() => void toggleExclude(entry.exercise.name)}
-                >
-                  {excluded.has(entry.exercise.name) ? 'Предлагать снова' : 'Не предлагать'}
-                </button>
-              </span>
-            </div>
-          ))}
-        </div>
-
         <aside className="note">
-          Порядок упражнений можно будет менять на старте. Структура и число
-          слотов фиксированы.
+          Перетаскивай упражнения за ⠿ или используй стрелки — менять можно порядок
+          внутри группы. Состав групп и число слотов фиксированы.
         </aside>
 
         <div className="screen__cta">

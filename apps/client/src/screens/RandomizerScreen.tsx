@@ -3,6 +3,7 @@ import {
   InsufficientCatalogError,
   generateWorkout,
   type GeneratedWorkout,
+  type InsufficientSlot,
 } from '@gymix/generator';
 import { plural, structureFor, type Draft } from '../lib/draft';
 import { getCatalog } from '../lib/catalog';
@@ -24,6 +25,14 @@ type Status = 'running' | 'done' | 'error';
 const STEPS = ['Подбор', 'Проверка', 'Готово'] as const;
 const RUN_MS = 420;
 
+/* Почему слот не закрылся — человеческим языком (S07). */
+const REASON_LABELS: Record<InsufficientSlot['reason'], string> = {
+  'пусто': 'в каталоге нет упражнений этой группы',
+  'все исключены': 'все упражнения группы исключены',
+  'только повторы': 'остались только уже использованные упражнения',
+  'выбор вне слота': 'выбранное упражнение не подходит этому слоту',
+};
+
 export function RandomizerScreen({
   draft,
   seed,
@@ -34,7 +43,8 @@ export function RandomizerScreen({
   const { db, error: dbError } = useDb();
   const [status, setStatus] = useState<Status>('running');
   const [workout, setWorkout] = useState<GeneratedWorkout | undefined>(undefined);
-  const [missing, setMissing] = useState<readonly string[]>([]);
+  const [missing, setMissing] = useState<readonly InsufficientSlot[]>([]);
+  const [failure, setFailure] = useState<string | null>(null);
   const [excluded, setExcluded] = useState<readonly string[]>([]);
   const timer = useRef<number | undefined>(undefined);
 
@@ -42,11 +52,12 @@ export function RandomizerScreen({
     setStatus('running');
     setWorkout(undefined);
     setMissing([]);
+    setFailure(null);
     setExcluded([]);
 
     if (db === undefined) {
       if (dbError !== undefined) {
-        setMissing([String(dbError)]);
+        setFailure(String(dbError));
         setStatus('error');
       }
       return;
@@ -73,9 +84,11 @@ export function RandomizerScreen({
             setStatus('done');
           } catch (error) {
             if (error instanceof InsufficientCatalogError) {
-              setMissing(error.missing.map((slot) => slot.allowed.join(' / ')));
+              setMissing(error.missing);
+              setFailure(null);
             } else {
-              setMissing([String(error)]);
+              setMissing([]);
+              setFailure(String(error));
             }
             setStatus('error');
           }
@@ -83,7 +96,7 @@ export function RandomizerScreen({
       })
       .catch((error: unknown) => {
         if (!alive) return;
-        setMissing([String(error)]);
+        setFailure(String(error));
         setStatus('error');
       });
 
@@ -146,7 +159,20 @@ export function RandomizerScreen({
           {status === 'error' && (
             <div className="note note--error" role="alert">
               <p className="note__title">Каталога не хватило для сборки</p>
-              <p>{missing.join('; ')}</p>
+              {failure !== null ? (
+                <p>{failure}</p>
+              ) : (
+                <>
+                  <p>Утверждённый каталог не закрывает эти слоты:</p>
+                  <ul className="note__list">
+                    {missing.map((slot) => (
+                      <li key={slot.slotKey}>
+                        <span className="note__group">{slot.allowed.join(' / ')}</span> — {REASON_LABELS[slot.reason]}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
               <button className="btn btn--ghost note__action" onClick={onBack}>
                 Вернуться к выбору
               </button>

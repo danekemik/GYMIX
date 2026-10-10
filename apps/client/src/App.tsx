@@ -244,6 +244,7 @@ export function App() {
             ),
           });
         }}
+        onReorder={(entries) => setGenerated({ ...generated, entries })}
         onRegenerate={() => {
           setSeed(randomSeed());
           setStep('randomizer');
