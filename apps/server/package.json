@@ -1,0 +1,40 @@
+{
+  "name": "@gymix/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "build": "tsup",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@gymix/catalog": "workspace:*",
+    "@gymix/db": "workspace:*",
+    "@gymix/structures": "workspace:*",
+    "@hono/node-server": "^1.15.1",
+    "@node-rs/argon2": "^2.2.2",
+    "drizzle-orm": "^0.45.3",
+    "hono": "^4.13.13",
+    "jose": "^6.2.12",
+    "nodemailer": "^10.1.0",
+    "pg": "^8.15.4",
+    "pino": "^10.4.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@types/node": "^22.10.0",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.15.3",
+    "tsx": "^4.20.3",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

@@ -1,0 +1,12 @@
+# Контекст сборки Docker — корень репозитория.
+node_modules
+**/node_modules
+.git
+.turbo
+dist
+**/dist
+coverage
+**/*.tsbuildinfo
+apps/server/.env
+reference/*.docx
+.DS_Store

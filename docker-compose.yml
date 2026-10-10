@@ -1,0 +1,55 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gymix
+      POSTGRES_PASSWORD: gymix
+      POSTGRES_DB: gymix
+    volumes:
+      - gymix-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gymix -d gymix"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    expose:
+      - "5432"
+
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://gymix:gymix@db:5432/gymix
+      APP_ORIGINS: http://localhost:5173
+      MIGRATIONS_DIR: /repo/packages/db/drizzle
+      REFERENCE_DIR: /repo/reference
+      APP_MIGRATE: "true"
+      APP_SEED: "true"
+      EMAIL_MODE: console
+      # Обязательно замените в боевом окружении: openssl rand -base64 48
+      JWT_SECRET: dev-only-secret-change-me-in-production-0000
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  gymix-db:

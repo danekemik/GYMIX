@@ -10,7 +10,11 @@
     "test": "turbo test",
     "typecheck": "turbo typecheck",
     "check": "pnpm typecheck && pnpm test && python3 scripts/verify_sync.py",
-    "sync:check": "python3 scripts/verify_sync.py"
+    "sync:check": "python3 scripts/verify_sync.py",
+    "server:dev": "pnpm --filter @gymix/server dev",
+    "server:build": "pnpm --filter @gymix/server build",
+    "server:start": "pnpm --filter @gymix/server start",
+    "migrations:generate": "pnpm --filter @gymix/db migrations:generate"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

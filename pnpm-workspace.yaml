@@ -4,3 +4,6 @@ packages:
 
 allowBuilds:
   esbuild: true
+
+minimumReleaseAgeExclude:
+  - nodemailer@10.1.0
