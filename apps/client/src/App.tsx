@@ -14,7 +14,9 @@ import { HistoryScreen } from './screens/HistoryScreen';
 import { ManualScreen } from './screens/ManualScreen';
 import { MgsGroupScreen } from './screens/MgsGroupScreen';
 import { PreviewScreen } from './screens/PreviewScreen';
+import { ProgressScreen } from './screens/ProgressScreen';
 import { RandomizerScreen } from './screens/RandomizerScreen';
+import { RecordScreen } from './screens/RecordScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { StructureScreen } from './screens/StructureScreen';
 import { TypeScreen } from './screens/TypeScreen';
@@ -83,6 +85,7 @@ export function App() {
   const [resume, setResume] = useState<Nullable<ResumedSession>>(undefined);
   const [fromTemplate, setFromTemplate] = useState(false);
   const [selections, setSelections] = useState<Record<string, string>>({});
+  const [openRecord, setOpenRecord] = useState<string | undefined>(undefined);
 
   const exitBuilder = () => {
     setStep('home');
@@ -112,6 +115,7 @@ export function App() {
 
   const openTab = (id: string) => {
     setTab(id);
+    setOpenRecord(undefined);
     if (step !== 'home') exitBuilder();
   };
 
@@ -297,9 +301,15 @@ export function App() {
       />
     );
   } else if (tab === 'history') {
-    body = <HistoryScreen />;
+    body = openRecord !== undefined ? (
+      <RecordScreen sessionId={openRecord} onBack={() => setOpenRecord(undefined)} />
+    ) : (
+      <HistoryScreen onOpen={setOpenRecord} />
+    );
   } else if (tab === 'profile') {
     body = <SettingsScreen />;
+  } else if (tab === 'progress') {
+    body = <ProgressScreen />;
   } else {
     body = <SoonScreen tab={tab} />;
   }

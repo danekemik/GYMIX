@@ -27,12 +27,32 @@
   list-style: none;
 }
 
+.history li {
+  display: block;
+}
+
 .history-row {
   display: flex;
+  width: 100%;
   flex-direction: column;
   gap: var(--space-3xs);
   padding: var(--space-s) 0;
+  border: 0;
   border-bottom: var(--border);
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-row:hover {
+  background: var(--surface);
+}
+
+.history-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .history-row__head {
@@ -66,4 +86,252 @@
 .history-row__sub {
   font-size: var(--step--2);
   color: var(--ink-3);
+}
+
+/* S13: прогресс и графики */
+
+.progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+  padding: var(--space-m);
+  border: var(--border);
+  background: var(--surface);
+}
+
+.progress-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.progress-card__title {
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.progress-card__select {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xs);
+}
+
+.progress-card__summary {
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+.progress-card__record {
+  display: flex;
+  gap: var(--space-xs);
+  padding-top: var(--space-xs);
+  border-top: var(--border);
+}
+
+.progress-card__record .field__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.chart {
+  display: block;
+}
+
+.chart__grid {
+  stroke: var(--ink-3);
+  stroke-opacity: 0.35;
+  stroke-width: 1;
+}
+
+.chart__line {
+  stroke: var(--accent);
+  stroke-width: 2;
+  fill: none;
+}
+
+.chart__dot {
+  fill: var(--accent);
+}
+
+.chart__axis {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  font-size: var(--step--2);
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-table {
+  width: 100%;
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+  border-collapse: collapse;
+}
+
+.chart-table__caption {
+  caption-side: top;
+  padding-bottom: var(--space-3xs);
+  font-size: var(--step--2);
+  color: var(--ink-3);
+  text-align: left;
+}
+
+.chart-table th,
+.chart-table td {
+  padding: var(--space-2xs) var(--space-xs);
+  border-bottom: var(--border);
+  text-align: right;
+}
+
+.chart-table th:first-child,
+.chart-table td:first-child {
+  text-align: left;
+}
+
+.chart-table thead th {
+  color: var(--ink-2);
+  font-size: var(--step--2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chart-table tbody th {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* S14: запись тренировки */
+
+/* Экран живёт внутри вкладки — нижний CTA должен быть доступен над таббаром. */
+.screen--record .screen__body {
+  padding-bottom: calc(var(--space-m) + 72px);
+}
+
+.record-exercises {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-s);
+  list-style: none;
+}
+
+.record-exercise {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-s);
+  border: var(--border);
+  background: var(--surface);
+}
+
+.record-exercise--skipped {
+  opacity: 0.65;
+}
+
+.record-exercise__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.record-exercise__index {
+  font-family: var(--font-display);
+  font-size: var(--step--1);
+  font-weight: 700;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.record-exercise__name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.record-exercise__status {
+  font-size: var(--step--2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.record-exercise__status--completed {
+  color: var(--accent);
+}
+
+.record-exercise__status--skipped {
+  color: var(--ink-3);
+}
+
+.record-exercise__tools {
+  display: flex;
+  gap: var(--space-2xs);
+}
+
+.record-sets {
+  width: 100%;
+  font-size: var(--step--1);
+  font-variant-numeric: tabular-nums;
+  border-collapse: collapse;
+}
+
+.record-sets th,
+.record-sets td {
+  padding: var(--space-2xs) var(--space-xs);
+  border-bottom: var(--border);
+  text-align: right;
+}
+
+.record-sets th:first-child,
+.record-sets td:first-child {
+  text-align: left;
+}
+
+.record-sets thead th {
+  color: var(--ink-2);
+  font-size: var(--step--2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.record-sets tbody th {
+  font-weight: 500;
+}
+
+.record-edit-set {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.record-edit-set__n {
+  width: 4.5em;
+  flex-shrink: 0;
+  font-size: var(--step--1);
+  color: var(--ink-2);
+}
+
+.record-edit-set__input {
+  flex: 1;
+  min-width: 0;
+  text-align: right;
+}
+
+@media (min-width: 560px) {
+  .progress-card {
+    padding: var(--space-l);
+  }
+
+  .record-exercise__tools {
+    justify-content: flex-end;
+  }
+
+  .record-edit-set__input {
+    max-width: 9em;
+  }
 }
