@@ -307,7 +307,7 @@ export function App() {
       <HistoryScreen onOpen={setOpenRecord} />
     );
   } else if (tab === 'profile') {
-    body = <SettingsScreen />;
+    body = <SettingsScreen onOpenHistory={() => openTab('history')} />;
   } else if (tab === 'progress') {
     body = <ProgressScreen />;
   } else {

@@ -661,6 +661,39 @@ button.section-more {
 }
 /* ——— Настройки и исключённые упражнения (S15) ——— */
 
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: var(--space-m);
+}
+
+.settings-link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
+  width: 100%;
+  padding: var(--space-xs) 0;
+  border-bottom: var(--border);
+  color: inherit;
+  text-align: left;
+}
+
+.settings-link__label {
+  flex: 1;
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.settings-link svg {
+  width: 18px;
+  height: 18px;
+  color: var(--ink-3);
+}
+
+.settings-link:hover svg {
+  color: var(--accent);
+}
+
 .settings {
   display: flex;
   flex-direction: column;

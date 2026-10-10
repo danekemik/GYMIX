@@ -7,7 +7,11 @@ import {
   type ExcludedExercise,
 } from '../lib/exclusions';
 
-export function SettingsScreen() {
+interface SettingsScreenProps {
+  onOpenHistory: () => void;
+}
+
+export function SettingsScreen({ onOpenHistory }: SettingsScreenProps) {
   const { db } = useDb();
   const [items, setItems] = useState<ExcludedExercise[] | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -73,6 +77,15 @@ export function SettingsScreen() {
       </header>
 
       <div className="screen__body">
+        <nav className="settings-nav" aria-label="Профиль">
+          <button className="settings-link" onClick={onOpenHistory}>
+            <span className="settings-link__label">История тренировок</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </nav>
+
         <section className="settings">
           <div className="settings__head">
             <h2 className="settings__title">Исключённые упражнения</h2>

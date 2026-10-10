@@ -18,7 +18,10 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
   const { db } = useDb();
   const { workout, sets } = payload;
   const total = workout.entries.length;
-  const completed = sets.filter((group) => group.length > 0 && group.every((s) => s.done)).length;
+  const skippedFlags = payload.skippedExercises;
+  const completed = sets.filter(
+    (group, ex) => skippedFlags?.[ex] !== true && group.length > 0 && group.every((s) => s.done),
+  ).length;
   const partial = completed > 0 && completed < total;
   const duration = formatDurationMs(payload.endedAt - payload.startedAt);
   const date = formatDate(new Date(payload.endedAt));
@@ -85,7 +88,7 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
         <ul className="finish-list">
           {workout.entries.map((entry, ex) => {
             const group = sets[ex] ?? [];
-            const done = group.length > 0 && group.every((s) => s.done);
+            const done = skippedFlags?.[ex] !== true && group.length > 0 && group.every((s) => s.done);
             return (
               <li key={entry.slotKey} className="finish-ex">
                 <div className="finish-ex__head">
@@ -96,14 +99,17 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
                 </div>
                 <span className="finish-ex__group">{entry.groupUsed}</span>
                 <div className="finish-ex__sets">
-                  {group.map((set, index) => (
-                    <span
-                      key={index}
-                      className={`finish-set ${set.done ? 'finish-set--done' : ''}`}
-                    >
-                      {set.done ? `${set.weight || '—'}×${set.reps || '—'}` : '—'}
-                    </span>
-                  ))}
+                  {group.map((set, index) => {
+                    const setDone = set.done && skippedFlags?.[ex] !== true;
+                    return (
+                      <span
+                        key={index}
+                        className={`finish-set ${setDone ? 'finish-set--done' : ''}`}
+                      >
+                        {setDone ? `${set.weight || '—'}×${set.reps || '—'}` : '—'}
+                      </span>
+                    );
+                  })}
                 </div>
               </li>
             );

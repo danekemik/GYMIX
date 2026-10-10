@@ -83,12 +83,13 @@ export async function saveSession(db: GymixDb, payload: SessionSnapshot): Promis
   const exerciseValues = payload.workout.entries.map((entry, index) => {
     const group = payload.sets[index] ?? [];
     const done = group.length > 0 && group.every((s) => s.done);
+    const isSkipped = payload.skippedExercises?.[index] === true;
     return {
       sessionId: session.id,
       exerciseId: exerciseId.get(entry.exercise.name),
       exerciseNameSnapshot: entry.exercise.name,
       position: index + 1,
-      status: (done ? 'completed' : 'skipped') as 'completed' | 'skipped',
+      status: (done && !isSkipped ? 'completed' : 'skipped') as 'completed' | 'skipped',
     };
   });
   const exerciseRowsInserted = await db.db
@@ -105,6 +106,7 @@ export async function saveSession(db: GymixDb, payload: SessionSnapshot): Promis
     completedAt: Date;
   }> = [];
   payload.sets.forEach((group, index) => {
+    if (payload.skippedExercises?.[index] === true) return;
     const sessionExerciseId = byPosition.get(index + 1);
     if (sessionExerciseId === undefined) return;
     group.forEach((set, setIndex) => {
@@ -193,6 +195,8 @@ export interface DraftSession {
 export interface ResumedSession extends DraftSession {
   readonly workout: GeneratedWorkout;
   readonly sets: readonly (readonly SetEntry[])[];
+  /** Упражнения, явно пропущенные пользователем (S10). */
+  readonly skipped: readonly boolean[];
   readonly startedAt: number;
 }
 
@@ -255,17 +259,20 @@ export async function persistDraft(
   sessionId: string,
   byPosition: ReadonlyMap<number, string>,
   sets: readonly (readonly SetEntry[])[],
+  skipped: readonly boolean[] = [],
 ): Promise<void> {
   await Promise.all(
     sets.map(async (group, index) => {
       const sessionExerciseId = byPosition.get(index + 1);
       if (sessionExerciseId === undefined) return;
+      const isSkipped = skipped[index] === true;
       const values = group.map((set, setIndex) => ({
         sessionExerciseId,
         setNumber: setIndex + 1,
         weight: parseWeight(set.weight),
         reps: parseReps(set.reps),
-        completedAt: set.done ? new Date() : null,
+        // Пропущенное упражнение не засчитывается, но ввод сохраняем для возврата.
+        completedAt: set.done && !isSkipped ? new Date() : null,
       }));
       if (values.length > 0) {
         await db.db
@@ -283,7 +290,7 @@ export async function persistDraft(
       const done = group.length > 0 && group.every((s) => s.done);
       await db.db
         .update(sessionExercises)
-        .set({ status: done ? 'completed' : 'pending' })
+        .set({ status: isSkipped ? 'skipped' : done ? 'completed' : 'pending' })
         .where(eq(sessionExercises.id, sessionExerciseId));
     }),
   );
@@ -345,7 +352,12 @@ export async function resumeDraft(db: GymixDb, sessionId: string): Promise<Resum
   if (row === undefined) throw new Error('черновик не найден');
 
   const exRows = await db.db
-    .select({ id: sessionExercises.id, position: sessionExercises.position, name: sessionExercises.exerciseNameSnapshot })
+    .select({
+      id: sessionExercises.id,
+      position: sessionExercises.position,
+      name: sessionExercises.exerciseNameSnapshot,
+      status: sessionExercises.status,
+    })
     .from(sessionExercises)
     .where(eq(sessionExercises.sessionId, sessionId))
     .orderBy(asc(sessionExercises.position));
@@ -393,6 +405,7 @@ export async function resumeDraft(db: GymixDb, sessionId: string): Promise<Resum
     byPosition,
     workout,
     sets,
+    skipped: exRows.map((exRow) => exRow.status === 'skipped'),
     startedAt: row.startedAt.getTime(),
   };
 }
