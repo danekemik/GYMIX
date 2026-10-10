@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3xs);
-  margin: 0 0 var(--space-m);
+  margin: 0 0 var(--space-2xs);
 }
 
 .greeting__title {
@@ -26,12 +26,12 @@
   justify-content: space-between;
   gap: var(--space-s);
   overflow: hidden;
-  padding: var(--space-m);
+  padding: var(--space-s);
   border-radius: var(--radius-2xl);
   background: var(--accent);
   color: var(--accent-ink);
   box-shadow: var(--glow-accent);
-  margin-bottom: var(--space-m);
+  margin-bottom: var(--space-xs);
 }
 
 .hero__copy {
@@ -45,7 +45,7 @@
 
 .hero__title {
   font-family: var(--font-display);
-  font-size: var(--step-4);
+  font-size: var(--step-3);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.01em;
@@ -66,7 +66,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2xs);
-  padding: 10px 16px;
+  padding: 8px 14px;
   border-radius: 999px;
   background: #0b0d0e;
   color: #ffffff;
@@ -90,8 +90,8 @@
 
 .hero__art {
   flex-shrink: 0;
-  width: 100px;
-  height: 100px;
+  width: 88px;
+  height: 88px;
   margin-right: calc(-1 * var(--space-2xs));
   filter: drop-shadow(0 10px 20px rgba(7, 9, 8, 0.32));
 }
@@ -118,7 +118,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-s);
-  margin-bottom: var(--space-2xs);
+  margin-bottom: var(--space-3xs);
 }
 
 .section-head .section-title {
@@ -157,13 +157,13 @@ button.section-more {
 }
 
 .quick {
-  margin-bottom: var(--space-l);
+  margin-bottom: var(--space-s);
 }
 
 .quick-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-xs);
+  gap: var(--space-2xs);
 }
 
 .quick-card {
@@ -172,7 +172,7 @@ button.section-more {
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-3xs);
-  padding: var(--space-s);
+  padding: var(--space-xs);
   text-align: left;
   border: var(--border);
   border-radius: var(--radius-xl);
@@ -191,9 +191,9 @@ button.section-more {
 
 .quick-card__icon {
   display: block;
-  width: 28px;
-  height: 28px;
-  margin-bottom: var(--space-2xs);
+  width: 24px;
+  height: 24px;
+  margin-bottom: var(--space-3xs);
   color: var(--accent);
 }
 
@@ -210,7 +210,7 @@ button.section-more {
   font-size: var(--step--2);
   color: var(--ink-2);
   line-height: 1.25;
-  min-height: 2.5em;
+  min-height: 2.2em;
   padding-right: 12px;
 }
 
@@ -224,7 +224,7 @@ button.section-more {
 }
 
 .mine {
-  margin-bottom: var(--space-l);
+  margin-bottom: var(--space-xs);
 }
 
 .mine-list,
@@ -238,7 +238,7 @@ button.section-more {
   display: flex;
   align-items: center;
   gap: var(--space-s);
-  padding: var(--space-s);
+  padding: var(--space-xs);
   border: var(--border);
   border-radius: var(--radius-xl);
   background: var(--surface);
@@ -249,8 +249,8 @@ button.section-more {
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-m);
   background: var(--plate);
   color: var(--accent);
@@ -289,7 +289,7 @@ button.section-more {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2xs);
-  margin-top: var(--space-2xs);
+  margin-top: var(--space-3xs);
 }
 
 .wk-card__tag {
@@ -312,14 +312,14 @@ button.section-more {
 }
 
 .recent {
-  margin-bottom: var(--space-l);
+  margin-bottom: var(--space-s);
 }
 
 .act-card {
   display: flex;
   align-items: center;
   gap: var(--space-s);
-  padding: var(--space-s);
+  padding: var(--space-2xs);
   border: var(--border);
   border-radius: var(--radius-xl);
   background: var(--surface);

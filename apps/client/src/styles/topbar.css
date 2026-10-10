@@ -56,7 +56,7 @@
 .topbar__title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: var(--step-5);
+  font-size: var(--step-4);
   line-height: 1;
   letter-spacing: 0.01em;
 }
