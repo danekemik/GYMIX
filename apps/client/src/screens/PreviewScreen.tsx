@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   replacementCandidates,
   slotFor,
@@ -21,6 +21,8 @@ interface PreviewScreenProps {
   onReplace: (index: number, exercise: CatalogExercise) => void;
   /** Порядок упражнений внутри групп изменён (S08). */
   onReorder: (entries: readonly GeneratedEntry[]) => void;
+  /** Вернуться к ручному выбору упражнений (S08 → S06). */
+  onEditSelection?: () => void;
   /** Шаблон не перегенерируется — упражнения зафиксированы. */
   regenerable?: boolean;
 }
@@ -33,6 +35,7 @@ export function PreviewScreen({
   onBack,
   onReplace,
   onReorder,
+  onEditSelection,
   regenerable = true,
 }: PreviewScreenProps) {
   const { db } = useDb();
@@ -41,6 +44,12 @@ export function PreviewScreen({
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
   const [saving, setSaving] = useState<string | undefined>(undefined);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [confirmExit, setConfirmExit] = useState(false);
+
+  const snapshot = (entries: readonly GeneratedEntry[]) =>
+    entries.map((e) => `${e.slotKey}:${e.exercise.name}`).join('|');
+  const initialRef = useRef(snapshot(workout.entries));
+  const changed = snapshot(workout.entries) !== initialRef.current;
 
   useEffect(() => {
     if (db === undefined) return;
@@ -77,6 +86,11 @@ export function PreviewScreen({
   const closeSheet = () => {
     setReplacing(null);
     setQuery('');
+  };
+
+  const requestBack = () => {
+    if (changed) setConfirmExit(true);
+    else onBack();
   };
 
   const toggleExclude = async (name: string) => {
@@ -118,7 +132,7 @@ export function PreviewScreen({
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="topbar__back" onClick={onBack} aria-label="Назад">
+        <button className="topbar__back" onClick={requestBack} aria-label="Назад">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -238,8 +252,34 @@ export function PreviewScreen({
               Перегенерировать
             </button>
           )}
+          {regenerable && onEditSelection !== undefined && (
+            <button className="btn btn--ghost cta-row__second" onClick={onEditSelection}>
+              Редактировать выбор
+            </button>
+          )}
         </div>
       </div>
+
+      {confirmExit && (
+        <div className="overlay">
+          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="exit-preview-title">
+            <h2 id="exit-preview-title" className="dialog__title">
+              Выйти без сохранения?
+            </h2>
+            <p className="dialog__text">
+              Изменения порядка и замен не сохранятся. Упражнения можно выбрать заново.
+            </p>
+            <div className="dialog__actions">
+              <button className="btn btn--ghost" onClick={() => setConfirmExit(false)}>
+                Отмена
+              </button>
+              <button className="btn btn--primary" onClick={onBack}>
+                Выйти
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {replacing !== null && current !== undefined && (
         <div className="overlay" onClick={closeSheet}>

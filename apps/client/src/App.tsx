@@ -245,6 +245,12 @@ export function App() {
           });
         }}
         onReorder={(entries) => setGenerated({ ...generated, entries })}
+        onEditSelection={() => {
+          const next: Record<string, string> = {};
+          for (const entry of generated.entries) next[entry.slotKey] = entry.exercise.name;
+          setSelections(next);
+          setStep('manual');
+        }}
         onRegenerate={() => {
           setSeed(randomSeed());
           setStep('randomizer');
