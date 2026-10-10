@@ -131,6 +131,24 @@ export function App() {
     }
   };
 
+  const openTemplateEdit = async (templateId: string) => {
+    if (db === undefined) return;
+    try {
+      const workout = await workoutFromTemplate(db, templateId);
+      const next: Record<string, string> = {};
+      for (const entry of workout.entries) next[entry.slotKey] = entry.exercise.name;
+      setStepType(workout.type);
+      setStepVolume(workout.volume);
+      setStepMgsGroup(isMgs(workout.type) ? workout.entries[0]?.groupUsed : undefined);
+      setSelections(next);
+      setFromTemplate(false);
+      setGenerated(undefined);
+      setStep('manual');
+    } catch {
+      // Безобидный фолбэк: остаёмся на главной при сбое чтения шаблона.
+    }
+  };
+
   let body;
   if (step === 'type') {
     body = (
@@ -301,6 +319,7 @@ export function App() {
         onOpenProfile={() => openTab('profile')}
         onOpenActivity={() => openTab('history')}
         onOpenTemplate={(templateId) => void openTemplate(templateId)}
+        onEditTemplate={(templateId) => void openTemplateEdit(templateId)}
         onResume={(session) => {
           setResume(session);
           setStep('execute');

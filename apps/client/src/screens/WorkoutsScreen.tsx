@@ -40,6 +40,7 @@ interface WorkoutsScreenProps {
   onOpenProfile: () => void;
   onOpenActivity: () => void;
   onOpenTemplate: (templateId: string) => void;
+  onEditTemplate: (templateId: string) => void;
   onResume: (session: ResumedSession) => void;
 }
 
@@ -91,6 +92,7 @@ export function WorkoutsScreen({
   onOpenProfile,
   onOpenActivity,
   onOpenTemplate,
+  onEditTemplate,
   onResume,
 }: WorkoutsScreenProps) {
   const { db, error } = useDb();
@@ -414,6 +416,16 @@ export function WorkoutsScreen({
                 }}
               >
                 Открыть
+              </button>
+              <button
+                className="menu-action"
+                role="menuitem"
+                onClick={() => {
+                  onEditTemplate(menuFor.id);
+                  setMenuFor(null);
+                }}
+              >
+                Изменить
               </button>
               <button className="menu-action" role="menuitem" onClick={() => void doCopy()} disabled={busy}>
                 Копировать
