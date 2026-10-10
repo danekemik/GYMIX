@@ -1,9 +1,10 @@
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { GeneratedWorkout } from '@gymix/generator';
 import {
   devices,
   exercises,
   sessionExercises,
+  sessionIntervals,
   sessionSets,
   users,
   workoutSessions,
@@ -121,6 +122,17 @@ export async function saveSession(db: GymixDb, payload: SessionSnapshot): Promis
     });
   });
   if (setValues.length > 0) await db.db.insert(sessionSets).values(setValues);
+
+  // Длительность — сумма активных интервалов (LOCKED): храним один закрытый
+  // интервал на завершённую сессию, чтобы история считала время без пауз.
+  const durationMs = Math.max(0, payload.durationMs ?? endedAt.getTime() - new Date(payload.startedAt).getTime());
+  if (durationMs > 0) {
+    await db.db.insert(sessionIntervals).values({
+      sessionId: session.id,
+      startedAt: new Date(endedAt.getTime() - durationMs),
+      endedAt,
+    });
+  }
 }
 
 /** Завершённые сессии от новых к старым (вкладка «История», S13). */
@@ -149,16 +161,32 @@ export async function sessionsForHistory(db: GymixDb): Promise<HistoryItem[]> {
     )
     .orderBy(desc(workoutSessions.completedAt));
 
+  // Длительность = сумма активных интервалов; для старых записей без
+  // интервалов — разница completed_at − started_at.
+  const intervalRows = await db.db
+    .select({
+      sessionId: sessionIntervals.sessionId,
+      startedAt: sessionIntervals.startedAt,
+      endedAt: sessionIntervals.endedAt,
+    })
+    .from(sessionIntervals);
+  const activeMs = new Map<string, number>();
+  for (const row of intervalRows) {
+    const end = row.endedAt?.getTime() ?? Date.now();
+    activeMs.set(row.sessionId, (activeMs.get(row.sessionId) ?? 0) + Math.max(0, end - row.startedAt.getTime()));
+  }
+
   return rows.map((row) => {
     const startedAt = row.startedAt;
     const completedAt = row.completedAt ?? startedAt;
+    const measured = activeMs.get(row.id);
     return {
       id: row.id,
       type: row.type,
       volume: row.volume,
       startedAt,
       completedAt,
-      durationMs: Math.max(0, completedAt.getTime() - startedAt.getTime()),
+      durationMs: measured ?? Math.max(0, completedAt.getTime() - startedAt.getTime()),
       done: row.done,
       total: row.total,
     };
@@ -198,6 +226,12 @@ export interface ResumedSession extends DraftSession {
   /** Упражнения, явно пропущенные пользователем (S10). */
   readonly skipped: readonly boolean[];
   readonly startedAt: number;
+  /** Сумма закрытых активных интервалов (мс) — длительность без пауз. */
+  readonly elapsedMs: number;
+  /** Идёт ли таймер сейчас (открытый интервал есть). */
+  readonly running: boolean;
+  /** Момент открытия текущего интервала, если таймер идёт. */
+  readonly openSince?: number;
 }
 
 /** Создать черновик: один активный на пользователя, старый вытесняется. */
@@ -250,6 +284,9 @@ async function doCreateDraft(db: GymixDb, workout: GeneratedWorkout): Promise<Dr
     )
     .returning({ id: sessionExercises.id, position: sessionExercises.position });
 
+  // Старт сессии открывает первый активный интервал таймера (S10, LOCKED).
+  await db.db.insert(sessionIntervals).values({ sessionId: session.id, startedAt: new Date() });
+
   return { sessionId: session.id, byPosition: new Map(inserted.map((r) => [r.position, r.id])) };
 }
 
@@ -294,6 +331,33 @@ export async function persistDraft(
         .where(eq(sessionExercises.id, sessionExerciseId));
     }),
   );
+}
+
+/**
+ * Открыть/закрыть активный интервал таймера (S10, LOCKED). Пауза закрывает
+ * интервал, продолжение открывает новый — паузы в длительность не попадают.
+ * Одновременно открыт не более одного интервала (частичный unique-индекс).
+ */
+export async function setDraftRunning(
+  db: GymixDb,
+  sessionId: string,
+  running: boolean,
+): Promise<void> {
+  const open = await db.db
+    .select({ id: sessionIntervals.id })
+    .from(sessionIntervals)
+    .where(and(eq(sessionIntervals.sessionId, sessionId), isNull(sessionIntervals.endedAt)))
+    .limit(1);
+  if (running) {
+    if (open[0] === undefined) {
+      await db.db.insert(sessionIntervals).values({ sessionId, startedAt: new Date() });
+    }
+  } else if (open[0] !== undefined) {
+    await db.db
+      .update(sessionIntervals)
+      .set({ endedAt: new Date() })
+      .where(eq(sessionIntervals.id, open[0].id));
+  }
 }
 
 /** Активный черновик для баннера восстановления. Один на пользователя. */
@@ -400,6 +464,21 @@ export async function resumeDraft(db: GymixDb, sessionId: string): Promise<Resum
     exRows.map((exRow) => ({ slotKey: `s${exRow.position}`, exerciseName: exRow.name })),
   );
 
+  const intervalRows = await db.db
+    .select({ startedAt: sessionIntervals.startedAt, endedAt: sessionIntervals.endedAt })
+    .from(sessionIntervals)
+    .where(eq(sessionIntervals.sessionId, sessionId))
+    .orderBy(asc(sessionIntervals.startedAt));
+  let elapsedMs = 0;
+  let openSince: number | undefined;
+  for (const interval of intervalRows) {
+    if (interval.endedAt !== null) {
+      elapsedMs += Math.max(0, interval.endedAt.getTime() - interval.startedAt.getTime());
+    } else {
+      openSince = interval.startedAt.getTime();
+    }
+  }
+
   return {
     sessionId,
     byPosition,
@@ -407,6 +486,9 @@ export async function resumeDraft(db: GymixDb, sessionId: string): Promise<Resum
     sets,
     skipped: exRows.map((exRow) => exRow.status === 'skipped'),
     startedAt: row.startedAt.getTime(),
+    elapsedMs,
+    running: openSince !== undefined,
+    ...(openSince !== undefined ? { openSince } : {}),
   };
 }
 

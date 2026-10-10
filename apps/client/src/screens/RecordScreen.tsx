@@ -151,7 +151,7 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
             <aside className="note">
               <span className="context__type">{record.type}</span>
               <span className="volume-head__meta">
-                {record.volume} · {done}/{total} · {formatDurationMs(record.completedAt.getTime() - record.startedAt.getTime())} ·{' '}
+                {record.volume} · {done}/{total} · {formatDurationMs(record.durationMs)} ·{' '}
                 {formatDate(record.completedAt)}
               </span>
             </aside>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GeneratedWorkout } from '@gymix/generator';
 import { useDb } from '../hooks/useDb';
 import { plural } from '../lib/draft';
-import { createDraft, deleteDraft, persistDraft, type DraftSession, type ResumedSession } from '../lib/session';
+import { createDraft, deleteDraft, persistDraft, setDraftRunning, type DraftSession, type ResumedSession } from '../lib/session';
 import { saveSession } from '../lib/session';
 
 export interface SetEntry {
@@ -19,6 +19,8 @@ export interface SessionSnapshot {
   readonly skippedExercises?: readonly boolean[];
   readonly startedAt: number;
   readonly endedAt: number;
+  /** Активное время без пауз (S10, LOCKED) — попадает в историю. */
+  readonly durationMs?: number;
 }
 
 export interface FinishPayload extends SessionSnapshot {
@@ -39,6 +41,17 @@ const DEFAULT_SETS = 3;
 const AUTOSAVE_DELAY = 800;
 const TOAST_HIDE_DELAY = 1600;
 
+/** Общий таймер: mm:ss, при часе и более — h:mm:ss. */
+function formatClock(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const mm = String(minutes).padStart(2, '0');
+  const ss = String(seconds).padStart(2, '0');
+  return hours > 0 ? `${hours}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+
 export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScreenProps) {
   const { db } = useDb();
   const [sets, setSets] = useState<SetEntry[][]>(() =>
@@ -55,6 +68,50 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
   const startedAt = useRef<number>(resume?.startedAt ?? Date.now());
   const [draft, setDraft] = useState<DraftSession | 'created' | null>(resume ?? null);
   const toastTimer = useRef<number | undefined>(undefined);
+
+  // Общий таймер (S10, LOCKED): сумма активных интервалов; паузы не идут
+  // в длительность. Идёт по часам устройства и продолжается в фоне.
+  const [running, setRunning] = useState(resume?.running ?? true);
+  const accumulatedRef = useRef(resume?.elapsedMs ?? 0);
+  const intervalStartRef = useRef<number | null>(
+    resume === undefined
+      ? Date.now()
+      : resume.running
+        ? (resume.openSince ?? Date.now())
+        : null,
+  );
+  const [, setTick] = useState(0);
+  const cardRefs = useRef<(HTMLElement | null)[]>([]);
+
+  const elapsedMs = () =>
+    accumulatedRef.current +
+    (intervalStartRef.current !== null ? Date.now() - intervalStartRef.current : 0);
+
+  useEffect(() => {
+    if (!running) return;
+    const handle = window.setInterval(() => setTick((t) => t + 1), 1000);
+    return () => window.clearInterval(handle);
+  }, [running]);
+
+  const togglePause = () => {
+    const now = Date.now();
+    if (running) {
+      if (intervalStartRef.current !== null) {
+        accumulatedRef.current += now - intervalStartRef.current;
+      }
+      intervalStartRef.current = null;
+      setRunning(false);
+      if (draft !== null && draft !== 'created' && db !== undefined) {
+        void setDraftRunning(db, draft.sessionId, false).catch(() => {});
+      }
+    } else {
+      intervalStartRef.current = now;
+      setRunning(true);
+      if (draft !== null && draft !== 'created' && db !== undefined) {
+        void setDraftRunning(db, draft.sessionId, true).catch(() => {});
+      }
+    }
+  };
 
   const total = workout.entries.length;
   const isDone = (group: readonly SetEntry[]) => group.length > 0 && group.every((s) => s.done);
@@ -131,6 +188,16 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
       prev.map((value, i) => (workout.entries[i]?.groupUsed === groupUsed ? true : value)),
     );
 
+  const goNext = (from: number) => {
+    for (let step = 1; step <= total; step++) {
+      const i = (from + step) % total;
+      if (!(skipped[i] === true) && !isDone(sets[i] ?? [])) {
+        cardRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+  };
+
   const deleteDraftNow = async () => {
     if (draft !== null && draft !== 'created' && db !== undefined) {
       await deleteDraft(db, draft.sessionId).catch(() => {});
@@ -151,6 +218,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
       skippedExercises: skipped,
       startedAt: startedAt.current,
       endedAt: Date.now(),
+      durationMs: elapsedMs(),
     };
     const dbNow = db;
     const saved =
@@ -165,13 +233,32 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
 
   return (
     <div className="screen exec">
-      <header className="topbar">
+      <header className="topbar exec-top">
         <button className="topbar__back" onClick={() => setModal('exit')} aria-label="Выйти из тренировки">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h1 className="topbar__title topbar__title--step">Выполнение</h1>
+        <h1 className="topbar__title exec-clock" aria-label="Длительность тренировки">
+          {formatClock(elapsedMs())}
+        </h1>
+        <button
+          className={`topbar__icon-btn exec-pause${running ? '' : ' exec-pause--off'}`}
+          onClick={togglePause}
+          aria-pressed={!running}
+          aria-label={running ? 'Пауза' : 'Продолжить'}
+        >
+          {running ? (
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <rect x="6" y="5" width="4" height="14" rx="1" />
+              <rect x="14" y="5" width="4" height="14" rx="1" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M8 5l11 7-11 7z" />
+            </svg>
+          )}
+        </button>
       </header>
 
       <div className="exec-progress">
@@ -191,7 +278,13 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
           const state = skippedHere ? 'skipped' : done ? 'done' : 'active';
           const groupSize = workout.entries.filter((e) => e.groupUsed === entry.groupUsed).length;
           return (
-            <article key={entry.slotKey} className={`exec-card exec-card--${state}`}>
+            <article
+              key={entry.slotKey}
+              ref={(el) => {
+                cardRefs.current[ex] = el;
+              }}
+              className={`exec-card exec-card--${state}`}
+            >
               <div className="exec-card__head">
                 <span className="exec-card__group">{entry.groupUsed}</span>
                 <span className="exec-card__name">{entry.exercise.name}</span>
@@ -248,6 +341,9 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
                   <div className="exec-card__actions">
                     <button className="exec-card__add" onClick={() => addSet(ex)}>
                       Добавить подход
+                    </button>
+                    <button className="exec-card__next" onClick={() => goNext(ex)}>
+                      Следующее
                     </button>
                     <button
                       className="exec-card__skip"

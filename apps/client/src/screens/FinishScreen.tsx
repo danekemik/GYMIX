@@ -23,7 +23,7 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
     (group, ex) => skippedFlags?.[ex] !== true && group.length > 0 && group.every((s) => s.done),
   ).length;
   const partial = completed > 0 && completed < total;
-  const duration = formatDurationMs(payload.endedAt - payload.startedAt);
+  const duration = formatDurationMs(payload.durationMs ?? payload.endedAt - payload.startedAt);
   const date = formatDate(new Date(payload.endedAt));
   const [dialog, setDialog] = useState<Dialog>('idle');
   const [name, setName] = useState<string>(workout.type);

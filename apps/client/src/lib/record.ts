@@ -1,6 +1,7 @@
 import { eq, sql } from 'drizzle-orm';
 import {
   sessionExercises,
+  sessionIntervals,
   sessionSets,
   workoutSessions,
   workoutTypes,
@@ -28,6 +29,8 @@ export interface RecordSnapshot {
   readonly volume: string;
   readonly startedAt: Date;
   readonly completedAt: Date;
+  /** Активное время без пауз (сумма интервалов). */
+  readonly durationMs: number;
   readonly exercises: readonly RecordExercise[];
 }
 
@@ -86,12 +89,26 @@ export async function loadRecord(db: GymixDb, sessionId: string): Promise<Record
     )
   ).flat();
 
+  const intervalRows = await db.db
+    .select({
+      startedAt: sessionIntervals.startedAt,
+      endedAt: sessionIntervals.endedAt,
+    })
+    .from(sessionIntervals)
+    .where(eq(sessionIntervals.sessionId, sessionId));
+  const measured = intervalRows.reduce(
+    (sum, interval) =>
+      sum + Math.max(0, (interval.endedAt ?? new Date()).getTime() - interval.startedAt.getTime()),
+    0,
+  );
+
   return {
     id: row.id,
     type: row.type,
     volume: row.volume,
     startedAt: row.startedAt,
     completedAt: row.completedAt,
+    durationMs: intervalRows.length > 0 ? measured : row.completedAt.getTime() - row.startedAt.getTime(),
     exercises: exercises.map((e) => ({
       id: e.id,
       name: e.name,
