@@ -108,12 +108,58 @@ function rankCandidates(
   return scored.map((s) => s.exercise);
 }
 
-function groupOf(exercise: CatalogExercise, slot: Slot): GeneratorMuscleGroup {
+export function slotGroupUsed(exercise: CatalogExercise, slot: Slot): GeneratorMuscleGroup {
   const forPrimary = slot.allowedGroupIds.find((g) => exercise.muscles.includes(g));
   if (forPrimary !== undefined) return forPrimary;
   const forAlternative = slot.alternativeGroupIds.find((g) => exercise.muscles.includes(g));
   if (forAlternative !== undefined) return forAlternative;
   throw new Error(`упражнение «${exercise.name}» не принадлежит ни одной группе слота ${slot.slotKey}`);
+}
+
+/**
+ * Слот структуры по устойчивому ключу. Нужен, чтобы открыть список замен
+ * для уже сгенерированного упражнения: зная `slotKey` и draft, слот
+ * восстанавливается детерминированно.
+ */
+export function slotFor(
+  slotKey: string,
+  type: WorkoutType,
+  volume: VolumeLevel,
+  targetGroup?: GeneratorMuscleGroup,
+): Slot {
+  const slots: readonly Slot[] =
+    type === 'Muscle Group Split'
+      ? mgsSlots(requireTargetGroup(targetGroup), volume)
+      : findStructure({ type, volume }).slots;
+  const slot = slots.find((s) => s.slotKey === slotKey);
+  if (slot === undefined) {
+    throw new Error(`слот ${slotKey} не найден для ${type} · ${volume}`);
+  }
+  return slot;
+}
+
+/**
+ * Кандидаты на замену упражнения в слоте (S09). Текущее упражнение и все
+ * «не предлагать» исключены; уже занятые в этой сборке группы не
+ * запрещены, но уходят в конец — пользователь сам решает, допустить ли повтор.
+ */
+export function replacementCandidates(
+  catalog: Catalog,
+  slot: Slot,
+  currentName: string,
+  excludedNames: ReadonlySet<string>,
+  takenNames: ReadonlySet<string>,
+): CatalogExercise[] {
+  const restricted = new Set(excludedNames);
+  restricted.add(currentName);
+  const base = slotCandidates(slot, catalog, restricted);
+  const sorted = [...base].sort((a, b) => {
+    const aTaken = takenNames.has(a.name) ? 1 : 0;
+    const bTaken = takenNames.has(b.name) ? 1 : 0;
+    if (aTaken !== bTaken) return aTaken - bTaken;
+    return a.name.localeCompare(b.name, 'ru');
+  });
+  return sorted;
 }
 
 export function generateWorkout(
@@ -153,7 +199,7 @@ export function generateWorkout(
     entries.push({
       slotKey: slot.slotKey,
       exercise: picked,
-      groupUsed: groupOf(picked, slot),
+      groupUsed: slotGroupUsed(picked, slot),
       isRepeat: usedNames.has(picked.name),
     });
     usedNames.add(picked.name);

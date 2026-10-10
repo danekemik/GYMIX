@@ -6,6 +6,8 @@ import {
 } from '@gymix/generator';
 import { plural, structureFor, type Draft } from '../lib/draft';
 import { getCatalog } from '../lib/catalog';
+import { useDb } from '../hooks/useDb';
+import { excludedExerciseNames } from '../lib/exclusions';
 
 interface RandomizerScreenProps {
   draft: Draft;
@@ -29,41 +31,65 @@ export function RandomizerScreen({
   onRegenerate,
   onBack,
 }: RandomizerScreenProps) {
+  const { db, error: dbError } = useDb();
   const [status, setStatus] = useState<Status>('running');
   const [workout, setWorkout] = useState<GeneratedWorkout | undefined>(undefined);
   const [missing, setMissing] = useState<readonly string[]>([]);
+  const [excluded, setExcluded] = useState<readonly string[]>([]);
   const timer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     setStatus('running');
     setWorkout(undefined);
     setMissing([]);
+    setExcluded([]);
 
-    timer.current = window.setTimeout(() => {
-      try {
-        const result = generateWorkout(getCatalog(), {
-          type: draft.type,
-          volume: draft.volume,
-          ...(draft.mgsGroup ? { targetGroup: draft.mgsGroup } : {}),
-          seed,
-        });
-        setWorkout(result);
-        setStatus('done');
-      } catch (error) {
-        if (error instanceof InsufficientCatalogError) {
-          setMissing(error.missing.map((slot) => slot.allowed.join(' / ')));
-        } else {
-          setMissing([String(error)]);
-        }
+    if (db === undefined) {
+      if (dbError !== undefined) {
+        setMissing([String(dbError)]);
         setStatus('error');
       }
-    }, RUN_MS);
+      return;
+    }
+
+    let alive = true;
+    void excludedExerciseNames(db)
+      .then((names) => {
+        if (!alive) return;
+        setExcluded(names);
+        timer.current = window.setTimeout(() => {
+          try {
+            const result = generateWorkout(getCatalog(), {
+              type: draft.type,
+              volume: draft.volume,
+              ...(draft.mgsGroup ? { targetGroup: draft.mgsGroup } : {}),
+              excludedExerciseNames: names,
+              seed,
+            });
+            setWorkout(result);
+            setStatus('done');
+          } catch (error) {
+            if (error instanceof InsufficientCatalogError) {
+              setMissing(error.missing.map((slot) => slot.allowed.join(' / ')));
+            } else {
+              setMissing([String(error)]);
+            }
+            setStatus('error');
+          }
+        }, RUN_MS);
+      })
+      .catch((error: unknown) => {
+        if (!alive) return;
+        setMissing([String(error)]);
+        setStatus('error');
+      });
 
     return () => {
+      alive = false;
       if (timer.current !== undefined) window.clearTimeout(timer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.type, draft.volume, draft.mgsGroup, seed]);
+  }, [db, dbError, draft.type, draft.volume, draft.mgsGroup, seed]);
 
   const activeStep = status === 'running' ? 0 : status === 'error' ? 1 : 2;
 

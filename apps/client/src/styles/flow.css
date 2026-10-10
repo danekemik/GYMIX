@@ -163,6 +163,156 @@
   font-weight: 500;
 }
 
+/* --- S09: замена упражнения --- */
+
+.plan__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  margin: var(--space-xs) 0 var(--space-m);
+}
+
+.plan__action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs) 0;
+}
+
+.plan__action-name {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--step--1);
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan__action-buttons {
+  display: flex;
+  gap: var(--space-2xs);
+  flex-shrink: 0;
+}
+
+.dialog--sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  max-width: none;
+  max-height: min(76vh, 560px);
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
+  border-bottom: 0;
+  padding-bottom: calc(var(--space-m) + env(safe-area-inset-bottom));
+}
+
+.dialog__handle {
+  width: 40px;
+  height: 4px;
+  margin: 0 auto;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.dialog__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-s);
+}
+
+.dialog__sub {
+  margin-top: var(--space-3xs);
+  font-size: var(--step--1);
+  color: var(--ink-3);
+}
+
+.dialog__close {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.dialog__close svg {
+  width: 20px;
+  height: 20px;
+}
+
+.replace__search {
+  margin-top: var(--space-2xs);
+}
+
+.replace__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  max-height: 42vh;
+}
+
+.replace__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  border-top: var(--border);
+}
+
+.replace__pick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4xs);
+  padding: var(--space-xs) 0;
+  background: none;
+  border: 0;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.replace__name {
+  font-size: var(--step-0);
+  font-weight: 600;
+}
+
+.replace__meta {
+  font-size: var(--step--2);
+  color: var(--ink-3);
+}
+
+.replace__exclude {
+  flex-shrink: 0;
+  padding: var(--space-3xs) var(--space-2xs);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--step--2);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.replace__exclude:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.replace__empty {
+  padding: var(--space-s) 0;
+  font-size: var(--step--1);
+  color: var(--ink-3);
+  text-align: center;
+}
+
 /* --- S10: выполнение --- */
 
 .exec-progress {

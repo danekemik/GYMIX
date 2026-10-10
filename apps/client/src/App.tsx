@@ -13,6 +13,7 @@ import { HistoryScreen } from './screens/HistoryScreen';
 import { MgsGroupScreen } from './screens/MgsGroupScreen';
 import { PreviewScreen } from './screens/PreviewScreen';
 import { RandomizerScreen } from './screens/RandomizerScreen';
+import { SettingsScreen } from './screens/SettingsScreen';
 import { StructureScreen } from './screens/StructureScreen';
 import { TypeScreen } from './screens/TypeScreen';
 import { VolumeScreen } from './screens/VolumeScreen';
@@ -177,8 +178,28 @@ export function App() {
     body = (
       <PreviewScreen
         workout={generated}
+        draft={draft}
         onStart={() => setStep('execute')}
         regenerable={!fromTemplate}
+        onReplace={(index, exercise) => {
+          const replaced = generated.entries[index];
+          if (replaced === undefined) return;
+          setGenerated({
+            ...generated,
+            entries: generated.entries.map((entry, i) =>
+              i === index
+                ? {
+                    ...entry,
+                    exercise,
+                    isRepeat: generated.entries.some(
+                      (other, otherIndex) =>
+                        otherIndex !== index && other.exercise.name === exercise.name,
+                    ),
+                  }
+                : entry,
+            ),
+          });
+        }}
         onRegenerate={() => {
           setSeed(randomSeed());
           setStep('randomizer');
@@ -237,6 +258,8 @@ export function App() {
     );
   } else if (tab === 'history') {
     body = <HistoryScreen />;
+  } else if (tab === 'profile') {
+    body = <SettingsScreen />;
   } else {
     body = <SoonScreen tab={tab} />;
   }
