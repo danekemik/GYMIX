@@ -386,60 +386,28 @@ button.section-more {
   border-radius: var(--radius-xl);
   color: var(--ink-3);
   font-size: var(--step--1);
+  font-weight: 450;
   text-align: center;
 }
 
 .context-hint {
   font-size: var(--step--1);
+  font-weight: 450;
   color: var(--ink-3);
   margin: var(--space-2xs) 0 var(--space-s);
-}
-
-.type-grid {
-  display: grid;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-s);
-}
-
-.preview {
-  border: var(--border);
-  border-radius: var(--radius-m);
-  background: var(--surface);
-  padding: var(--space-s);
-}
-
-.preview__head {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--space-2xs) / 2);
-  margin-bottom: var(--space-s);
-  padding-bottom: var(--space-s);
-  border-bottom: var(--border);
-}
-
-.preview__title {
-  font-family: var(--font-display);
-  font-size: var(--step-2);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  line-height: 1.1;
-}
-
-.preview__meta {
-  font-size: var(--step--1);
-  color: var(--ink-3);
 }
 
 .body-muted {
   color: var(--ink-3);
   font-size: var(--step--1);
+  font-weight: 450;
   padding: var(--space-s) 0;
 }
 
 .body-error {
   color: var(--accent);
   font-size: var(--step--1);
+  font-weight: 450;
   padding: var(--space-s);
   border: 1px solid currentColor;
   border-radius: var(--radius-m);

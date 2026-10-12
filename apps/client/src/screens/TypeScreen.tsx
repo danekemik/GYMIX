@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
-import { findStructure, type WorkoutType } from '@gymix/structures';
+import type { WorkoutType } from '@gymix/structures';
 import { Button } from '../components/Button';
-import { WorkoutTypeCard } from '../components/WorkoutTypeCard';
-import { StructureSlotList } from '../components/StructureSlotList';
+import { WorkoutTypeRow } from '../components/WorkoutTypeRow';
 import { useDb } from '../hooks/useDb';
 import { workoutTypeCards } from '../lib/workoutTypes';
 
@@ -15,8 +14,6 @@ export function TypeScreen({ onSelect, onClose }: TypeScreenProps) {
   const { counts, error } = useDb();
   const cards = useMemo(() => workoutTypeCards(), []);
   const [selected, setSelected] = useState<WorkoutType>('Full Body');
-
-  const structure = findStructure({ type: selected, volume: 'Стандартная' });
 
   return (
     <div className="screen">
@@ -42,9 +39,9 @@ export function TypeScreen({ onSelect, onClose }: TypeScreenProps) {
           </p>
         )}
 
-        <div className="type-grid">
+        <div className="type-list" role="radiogroup" aria-label="Тип тренировки">
           {cards.map((card) => (
-            <WorkoutTypeCard
+            <WorkoutTypeRow
               key={card.type}
               card={card}
               selected={card.type === selected}
@@ -52,16 +49,6 @@ export function TypeScreen({ onSelect, onClose }: TypeScreenProps) {
             />
           ))}
         </div>
-
-        <section className="preview" aria-label="Структура тренировки">
-          <div className="preview__head">
-            <span className="preview__title">{selected}</span>
-            <span className="preview__meta">
-              Стандартная · {structure.exerciseCount} упражнений
-            </span>
-          </div>
-          <StructureSlotList structure={structure} />
-        </section>
 
         <div className="screen__cta">
           <Button variant="primary" onClick={() => onSelect(selected)}>

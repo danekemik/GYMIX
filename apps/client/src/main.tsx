@@ -15,7 +15,7 @@ import './styles/segmented.css';
 import './styles/slots.css';
 import './styles/tabbar.css';
 import './styles/topbar.css';
-import './styles/type-card.css';
+import './styles/type-list.css';
 import './styles/workouts.css';
 
 const root = document.getElementById('root');
