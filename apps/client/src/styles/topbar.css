@@ -70,6 +70,21 @@
   overflow-wrap: break-word;
 }
 
+/* Заголовок шага: по центру всей ширины бара (кнопка «назад» слева). */
+.topbar:has(.topbar__title--step) {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+}
+
+.topbar:has(.topbar__title--step) .topbar__back {
+  grid-column: 1;
+}
+
+.topbar:has(.topbar__title--step) .topbar__title--step {
+  grid-column: 2;
+  text-align: center;
+}
+
 /* Приветствие с именем: чуть меньше, чтобы длинные имена помещались. */
 .topbar__title--greeting {
   font-size: clamp(1.5rem, 7.2vw, 1.8rem);
