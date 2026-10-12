@@ -199,6 +199,12 @@ export async function latestSession(db: GymixDb): Promise<HistoryItem | null> {
   return items[0] ?? null;
 }
 
+/** Последние завершённые тренировки для блока «Последние тренировки» (S01). */
+export async function recentSessions(db: GymixDb, limit = 3): Promise<HistoryItem[]> {
+  const items = await sessionsForHistory(db);
+  return items.slice(0, Math.max(0, limit));
+}
+
 /* ------------------------------------------------------------------ *
  * Черновик активной тренировки (S11)
  * ------------------------------------------------------------------ */

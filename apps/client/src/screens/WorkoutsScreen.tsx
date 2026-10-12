@@ -1,16 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
-import type { WorkoutType } from '@gymix/structures';
-import { Segmented } from '../components/Segmented';
 import { useDb } from '../hooks/useDb';
 import { formatDay, formatDurationMs } from '../lib/format';
+import { plural } from '../lib/draft';
 import {
   IconArrowRight,
-  IconCalendar,
   IconChevronRight,
   IconClock,
-  IconDots,
-  IconDumbbellArt,
   IconFigure,
   IconGear,
   IconLegs,
@@ -19,104 +15,49 @@ import {
 import {
   activeDraft,
   deleteDraft,
-  latestSession,
+  recentSessions,
   resumeDraft,
   type DraftSummary,
   type HistoryItem,
   type ResumedSession,
 } from '../lib/session';
-import {
-  copyTemplate,
-  deleteTemplate,
-  renameTemplate,
-  templatesFor,
-  type TemplateCard,
-} from '../lib/templates';
-import { workoutTypeCards } from '../lib/workoutTypes';
+import { typeLabel } from '../lib/workoutTypes';
 
 interface WorkoutsScreenProps {
-  onStart: (type: WorkoutType) => void;
   onCreate: () => void;
   onOpenProfile: () => void;
   onOpenActivity: () => void;
-  onOpenTemplate: (templateId: string) => void;
-  onEditTemplate: (templateId: string) => void;
+  onOpenSession: (sessionId: string) => void;
   onResume: (session: ResumedSession) => void;
 }
 
-type Segment = 'ready' | 'mine';
-
-const SEGMENT_KEY = 'gymix:home-segment';
-const SEGMENT_OPTIONS = [
-  { value: 'ready', label: 'Шаблоны' },
-  { value: 'mine', label: 'Мои тренировки' },
-] as const;
-
-const QUICK_START: readonly WorkoutType[] = ['Full Body', 'Upper Body', 'Lower Body'];
-
-const TYPE_LABEL: Record<WorkoutType, string> = {
-  'Full Body': 'Full Body',
-  'Upper Body': 'Верх тела',
-  'Lower Body': 'Низ тела',
-  Push: 'Жимы',
-  Pull: 'Тяги',
-  Legs: 'Ноги',
-  'Muscle Group Split': 'Одна группа',
-};
-
-const QUICK_SUBTITLE: Record<WorkoutType, string> = {
-  'Full Body': 'Все группы мышц',
-  'Upper Body': 'Грудь, спина, руки',
-  'Lower Body': 'Ноги, ягодицы',
-  Push: 'Грудь, плечи, трицепс',
-  Pull: 'Спина, бицепс, предплечья',
-  Legs: 'Ноги, ягодицы',
-  'Muscle Group Split': 'Тонкая проработка',
-};
-
-const QUICK_ICON: Record<WorkoutType, (p: { className: string }) => ReactElement> = {
-  'Full Body': IconFigure,
-  'Upper Body': IconTorso,
-  'Lower Body': IconLegs,
-  Push: IconTorso,
-  Pull: IconFigure,
-  Legs: IconLegs,
-  'Muscle Group Split': IconFigure,
-};
-
-type MenuTarget = TemplateCard | null;
+function rowIcon(type: string): ReactElement {
+  if (type === 'Upper Body' || type === 'Push' || type === 'Muscle Group Split') {
+    return <IconTorso />;
+  }
+  if (type === 'Legs' || type === 'Lower Body') return <IconLegs />;
+  return <IconFigure />;
+}
 
 export function WorkoutsScreen({
-  onStart,
   onCreate,
   onOpenProfile,
   onOpenActivity,
-  onOpenTemplate,
-  onEditTemplate,
+  onOpenSession,
   onResume,
 }: WorkoutsScreenProps) {
   const { db, error } = useDb();
-  const cards = useMemo(() => workoutTypeCards(), []);
-  const [segment, setSegment] = useState<Segment>(() =>
-    localStorage.getItem(SEGMENT_KEY) === 'mine' ? 'mine' : 'ready',
-  );
-  const [recent, setRecent] = useState<HistoryItem | null | 'loading'>('loading');
-  const [templates, setTemplates] = useState<TemplateCard[] | 'loading'>('loading');
+  const [recent, setRecent] = useState<HistoryItem[] | 'loading'>('loading');
   const [draft, setDraft] = useState<DraftSummary | null | 'loading'>('loading');
-
-  const [menuFor, setMenuFor] = useState<MenuTarget>(null);
-  const [renameFor, setRenameFor] = useState<MenuTarget>(null);
-  const [renameValue, setRenameValue] = useState('');
-  const [removeFor, setRemoveFor] = useState<MenuTarget>(null);
-  const [removeDraft, setRemoveDraft] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [removeDraft, setRemoveDraft] = useState(false);
 
   useEffect(() => {
     if (db === undefined) return;
     let alive = true;
-    latestSession(db)
-      .then((row) => alive && setRecent(row ?? null))
-      .catch(() => alive && setRecent(null));
+    recentSessions(db, 3)
+      .then((rows) => alive && setRecent(rows))
+      .catch(() => alive && setRecent([]));
     return () => {
       alive = false;
     };
@@ -132,24 +73,6 @@ export function WorkoutsScreen({
       alive = false;
     };
   }, [db]);
-
-  const reloadTemplates = useCallback(async () => {
-    if (db === undefined) return;
-    try {
-      setTemplates(await templatesFor(db));
-    } catch {
-      setTemplates([]);
-    }
-  }, [db]);
-
-  useEffect(() => {
-    void reloadTemplates();
-  }, [reloadTemplates]);
-
-  const changeSegment = (value: Segment) => {
-    localStorage.setItem(SEGMENT_KEY, value);
-    setSegment(value);
-  };
 
   const continueDraft = async () => {
     if (db === undefined || draft === null || draft === 'loading') return;
@@ -174,66 +97,16 @@ export function WorkoutsScreen({
     }
   };
 
-  const openMenu = (template: TemplateCard) => {
-    setMenuFor(template);
-  };
-
-  const doRename = async () => {
-    const title = renameValue.trim();
-    if (title === '' || db === undefined || renameFor === null) return;
-    setBusy(true);
-    try {
-      await renameTemplate(db, renameFor.id, title);
-      setRenameFor(null);
-      await reloadTemplates();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const doCopy = async () => {
-    if (db === undefined || menuFor === null) return;
-    setBusy(true);
-    try {
-      await copyTemplate(db, menuFor.id);
-      setMenuFor(null);
-      await reloadTemplates();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const doDelete = async () => {
-    if (db === undefined || removeFor === null) return;
-    setBusy(true);
-    try {
-      await deleteTemplate(db, removeFor.id);
-      setRemoveFor(null);
-      await reloadTemplates();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const quick = QUICK_START.map((type) => cards.find((c) => c.type === type)).filter(
-    (c): c is NonNullable<typeof c> => c !== undefined,
-  );
-
   return (
     <div className="screen">
       <header className="topbar">
-        <h1 className="topbar__title">Тренировки</h1>
-        <button className="topbar__icon-btn" aria-label="Открыть настройки" onClick={onOpenProfile}>
+        <h1 className="topbar__title">Сегодня</h1>
+        <button className="topbar__icon-btn" aria-label="Профиль" onClick={onOpenProfile}>
           <IconGear />
         </button>
       </header>
 
       <div className="screen__body">
-        <div className="greeting">
-          <h2 className="greeting__title">Хорошей тренировки</h2>
-          <p className="greeting__text">Собери занятие под себя</p>
-        </div>
-
         {error !== undefined && (
           <p className="body-error" role="alert">
             Не удалось открыть базу: {String(error)}
@@ -248,7 +121,7 @@ export function WorkoutsScreen({
               </span>
               <div className="resume__body">
                 <p className="resume__title">
-                  {draft.type} <span className="wk-card__dot">·</span> {draft.volume}
+                  {typeLabel(draft.type)} <span className="wk-card__dot">·</span> {draft.volume}
                 </p>
                 <p className="resume__meta">
                   Начата {formatDay(draft.startedAt)} · {draft.doneSets}/{draft.totalSets} подходов
@@ -270,248 +143,63 @@ export function WorkoutsScreen({
           </section>
         )}
 
-        <div className="home-segment">
-          <Segmented
-            options={SEGMENT_OPTIONS}
-            value={segment}
-            onChange={changeSegment}
-            label="Раздел тренировок"
-          />
-        </div>
-
-        {segment === 'ready' ? (
-          <>
-            <section className="hero" aria-label="Новая тренировка">
-              <div className="hero__copy">
-                <h3 className="hero__title">Новая тренировка</h3>
-                <p className="hero__text">
-                  <span>Собери своё занятие</span>
-                  <span>на свои цели и уровень</span>
-                </p>
-              </div>
-              <div className="hero__art" aria-hidden>
-                <IconDumbbellArt />
-              </div>
-              <button className="hero__cta" onClick={onCreate}>
-                <span className="hero__cta-label">Создать тренировку</span>
-                <IconArrowRight className="hero__cta-arrow" />
-              </button>
-            </section>
-
-            <section className="quick" aria-label="Быстрый старт">
-              <SectionHead title="Быстрый старт" chevronOnly />
-              <div className="quick-grid">
-                {quick.map((card) => {
-                  const Icon = QUICK_ICON[card.type];
-                  return (
-                    <button key={card.type} className="quick-card" onClick={() => onStart(card.type)}>
-                      <Icon className="quick-card__icon" />
-                      <span className="quick-card__head">
-                        <span className="quick-card__name">{TYPE_LABEL[card.type]}</span>
-                        <IconChevronRight className="quick-card__chevron" />
-                      </span>
-                      <span className="quick-card__subtitle">{QUICK_SUBTITLE[card.type]}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className="recent" aria-label="Недавняя активность">
-              <SectionHead title="Недавняя активность" more="Вся активность" onMore={onOpenActivity} />
-              <div className="recent-list">
-                {recent === null ? (
-                  <div className="act-card act-card--empty">
-                    Здесь появится последняя тренировка
-                  </div>
-                ) : recent === 'loading' ? null : (
-                  <article className="act-card">
-                    <span className="act-card__plate" aria-hidden>
-                      <IconCalendar />
-                    </span>
-                    <div className="act-card__body">
-                      <p className="act-card__title">{recent.type}</p>
-                      <p className="act-card__meta">
-                        {formatDay(recent.completedAt)} · {recent.done}/{recent.total} упражнений
-                      </p>
-                    </div>
-                    <p className="act-card__duration">
-                      <IconClock />
-                      {formatDurationMs(recent.durationMs)}
-                    </p>
-                    <IconChevronRight className="act-card__chevron" />
-                  </article>
-                )}
-              </div>
-            </section>
-          </>
-        ) : (
-          <section className="mine" aria-label="Мои тренировки">
-            <SectionHead title="Мои тренировки" />
-            {templates === 'loading' ? (
-              <p className="body-muted">Загружаем шаблоны…</p>
-            ) : templates.length === 0 ? (
-              <div className="empty-train">
-                <p className="empty-train__title">Пока пусто</p>
-                <p className="empty-train__text">
-                  Сохрани завершённую тренировку как шаблон, чтобы повторить её
-                  в один тап.
-                </p>
-                <button className="btn btn--primary" onClick={onCreate}>
-                  Создать тренировку
-                </button>
-              </div>
-            ) : (
-              <div className="mine-list">
-                {templates.map((template) => (
-                  <article key={template.id} className="wk-card">
-                    <button
-                      className="wk-card__main"
-                      onClick={() => onOpenTemplate(template.id)}
-                      aria-label={`Открыть шаблон «${template.title}»`}
-                    >
-                      <span className="wk-card__plate" aria-hidden>
-                        <IconTorso />
-                      </span>
-                      <span className="wk-card__body">
-                        <span className="wk-card__title">{template.title}</span>
-                        <span className="wk-card__meta">
-                          {template.type} <span className="wk-card__dot">·</span>{' '}
-                          {template.volume}
-                        </span>
-                        <span className="wk-card__tags">
-                          <span className="wk-card__tag">{template.exerciseCount} упражнений</span>
-                          <span className="wk-card__date">{formatDay(template.createdAt)}</span>
-                        </span>
-                      </span>
-                    </button>
-                    <button
-                      className="wk-card__menu"
-                      aria-label="Меню шаблона"
-                      onClick={() => openMenu(template)}
-                    >
-                      <IconDots />
-                    </button>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-      </div>
-
-      {menuFor !== null && (
-        <div className="overlay">
-          <div className="dialog menu-dialog" role="dialog" aria-modal="true" aria-labelledby="menu-title">
-            <h2 id="menu-title" className="dialog__title">
-              {menuFor.title}
+        <section className="hero" aria-label="Новая тренировка">
+          <span className="hero__circle" aria-hidden />
+          <div className="hero__copy">
+            <span className="hero__chip">
+              <span className="hero__chip-dot" aria-hidden />
+              Готов двигаться?
+            </span>
+            <h2 className="hero__title">
+              Начать
+              <br />
+              тренировку
             </h2>
-            <div className="menu-list" role="menu">
-              <button
-                className="menu-action"
-                role="menuitem"
-                onClick={() => {
-                  onOpenTemplate(menuFor.id);
-                  setMenuFor(null);
-                }}
-              >
-                Открыть
-              </button>
-              <button
-                className="menu-action"
-                role="menuitem"
-                onClick={() => {
-                  onEditTemplate(menuFor.id);
-                  setMenuFor(null);
-                }}
-              >
-                Изменить
-              </button>
-              <button className="menu-action" role="menuitem" onClick={() => void doCopy()} disabled={busy}>
-                Копировать
-              </button>
-              <button
-                className="menu-action"
-                role="menuitem"
-                onClick={() => {
-                  setRenameValue(menuFor.title);
-                  setRenameFor(menuFor);
-                  setMenuFor(null);
-                }}
-              >
-                Переименовать
-              </button>
-              <button
-                className="menu-action menu-action--danger"
-                role="menuitem"
-                onClick={() => {
-                  setRemoveFor(menuFor);
-                  setMenuFor(null);
-                }}
-              >
-                Удалить
-              </button>
-            </div>
-            <button className="btn btn--ghost" onClick={() => setMenuFor(null)}>
-              Отмена
+            <p className="hero__sub">Собери занятие под себя</p>
+          </div>
+          <button className="hero__cta" onClick={onCreate}>
+            <span className="hero__cta-label">Выбрать тренировку</span>
+            <IconArrowRight className="hero__cta-arrow" />
+          </button>
+        </section>
+
+        <section className="recent" aria-label="Последние тренировки">
+          <div className="section-head">
+            <h2 className="section-title">Последние тренировки</h2>
+            <button className="section-more" onClick={onOpenActivity}>
+              Все
+              <IconChevronRight />
             </button>
           </div>
-        </div>
-      )}
 
-      {renameFor !== null && (
-        <div className="overlay">
-          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="rename-title">
-            <h2 id="rename-title" className="dialog__title">
-              Переименовать шаблон
-            </h2>
-            <label className="field">
-              <span className="field__label">Название</span>
-              <input
-                className="field__input"
-                type="text"
-                value={renameValue}
-                onChange={(event) => setRenameValue(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') void doRename();
-                }}
-                autoFocus
-                maxLength={60}
-              />
-            </label>
-            <div className="dialog__actions">
-              <button className="btn btn--primary" onClick={() => void doRename()} disabled={busy}>
-                Сохранить
-              </button>
-              <button className="btn btn--ghost" onClick={() => setRenameFor(null)}>
-                Отмена
-              </button>
+          {recent === 'loading' ? null : recent.length === 0 ? (
+            <div className="recent-empty">Здесь появится история выполненных тренировок</div>
+          ) : (
+            <div className="recent-list">
+              {recent.map((item) => (
+                <button
+                  key={item.id}
+                  className="recent-row"
+                  onClick={() => onOpenSession(item.id)}
+                  aria-label={`Открыть тренировку ${typeLabel(item.type)}, ${formatDay(item.completedAt)}`}
+                >
+                  <span className="recent-row__plate" aria-hidden>
+                    {rowIcon(item.type)}
+                  </span>
+                  <span className="recent-row__body">
+                    <span className="recent-row__title">{typeLabel(item.type)}</span>
+                    <span className="recent-row__sub">
+                      {formatDay(item.completedAt)} ·{' '}
+                      {plural(item.done, ['упражнение', 'упражнения', 'упражнений'])}
+                    </span>
+                  </span>
+                  <span className="recent-row__value">{formatDurationMs(item.durationMs)}</span>
+                </button>
+              ))}
             </div>
-          </div>
-        </div>
-      )}
-
-      {removeFor !== null && (
-        <div className="overlay">
-          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="remove-title">
-            <h2 id="remove-title" className="dialog__title">
-              Удалить шаблон?
-            </h2>
-            <p className="dialog__text">
-              «{removeFor.title}» исчезнет без возможности восстановления. История
-              тренировок не изменится.
-            </p>
-            <div className="dialog__actions">
-              <button className="btn btn--primary" onClick={() => void doDelete()} disabled={busy}>
-                Удалить
-              </button>
-              <button className="btn btn--ghost" onClick={() => setRemoveFor(null)}>
-                Отмена
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+        </section>
+      </div>
 
       {removeDraft && (
         <div className="overlay">
@@ -533,39 +221,6 @@ export function WorkoutsScreen({
             </div>
           </div>
         </div>
-      )}
-    </div>
-  );
-}
-
-function SectionHead({
-  title,
-  more,
-  chevronOnly,
-  onMore,
-}: {
-  title: string;
-  more?: string;
-  chevronOnly?: boolean;
-  onMore?: () => void;
-}) {
-  return (
-    <div className="section-head">
-      <h2 className="section-title">{title}</h2>
-      {onMore !== undefined ? (
-        <button className="section-more" onClick={onMore}>
-          {more}
-          <IconChevronRight />
-        </button>
-      ) : chevronOnly ? (
-        <span className="section-more section-more--chev" aria-hidden>
-          <IconChevronRight />
-        </span>
-      ) : (
-        <span className="section-more">
-          {more}
-          <IconChevronRight />
-        </span>
       )}
     </div>
   );

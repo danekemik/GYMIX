@@ -19,6 +19,7 @@ import { RandomizerScreen } from './screens/RandomizerScreen';
 import { RecordScreen } from './screens/RecordScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { StructureScreen } from './screens/StructureScreen';
+import { TemplatesScreen } from './screens/TemplatesScreen';
 import { TypeScreen } from './screens/TypeScreen';
 import { VolumeScreen } from './screens/VolumeScreen';
 import { WorkoutsScreen } from './screens/WorkoutsScreen';
@@ -43,16 +44,6 @@ const TABS = [
     ),
   },
   {
-    id: 'history',
-    label: 'История',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 7v5l3.5 2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    ),
-  },
-  {
     id: 'profile',
     label: 'Профиль',
     icon: (
@@ -66,6 +57,9 @@ const TABS = [
 
 type Step = 'home' | 'type' | 'mgs' | 'volume' | 'structure' | 'manual' | 'randomizer' | 'preview' | 'execute' | 'finish';
 type Nullable<T> = T | undefined;
+
+/** Подэкраны поверх вкладок: история, запись тренировки, шаблоны. */
+type Sub = { kind: 'history' } | { kind: 'record'; id: string } | { kind: 'templates' };
 
 function randomSeed(): number {
   return Math.floor(Math.random() * 0xffffffff);
@@ -85,7 +79,7 @@ export function App() {
   const [resume, setResume] = useState<Nullable<ResumedSession>>(undefined);
   const [fromTemplate, setFromTemplate] = useState(false);
   const [selections, setSelections] = useState<Record<string, string>>({});
-  const [openRecord, setOpenRecord] = useState<string | undefined>(undefined);
+  const [sub, setSub] = useState<Nullable<Sub>>(undefined);
 
   const exitBuilder = () => {
     setStep('home');
@@ -115,9 +109,13 @@ export function App() {
 
   const openTab = (id: string) => {
     setTab(id);
-    setOpenRecord(undefined);
+    setSub(undefined);
     if (step !== 'home') exitBuilder();
   };
+
+  const openHistory = () => setSub({ kind: 'history' });
+  const openTemplates = () => setSub({ kind: 'templates' });
+  const openRecord = (id: string) => setSub({ kind: 'record', id });
 
   const openTemplate = async (templateId: string) => {
     if (db === undefined) return;
@@ -303,37 +301,47 @@ export function App() {
       <FinishScreen
         payload={finished}
         onDone={exitBuilder}
-        onOpenHistory={() => openTab('history')}
+        onOpenHistory={() => {
+          exitBuilder();
+          openHistory();
+        }}
         onOpenTemplates={() => {
-          localStorage.setItem('gymix:home-segment', 'mine');
-          setTab('workouts');
-          setStep('home');
+          exitBuilder();
+          openTemplates();
         }}
       />
     );
+  } else if (sub?.kind === 'templates') {
+    body = (
+      <TemplatesScreen
+        onBack={() => setSub(undefined)}
+        onOpenTemplate={(templateId) => void openTemplate(templateId)}
+        onEditTemplate={(templateId) => void openTemplateEdit(templateId)}
+        onCreate={() => {
+          setSub(undefined);
+          setStep('type');
+        }}
+      />
+    );
+  } else if (sub?.kind === 'record') {
+    body = <RecordScreen sessionId={sub.id} onBack={openHistory} />;
+  } else if (sub?.kind === 'history') {
+    body = <HistoryScreen onBack={() => setSub(undefined)} onOpen={openRecord} />;
   } else if (tab === 'workouts') {
     body = (
       <WorkoutsScreen
-        onStart={startBuilder}
         onCreate={() => setStep('type')}
         onOpenProfile={() => openTab('profile')}
-        onOpenActivity={() => openTab('history')}
-        onOpenTemplate={(templateId) => void openTemplate(templateId)}
-        onEditTemplate={(templateId) => void openTemplateEdit(templateId)}
+        onOpenActivity={openHistory}
+        onOpenSession={openRecord}
         onResume={(session) => {
           setResume(session);
           setStep('execute');
         }}
       />
     );
-  } else if (tab === 'history') {
-    body = openRecord !== undefined ? (
-      <RecordScreen sessionId={openRecord} onBack={() => setOpenRecord(undefined)} />
-    ) : (
-      <HistoryScreen onOpen={setOpenRecord} />
-    );
   } else if (tab === 'profile') {
-    body = <SettingsScreen onOpenHistory={() => openTab('history')} />;
+    body = <SettingsScreen onOpenHistory={openHistory} onOpenTemplates={openTemplates} />;
   } else if (tab === 'progress') {
     body = <ProgressScreen />;
   } else {
@@ -343,7 +351,7 @@ export function App() {
   return (
     <div className="app">
       <main className="app__main">{body}</main>
-      {step === 'home' && <TabBar tabs={TABS} active={tab} onChange={openTab} />}
+      {step === 'home' && sub === undefined && <TabBar tabs={TABS} active={tab} onChange={openTab} />}
     </div>
   );
 }

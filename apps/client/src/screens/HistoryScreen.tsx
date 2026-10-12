@@ -5,9 +5,10 @@ import { sessionsForHistory, type HistoryItem } from '../lib/session';
 
 interface HistoryScreenProps {
   onOpen: (sessionId: string) => void;
+  onBack?: () => void;
 }
 
-export function HistoryScreen({ onOpen }: HistoryScreenProps) {
+export function HistoryScreen({ onOpen, onBack }: HistoryScreenProps) {
   const { db } = useDb();
   const [items, setItems] = useState<HistoryItem[] | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -26,6 +27,13 @@ export function HistoryScreen({ onOpen }: HistoryScreenProps) {
   return (
     <div className="screen">
       <header className="topbar">
+        {onBack !== undefined && (
+          <button className="topbar__back" onClick={onBack} aria-label="Назад">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        )}
         <h1 className="topbar__title">История</h1>
       </header>
 

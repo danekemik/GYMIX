@@ -1,64 +1,29 @@
-.greeting {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3xs);
-  margin: 0 0 var(--space-2xs);
-}
-
-.greeting__title {
-  font-family: var(--font-display);
-  font-size: var(--step-2);
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.01em;
-  color: var(--ink);
-}
-
-.greeting__text {
-  font-size: var(--step--1);
-  color: var(--ink-2);
-}
-
-/* ——— Главная лаймовая карточка: широкий горизонтальный блок, компактный.
- * Мягкие полупрозрачные пятна/дуги — только фон, без градиента. ——— */
+/* ——— Главная карточка «Начать тренировку»: тёмный блок, лаймовая кнопка
+ * и крупный декоративный круг-акцент в правом верхнем углу. ——— */
 
 .hero {
   position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: var(--space-xs);
-  overflow: hidden;
-  padding: var(--space-s);
+  gap: var(--space-m);
+  padding: var(--space-m);
+  padding-bottom: var(--space-s);
   border-radius: var(--radius-2xl);
-  background: var(--accent);
-  color: var(--accent-ink);
-  box-shadow: var(--glow-accent);
-  margin-bottom: var(--space-xs);
+  border: 1px solid var(--line);
+  background: #12171a;
+  margin-bottom: var(--space-m);
 }
 
-.hero::before,
-.hero::after {
-  content: '';
+.hero__circle {
   position: absolute;
+  width: 230px;
+  height: 230px;
+  top: -96px;
+  right: -72px;
   border-radius: 50%;
+  background: var(--accent);
   pointer-events: none;
-}
-
-.hero::before {
-  width: 210px;
-  height: 210px;
-  right: -70px;
-  top: -110px;
-  background: rgba(10, 12, 8, 0.06);
-}
-
-.hero::after {
-  width: 190px;
-  height: 190px;
-  right: -48px;
-  bottom: -96px;
-  border: 1.5px solid rgba(10, 12, 8, 0.09);
 }
 
 .hero__copy {
@@ -68,79 +33,74 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-2xs);
-  min-width: 0;
+  max-width: 76%;
+}
+
+.hero__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: var(--step--2);
+  font-weight: 700;
+  color: #cbe79a;
+}
+
+.hero__chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
 .hero__title {
   font-family: var(--font-display);
-  font-size: var(--step-1);
+  font-size: var(--step-4);
   font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  color: var(--ink);
 }
 
-.hero__text {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+.hero__sub {
   font-size: var(--step--1);
-  font-weight: 500;
-  color: rgba(10, 12, 8, 0.7);
-  line-height: 1.35;
+  color: var(--ink-2);
 }
 
 .hero__cta {
   position: relative;
   z-index: 1;
-  margin-top: var(--space-2xs);
-  width: 100%;
-  height: 44px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2xs);
-  padding: 0 16px;
+  width: 100%;
+  height: 54px;
+  padding: 0 var(--space-s) 0 var(--space-m);
   border-radius: 999px;
-  background: #0b0d0e;
-  color: #ffffff;
-  box-shadow: 0 6px 18px rgba(7, 9, 8, 0.28);
-  transition: background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+  background: var(--accent);
+  color: var(--accent-ink);
+  transition: filter var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
 
 .hero__cta-label {
-  font-size: var(--step--1);
-  font-weight: 600;
+  font-size: var(--step-0);
+  font-weight: 700;
   white-space: nowrap;
 }
 
 .hero__cta-arrow {
-  width: 18px;
-  height: 18px;
-  color: var(--accent);
+  width: 22px;
+  height: 22px;
 }
 
 .hero__cta:hover {
-  background: #1c2023;
+  filter: brightness(1.06);
 }
 
 .hero__cta:active {
-  transform: scale(0.98);
-}
-
-.hero__art {
-  position: absolute;
-  right: 6px;
-  bottom: 44px;
-  width: 96px;
-  z-index: 0;
-  filter: drop-shadow(0 14px 22px rgba(7, 9, 8, 0.3));
-}
-
-.hero__art svg {
-  width: 100%;
-  height: auto;
-  display: block;
+  transform: scale(0.99);
 }
 
 /* ——— Заголовки секций: обычный регистр, меньше главного. ——— */
@@ -193,92 +153,13 @@ button.section-more {
   justify-content: flex-end;
 }
 
-.section-more--chev {
-  min-width: 44px;
-  min-height: 44px;
-  justify-content: flex-end;
-  margin-right: calc(-1 * var(--space-2xs));
-}
-
-/* ——— Быстрый старт: три равные невысокие карточки в ряд. ——— */
-
-.quick {
-  margin-bottom: var(--space-s);
-}
-
-.quick-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-2xs);
-}
-
-.quick-card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-3xs);
-  padding: var(--space-xs);
-  text-align: left;
-  border: 1px solid rgba(41, 46, 51, 0.8);
-  border-radius: var(--radius-xl);
-  background: var(--surface);
-  color: var(--ink);
-  transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
-}
-
-.quick-card:hover {
-  border-color: var(--ink-3);
-}
-
-.quick-card:active {
-  transform: scale(0.97);
-}
-
-.quick-card__icon {
-  display: block;
-  width: 22px;
-  height: 22px;
-  margin-bottom: var(--space-3xs);
-  color: var(--accent);
-}
-
-.quick-card__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2xs);
-  width: 100%;
-}
-
-.quick-card__name {
-  font-size: var(--step--1);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.quick-card__chevron {
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  color: var(--ink-3);
-}
-
-.quick-card__subtitle {
-  font-size: var(--step--2);
-  color: var(--ink-2);
-  line-height: 1.3;
-  min-height: 2.6em;
-  padding-right: 2px;
-}
-
 /* ——— Мои тренировки: цельная широкая строка, без рамки. ——— */
 
 .mine {
   margin-bottom: var(--space-s);
 }
 
-.mine-list,
-.recent-list {
+.mine-list {
   display: flex;
   flex-direction: column;
   gap: var(--space-2xs);
@@ -307,8 +188,7 @@ button.section-more {
   cursor: pointer;
 }
 
-.wk-card__plate,
-.act-card__plate {
+.wk-card__plate {
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -319,8 +199,7 @@ button.section-more {
   color: var(--accent);
 }
 
-.wk-card__plate svg,
-.act-card__plate svg {
+.wk-card__plate svg {
   width: 22px;
   height: 22px;
 }
@@ -396,67 +275,89 @@ button.section-more {
   height: 18px;
 }
 
-/* ——— Недавняя активность: полностью видимая строка над навигацией. ——— */
+/* ——— Последние тренировки: строки с иконкой, текстом и длительностью. ——— */
 
 .recent {
   margin-bottom: var(--space-s);
 }
 
-.act-card {
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
-  padding: var(--space-2xs) var(--space-xs);
-  border-radius: var(--radius-xl);
-  background: var(--surface);
-}
-
-.act-card__body {
-  flex: 1;
+.recent-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3xs);
+}
+
+.recent-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-s);
+  width: 100%;
+  padding: var(--space-xs) 0;
+  background: none;
+  border: 0;
+  border-top: var(--border);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.recent-row:first-child {
+  border-top: 0;
+}
+
+.recent-row:active {
+  opacity: 0.7;
+}
+
+.recent-row__plate {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-l);
+  background: var(--plate);
+  color: var(--accent);
+}
+
+.recent-row__plate svg {
+  width: 24px;
+  height: 24px;
+}
+
+.recent-row__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   min-width: 0;
 }
 
-.act-card__title {
-  font-weight: 600;
+.recent-row__title {
   font-size: var(--step-0);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.act-card__meta {
+.recent-row__sub {
   font-size: var(--step--1);
   color: var(--ink-3);
 }
 
-.act-card__duration {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2xs);
+.recent-row__value {
   flex-shrink: 0;
-  color: var(--ink-2);
-  font-weight: 600;
   font-size: var(--step--1);
+  font-weight: 500;
+  color: var(--ink-2);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
-.act-card__duration svg {
-  width: 18px;
-  height: 18px;
-  color: var(--accent);
-}
-
-.act-card__chevron {
-  flex-shrink: 0;
-  width: 15px;
-  height: 15px;
-  color: var(--ink-3);
-}
-
-.act-card--empty {
-  justify-content: center;
+.recent-empty {
+  padding: var(--space-m) var(--space-s);
   border: 1px dashed var(--line);
+  border-radius: var(--radius-xl);
   color: var(--ink-3);
   font-size: var(--step--1);
   text-align: center;
@@ -517,12 +418,6 @@ button.section-more {
   border: 1px solid currentColor;
   border-radius: var(--radius-m);
   margin: var(--space-2xs) 0 var(--space-s);
-}
-
-/* ——— Переключатель «Шаблоны | Мои тренировки» ——— */
-
-.home-segment {
-  margin: var(--space-s) 0 var(--space-m);
 }
 
 /* ——— Баннер восстановления черновика (S11) ——— */

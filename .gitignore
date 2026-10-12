@@ -13,6 +13,11 @@ Thumbs.db
 design-previews/
 screenshots/
 
+# Playwright (артефакты прогонов из браузера)
+.playwright-mcp/
+playwright-report/
+test-results/
+
 # зависимости и сборка
 .env
 .env.local
