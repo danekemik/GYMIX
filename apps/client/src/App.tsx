@@ -323,7 +323,6 @@ export function App() {
     body = (
       <WorkoutsScreen
         onCreate={() => setStep('type')}
-        onOpenProfile={() => openTab('profile')}
         onOpenActivity={openHistory}
         onOpenSession={openRecord}
         onResume={(session) => {

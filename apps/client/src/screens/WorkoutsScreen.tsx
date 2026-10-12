@@ -1,17 +1,12 @@
 import { useEffect, useState } from 'react';
-import type { ReactElement } from 'react';
 import { useDb } from '../hooks/useDb';
-import { formatDay, formatDurationMs } from '../lib/format';
+import fitnessIcon from '../assets/fitness.png';
+import { ensureDemoSeed } from '../lib/demoSeed';
+import { getUserName } from '../lib/account';
 import { plural } from '../lib/draft';
-import {
-  IconArrowRight,
-  IconChevronRight,
-  IconClock,
-  IconFigure,
-  IconGear,
-  IconLegs,
-  IconTorso,
-} from '../lib/icons';
+import { formatDay, formatDurationMs } from '../lib/format';
+import { IconArrowRight, IconChevronRight, IconClock } from '../lib/icons';
+import { typeIcon } from '../lib/typeIcon';
 import {
   activeDraft,
   deleteDraft,
@@ -25,28 +20,19 @@ import { typeLabel } from '../lib/workoutTypes';
 
 interface WorkoutsScreenProps {
   onCreate: () => void;
-  onOpenProfile: () => void;
   onOpenActivity: () => void;
   onOpenSession: (sessionId: string) => void;
   onResume: (session: ResumedSession) => void;
 }
 
-function rowIcon(type: string): ReactElement {
-  if (type === 'Upper Body' || type === 'Push' || type === 'Muscle Group Split') {
-    return <IconTorso />;
-  }
-  if (type === 'Legs' || type === 'Lower Body') return <IconLegs />;
-  return <IconFigure />;
-}
-
 export function WorkoutsScreen({
   onCreate,
-  onOpenProfile,
   onOpenActivity,
   onOpenSession,
   onResume,
 }: WorkoutsScreenProps) {
   const { db, error } = useDb();
+  const name = getUserName();
   const [recent, setRecent] = useState<HistoryItem[] | 'loading'>('loading');
   const [draft, setDraft] = useState<DraftSummary | null | 'loading'>('loading');
   const [busy, setBusy] = useState(false);
@@ -98,12 +84,11 @@ export function WorkoutsScreen({
   };
 
   return (
-    <div className="screen">
+    <div className="screen screen--home">
       <header className="topbar">
-        <h1 className="topbar__title">Сегодня</h1>
-        <button className="topbar__icon-btn" aria-label="Профиль" onClick={onOpenProfile}>
-          <IconGear />
-        </button>
+        <h1 className="topbar__title topbar__title--greeting">
+          {name !== undefined ? `Привет, ${name}` : 'Привет!'}
+        </h1>
       </header>
 
       <div className="screen__body">
@@ -144,16 +129,28 @@ export function WorkoutsScreen({
         )}
 
         <section className="hero" aria-label="Новая тренировка">
-          <span className="hero__circle" aria-hidden />
+          <span className="hero__circle" aria-hidden>
+            <img className="hero__icon" src={fitnessIcon} alt="" />
+          </span>
           <div className="hero__copy">
             <span className="hero__chip">
               <span className="hero__chip-dot" aria-hidden />
               Готов двигаться?
             </span>
             <h2 className="hero__title">
-              Начать
-              <br />
-              тренировку
+              {draft !== null && draft !== 'loading' ? (
+                <>
+                  Продолжить
+                  <br />
+                  тренировку
+                </>
+              ) : (
+                <>
+                  Поймай
+                  <br />
+                  свой ритм
+                </>
+              )}
             </h2>
             <p className="hero__sub">Собери занятие под себя</p>
           </div>
@@ -184,7 +181,7 @@ export function WorkoutsScreen({
                   aria-label={`Открыть тренировку ${typeLabel(item.type)}, ${formatDay(item.completedAt)}`}
                 >
                   <span className="recent-row__plate" aria-hidden>
-                    {rowIcon(item.type)}
+                    {typeIcon(item.type)}
                   </span>
                   <span className="recent-row__body">
                     <span className="recent-row__title">{typeLabel(item.type)}</span>

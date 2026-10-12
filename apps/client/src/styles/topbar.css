@@ -63,7 +63,19 @@
 }
 
 .topbar__title--step {
-  font-size: var(--step-3);
+  font-size: clamp(1.5rem, 7.2vw, 1.8rem);
+  line-height: 1.05;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* Приветствие с именем: чуть меньше, чтобы длинные имена помещались. */
+.topbar__title--greeting {
+  font-size: clamp(1.5rem, 7.2vw, 1.8rem);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar__right {
