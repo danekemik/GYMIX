@@ -1,9 +1,9 @@
 :root {
-  /* TYPE — одна широконогая гротескная семья на весь интерфейс
-   * (Inter): заголовки-дисплеи и текст; Mono — цифры весов и таймер. */
-  --font-display: 'Inter', 'SF Pro Display', 'Manrope', 'Segoe UI', system-ui, sans-serif;
-  --font-text: 'Inter', 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* TYPE — весь интерфейс на Unbounded Variable (400–700). Толщина зависит
+   * от контекста: 700 — главные заголовки, 600 — заголовки/кнопки/акценты,
+   * 550 — названия в списках, 500 — вторичные подписи, 450 — подписи/мета. */
+  --font-display: 'Unbounded Variable', 'Unbounded', system-ui, sans-serif;
+  --font-text: 'Unbounded Variable', 'Unbounded', system-ui, sans-serif;
 
   --step--2: 0.75rem;
   --step--1: 0.875rem;

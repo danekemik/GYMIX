@@ -106,9 +106,9 @@
 /* ——— Заголовки секций: обычный регистр, меньше главного. ——— */
 
 .section-title {
-  font-family: var(--font-text);
+  font-family: var(--font-display);
   font-size: var(--step-0);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.2;
   white-space: nowrap;
@@ -214,7 +214,7 @@ button.section-more {
 }
 
 .wk-card__title {
-  font-weight: 600;
+  font-weight: 550;
   font-size: var(--step-0);
   white-space: nowrap;
 }
@@ -225,6 +225,7 @@ button.section-more {
 
 .wk-card__meta {
   font-size: var(--step--1);
+  font-weight: 450;
   color: var(--ink-2);
 }
 
@@ -268,6 +269,7 @@ button.section-more {
 .wk-card__date {
   color: var(--ink-3);
   font-size: var(--step--2);
+  font-weight: 450;
 }
 
 .wk-card__menu svg {
@@ -342,6 +344,7 @@ button.section-more {
 
 .recent-row__sub {
   font-size: var(--step--1);
+  font-weight: 450;
   color: var(--ink-3);
 }
 
@@ -471,6 +474,7 @@ button.section-more {
 
 .resume__meta {
   font-size: var(--step--1);
+  font-weight: 450;
   color: var(--ink-2);
 }
 
@@ -502,11 +506,12 @@ button.section-more {
 .empty-train__title {
   font-family: var(--font-display);
   font-size: var(--step-1);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .empty-train__text {
   font-size: var(--step--1);
+  font-weight: 450;
   color: var(--ink-2);
   line-height: 1.4;
   margin-bottom: var(--space-2xs);
@@ -576,7 +581,7 @@ button.section-more {
 .settings-link__label {
   flex: 1;
   font-size: var(--step-0);
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .settings-link svg {
@@ -602,12 +607,14 @@ button.section-more {
 }
 
 .settings__title {
+  font-family: var(--font-display);
   font-size: var(--step-0);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .settings__text {
   font-size: var(--step--1);
+  font-weight: 450;
   color: var(--ink-2);
   line-height: 1.4;
 }
@@ -645,10 +652,11 @@ button.section-more {
 
 .excluded__name {
   font-size: var(--step-0);
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .excluded__meta {
   font-size: var(--step--2);
+  font-weight: 450;
   color: var(--ink-3);
 }
