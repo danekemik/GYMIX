@@ -21,11 +21,46 @@ import './styles/workouts.css';
 const root = document.getElementById('root');
 if (!root) throw new Error('нет #root');
 
+function StatusBar() {
+  return (
+    <div className="phone__statusbar" aria-hidden="true">
+      <span className="phone__clock">9:41</span>
+      <span className="phone__status-right">
+        <svg viewBox="0 0 18 12" fill="currentColor">
+          <rect x="0" y="8" width="3" height="4" rx="1" />
+          <rect x="4.5" y="5.5" width="3" height="6.5" rx="1" />
+          <rect x="9" y="3" width="3" height="9" rx="1" />
+          <rect x="13.5" y="0" width="3" height="12" rx="1" />
+        </svg>
+        <svg viewBox="0 0 18 13" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <path d="M1 4.6a11 11 0 0 1 16 0" strokeLinecap="round" />
+          <path d="M4 7.8a6.6 6.6 0 0 1 10 0" strokeLinecap="round" />
+          <path d="M7 11a2.6 2.6 0 0 1 4 0" strokeLinecap="round" />
+        </svg>
+        <svg viewBox="0 0 26 13" fill="none">
+          <rect x="0.8" y="0.8" width="22" height="11.4" rx="3.4" stroke="currentColor" strokeOpacity="0.5" strokeWidth="1.2" />
+          <rect x="2.4" y="2.4" width="16" height="8.2" rx="2" fill="currentColor" />
+          <path d="M24.6 4.4v4.2a2.2 2.2 0 0 0 0-4.2Z" fill="currentColor" fillOpacity="0.5" />
+        </svg>
+      </span>
+    </div>
+  );
+}
+
 createRoot(root).render(
   <StrictMode>
     <DbProvider>
-      <div className="device">
-        <App />
+      <div className="phone">
+        <div className="device">
+          <StatusBar />
+          <App />
+        </div>
+        <span className="phone__island" aria-hidden="true" />
+        <span className="phone__home" aria-hidden="true" />
+        <span className="phone__button phone__button--silent" aria-hidden="true" />
+        <span className="phone__button phone__button--vol-up" aria-hidden="true" />
+        <span className="phone__button phone__button--vol-down" aria-hidden="true" />
+        <span className="phone__button phone__button--power" aria-hidden="true" />
       </div>
     </DbProvider>
   </StrictMode>,
