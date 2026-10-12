@@ -1,47 +1,60 @@
+/* Плавающая «таблетка»: бар откреплён от краёв и поднят над home-индикатором.
+ * Активная вкладка — лаймовая пилюля, которая переезжает между вкладками. */
 .tabbar {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  left: var(--space-xs);
+  right: var(--space-xs);
+  bottom: calc(env(safe-area-inset-bottom) + var(--phone-bottom-inset, 0px) + var(--space-2xs));
   z-index: 40;
   display: flex;
-  border-top: 1px solid rgba(41, 46, 51, 0.55);
-  background: rgba(11, 13, 14, 0.78);
-  -webkit-backdrop-filter: blur(16px) saturate(1.5);
-  backdrop-filter: blur(16px) saturate(1.5);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding: 6px;
+  border: var(--border);
+  border-radius: 999px;
+  background: rgba(23, 26, 28, 0.9);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  backdrop-filter: blur(18px) saturate(1.4);
+  box-shadow: var(--shadow-l);
+}
+
+.tabbar__indicator {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc((100% - 12px) / 3);
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 20px rgba(168, 245, 58, 0.35);
+  transition: transform var(--dur) var(--ease-out);
 }
 
 .tabbar__tab {
   position: relative;
+  z-index: 1;
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-3xs);
-  padding: var(--space-xs) 0 var(--space-2xs);
+  padding: var(--space-2xs) 0;
   color: var(--ink-3);
-  font-size: var(--step--1);
   font-weight: 600;
   transition: color var(--dur-fast) var(--ease);
 }
 
-.tabbar__tab::after {
-  content: '';
-  width: 18px;
-  height: 3px;
-  border-radius: 2px;
-  background: transparent;
-  transition: background var(--dur-fast) var(--ease);
-}
-
 .tabbar__tab--on {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
-.tabbar__tab--on::after {
-  background: var(--accent);
-  box-shadow: var(--glow-accent);
+/* Фокус-ринг внутри вкладки: на лаймовой пилюле обычный лаймовый ореол не виден. */
+.tabbar__tab:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+  border-radius: 999px;
+}
+
+.tabbar__tab--on:focus-visible {
+  outline-color: var(--accent-ink);
 }
 
 .tabbar__icon {
@@ -54,7 +67,31 @@
   height: 22px;
 }
 
+/* Иконки-растры (чёрный силуэт на прозрачном) как маска: принимают currentColor. */
+.tabbar__glyph {
+  display: block;
+  width: 23px;
+  height: 23px;
+  background: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.tabbar__glyph--dumbbell {
+  -webkit-mask-image: url('../assets/tab-dumbbell.png');
+  mask-image: url('../assets/tab-dumbbell.png');
+}
+
+.tabbar__glyph--rise {
+  -webkit-mask-image: url('../assets/tab-rise.png');
+  mask-image: url('../assets/tab-rise.png');
+}
+
 .tabbar__label {
-  font-size: var(--step--2);
+  font-size: clamp(0.6875rem, 3.05vw, var(--step--2));
   letter-spacing: 0.01em;
 }

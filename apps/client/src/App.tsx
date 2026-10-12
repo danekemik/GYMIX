@@ -28,20 +28,12 @@ const TABS = [
   {
     id: 'workouts',
     label: 'Тренировки',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <path d="M4 8v8M6 6v12M8.5 8.5v7M15.5 8.5v7M18 6v12M20 8v8" strokeLinecap="round" />
-      </svg>
-    ),
+    icon: <span className="tabbar__glyph tabbar__glyph--dumbbell" />,
   },
   {
     id: 'progress',
     label: 'Прогресс',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" strokeLinecap="round" />
-      </svg>
-    ),
+    icon: <span className="tabbar__glyph tabbar__glyph--rise" />,
   },
   {
     id: 'profile',
@@ -350,7 +342,7 @@ export function App() {
 
   return (
     <div className="app">
-      <main className="app__main">{body}</main>
+      <main className={`app__main${step === 'home' && sub === undefined ? ' app__main--tabs' : ''}`}>{body}</main>
       {step === 'home' && sub === undefined && <TabBar tabs={TABS} active={tab} onChange={openTab} />}
     </div>
   );
