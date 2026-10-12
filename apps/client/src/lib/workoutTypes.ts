@@ -1,6 +1,8 @@
 import {
   MATRIX,
+  MGS_CATEGORIES,
   STRUCTURES,
+  type MgsCategory,
   type WorkoutType,
 } from '@gymix/structures';
 
@@ -28,6 +30,26 @@ export function workoutTypeCards(): WorkoutTypeCard[] {
 
 export function isMgs(type: WorkoutType): boolean {
   return type === 'Muscle Group Split';
+}
+
+/** Русские названия категорий второго шага Muscle Group Split. */
+export const MGS_CATEGORY_LABELS: Record<MgsCategory, string> = {
+  Chest: 'Грудь',
+  Back: 'Спина',
+  Shoulders: 'Плечи',
+  Legs: 'Ноги',
+  Arms: 'Руки',
+};
+
+/**
+ * Группы мышц для предпросмотра в строке формата.
+ * Muscle Group Split на этом шаге не разложен по группам — показываем
+ * категории, из которых пользователь выберет одну на втором шаге.
+ */
+export function previewGroups(card: WorkoutTypeCard): readonly string[] {
+  return isMgs(card.type)
+    ? MGS_CATEGORIES.map((category) => MGS_CATEGORY_LABELS[category])
+    : card.groups;
 }
 
 /** Человекочитаемые названия типов для списков (история, главная). */

@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { typeIcon } from '../lib/typeIcon';
-import { isMgs, type WorkoutTypeCard } from '../lib/workoutTypes';
+import { previewGroups, type WorkoutTypeCard } from '../lib/workoutTypes';
 
 interface WorkoutTypeRowProps {
   card: WorkoutTypeCard;
@@ -10,6 +10,7 @@ interface WorkoutTypeRowProps {
 
 export function WorkoutTypeRow({ card, selected, onSelect }: WorkoutTypeRowProps) {
   const metaId = useId();
+  const groups = previewGroups(card);
 
   return (
     <label className={`type-row ${selected ? 'type-row--on' : ''}`}>
@@ -27,8 +28,12 @@ export function WorkoutTypeRow({ card, selected, onSelect }: WorkoutTypeRowProps
       </span>
       <span className="type-row__body">
         <span className="type-row__name">{card.type}</span>
-        <span className="type-row__meta" id={metaId}>
-          {isMgs(card.type) ? 'Одна группа на выбор' : card.groups.join(' · ')}
+        <span className="type-row__groups" id={metaId}>
+          {groups.map((group) => (
+            <span className="type-row__group" key={group}>
+              {group}
+            </span>
+          ))}
         </span>
       </span>
       <span className="type-row__radio" aria-hidden />

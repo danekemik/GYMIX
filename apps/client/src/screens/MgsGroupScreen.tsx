@@ -5,18 +5,11 @@ import {
   type GeneratorMuscleGroup,
   type MgsCategory,
 } from '@gymix/structures';
+import { MGS_CATEGORY_LABELS } from '../lib/workoutTypes';
 interface MgsGroupScreenProps {
   onGroupSelect: (group: GeneratorMuscleGroup) => void;
   onBack: () => void;
 }
-
-const CATEGORY_LABEL: Record<MgsCategory, string> = {
-  Chest: 'Грудь',
-  Back: 'Спина',
-  Shoulders: 'Плечи',
-  Legs: 'Ноги',
-  Arms: 'Руки',
-};
 
 export function MgsGroupScreen({ onGroupSelect, onBack }: MgsGroupScreenProps) {
   const [category, setCategory] = useState<MgsCategory>('Chest');
@@ -49,7 +42,7 @@ export function MgsGroupScreen({ onGroupSelect, onBack }: MgsGroupScreenProps) {
               className={`mgs-cat ${value === category ? 'mgs-cat--on' : ''}`}
               onClick={() => setCategory(value)}
             >
-              {CATEGORY_LABEL[value]}
+              {MGS_CATEGORY_LABELS[value]}
             </button>
           ))}
         </div>
