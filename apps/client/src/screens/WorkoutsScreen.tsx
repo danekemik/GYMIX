@@ -60,6 +60,11 @@ export function WorkoutsScreen({
     };
   }, [db]);
 
+  useEffect(() => {
+    if (db === undefined) return;
+    void ensureDemoSeed(db);
+  }, [db]);
+
   const continueDraft = async () => {
     if (db === undefined || draft === null || draft === 'loading') return;
     setBusy(true);
