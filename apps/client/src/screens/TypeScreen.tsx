@@ -11,7 +11,7 @@ interface TypeScreenProps {
 }
 
 export function TypeScreen({ onSelect, onClose }: TypeScreenProps) {
-  const { counts, error } = useDb();
+  const { error } = useDb();
   const cards = useMemo(() => workoutTypeCards(), []);
   const [selected, setSelected] = useState<WorkoutType>('Full Body');
 
@@ -30,12 +30,6 @@ export function TypeScreen({ onSelect, onClose }: TypeScreenProps) {
         {error !== undefined && (
           <p className="body-error" role="alert">
             Не удалось открыть базу: {String(error)}
-          </p>
-        )}
-
-        {counts !== undefined && (
-          <p className="context-hint">
-            {cards.length} форматов · {counts.exercises} упражнений в каталоге
           </p>
         )}
 
