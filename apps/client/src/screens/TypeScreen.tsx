@@ -23,7 +23,7 @@ export function TypeScreen({ onSelect, onClose }: TypeScreenProps) {
             <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h1 className="topbar__title topbar__title--step">Тип тренировки</h1>
+        <h1 className="topbar__title topbar__title--step">Формат</h1>
       </header>
 
       <div className="screen__body">
@@ -39,7 +39,7 @@ export function TypeScreen({ onSelect, onClose }: TypeScreenProps) {
           </p>
         )}
 
-        <div className="type-list" role="radiogroup" aria-label="Тип тренировки">
+        <div className="type-list" role="radiogroup" aria-label="Формат">
           {cards.map((card) => (
             <WorkoutTypeRow
               key={card.type}
