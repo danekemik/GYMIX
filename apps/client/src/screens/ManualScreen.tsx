@@ -133,7 +133,7 @@ export function ManualScreen({ draft, onSelect, onBack, onDone, onToStructure }:
           />
         </div>
 
-        <ul className="manual-grid" role="listbox" aria-label="Подходящие упражнения">
+        <ul className="manual-grid" aria-label="Подходящие упражнения">
           {filtered.length === 0 && (
             <li className="manual-empty">
               {excluded.size > 0 && candidates.length === 0
@@ -173,9 +173,10 @@ export function ManualScreen({ draft, onSelect, onBack, onDone, onToStructure }:
                   <button
                     className="btn btn--ghost btn--sm manual-card__exclude"
                     disabled={saving !== undefined}
+                    aria-label="Не предлагать это упражнение"
                     onClick={() => void toggleExclude(candidate.name)}
                   >
-                    Не предлагать это упражнение
+                    Не предлагать
                   </button>
                   <button
                     className="btn btn--sm manual-card__pick"

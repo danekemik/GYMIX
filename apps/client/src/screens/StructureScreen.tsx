@@ -1,14 +1,15 @@
+import { useId } from 'react';
 import { plural, rosterRows, structureFor, type Draft } from '../lib/draft';
 
 interface StructureScreenProps {
   draft: Draft;
   onBack: () => void;
-  onBackVolume: () => void;
   onManual: () => void;
   onGenerate: () => void;
 }
 
-export function StructureScreen({ draft, onBack, onBackVolume, onManual, onGenerate }: StructureScreenProps) {
+export function StructureScreen({ draft, onBack, onManual, onGenerate }: StructureScreenProps) {
+  const progressLabelId = useId();
   const structure = structureFor(draft);
   const rows = rosterRows(structure.slots);
   const total = structure.exerciseCount;
@@ -34,10 +35,17 @@ export function StructureScreen({ draft, onBack, onBackVolume, onManual, onGener
         </div>
 
         <div className="progress">
-          <span className="progress__label">
+          <span className="progress__label" id={progressLabelId}>
             Заполнено {filled} из {plural(total, ['слота', 'слотов', 'слотов'])}
           </span>
-          <span className="progress__track" aria-hidden>
+          <span
+            className="progress__track"
+            role="progressbar"
+            aria-labelledby={progressLabelId}
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={filled}
+          >
             <span className="progress__bar" style={{ width: `${(filled / total) * 100}%` }} />
           </span>
         </div>
@@ -79,11 +87,8 @@ export function StructureScreen({ draft, onBack, onBackVolume, onManual, onGener
           <button className="btn btn--primary" onClick={onManual}>
             Выбрать упражнения
           </button>
-          <button className="btn btn--ghost cta-row__second" onClick={onGenerate}>
+          <button className="btn btn--ghost" onClick={onGenerate}>
             Сгенерировать тренировку
-          </button>
-          <button className="btn btn--ghost cta-row__second" onClick={onBackVolume}>
-            Изменить объём
           </button>
         </div>
       </div>

@@ -179,7 +179,6 @@ export function App() {
     body = (
       <StructureScreen
         draft={draft}
-        onBackVolume={() => setStep('volume')}
         onBack={() => setStep('volume')}
         onManual={() => setStep('manual')}
         onGenerate={() => {

@@ -330,6 +330,15 @@
 .manual-card__pick {
   margin-left: auto;
   flex-shrink: 0;
+  border: 1px solid var(--accent);
+  background: none;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.manual-card__pick[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 .manual-card__exclude {
@@ -337,11 +346,15 @@
   padding: var(--space-3xs) var(--space-2xs);
   border: 0;
   border-radius: var(--radius-s);
-  background: var(--surface-2);
+  background: none;
   color: var(--ink-2);
   font-size: var(--step--2);
   font-weight: 500;
   cursor: pointer;
+}
+
+.manual-card__exclude:hover {
+  color: var(--ink);
 }
 
 .manual-card__exclude:disabled {
