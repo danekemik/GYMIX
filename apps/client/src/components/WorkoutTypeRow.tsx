@@ -19,7 +19,7 @@ export function WorkoutTypeRow({ card, selected, onSelect }: WorkoutTypeRowProps
         name="workout-type"
         className="type-row__input"
         aria-label={card.type}
-        aria-describedby={metaId}
+        aria-describedby={groups.length > 0 ? metaId : undefined}
         checked={selected}
         onChange={onSelect}
       />
@@ -28,13 +28,15 @@ export function WorkoutTypeRow({ card, selected, onSelect }: WorkoutTypeRowProps
       </span>
       <span className="type-row__body">
         <span className="type-row__name">{card.type}</span>
-        <span className="type-row__groups" id={metaId}>
-          {groups.map((group) => (
-            <span className="type-row__group" key={group}>
-              {group}
-            </span>
-          ))}
-        </span>
+        {groups.length > 0 && (
+          <span className="type-row__groups" id={metaId}>
+            {groups.map((group) => (
+              <span className="type-row__group" key={group}>
+                {group}
+              </span>
+            ))}
+          </span>
+        )}
       </span>
       <span className="type-row__radio" aria-hidden />
     </label>

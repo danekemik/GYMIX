@@ -1,6 +1,5 @@
 import {
   MATRIX,
-  MGS_CATEGORIES,
   STRUCTURES,
   type MgsCategory,
   type WorkoutType,
@@ -45,13 +44,11 @@ export const MGS_CATEGORY_LABELS: Record<MgsCategory, string> = {
 
 /**
  * Группы мышц для предпросмотра в строке формата.
- * Muscle Group Split на этом шаге не разложен по группам — показываем
- * категории, из которых пользователь выберет одну на втором шаге.
+ * Muscle Group Split на этом шаге не раскладывается по группам — пользователь
+ * выберет категорию на втором шаге, поэтому предпросмотр пуст.
  */
 export function previewGroups(card: WorkoutTypeCard): readonly string[] {
-  return isMgs(card.type)
-    ? MGS_CATEGORIES.map((category) => MGS_CATEGORY_LABELS[category])
-    : card.groups;
+  return isMgs(card.type) ? [] : card.groups;
 }
 
 /** Человекочитаемые названия типов для списков (история, главная). */
