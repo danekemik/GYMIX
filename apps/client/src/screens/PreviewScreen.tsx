@@ -251,12 +251,12 @@ export function PreviewScreen({
             Начать тренировку
           </button>
           {regenerable && (
-            <button className="btn btn--ghost cta-row__second" onClick={onRegenerate}>
+            <button className="btn btn--ghost" onClick={onRegenerate}>
               Перегенерировать
             </button>
           )}
           {regenerable && onEditSelection !== undefined && (
-            <button className="btn btn--ghost cta-row__second" onClick={onEditSelection}>
+            <button className="btn btn--ghost" onClick={onEditSelection}>
               Редактировать выбор
             </button>
           )}
@@ -321,7 +321,7 @@ export function PreviewScreen({
               />
             </div>
 
-            <ul className="replace__list" role="listbox" aria-label="Кандидаты на замену">
+            <ul className="replace__list" aria-label="Кандидаты на замену">
               {filtered.length === 0 && (
                 <li className="replace__empty">Подходящих упражнений не нашлось.</li>
               )}

@@ -278,7 +278,7 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
                   <button className="btn btn--primary" disabled={saving} onClick={() => void save()}>
                     Сохранить
                   </button>
-                  <button className="btn btn--ghost cta-row__second" disabled={saving} onClick={() => setEditing(false)}>
+                  <button className="btn btn--ghost" disabled={saving} onClick={() => setEditing(false)}>
                     Отмена
                   </button>
                 </>

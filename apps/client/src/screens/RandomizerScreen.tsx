@@ -195,7 +195,7 @@ export function RandomizerScreen({
               <button className="btn btn--primary" onClick={() => onContinue(workout)}>
                 Продолжить
               </button>
-              <button className="btn btn--ghost cta-row__second" onClick={onRegenerate}>
+              <button className="btn btn--ghost" onClick={onRegenerate}>
                 Перегенерировать
               </button>
             </>
