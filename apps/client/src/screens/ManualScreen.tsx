@@ -10,16 +10,21 @@ import { IconDumbbellArt } from '../lib/icons';
 
 interface ManualScreenProps {
   draft: Draft;
+  startSlotKey?: string;
   onSelect: (slotKey: string, name: string) => void;
   onBack: () => void;
   onDone: () => void;
   onToStructure: () => void;
 }
 
-export function ManualScreen({ draft, onSelect, onBack, onDone, onToStructure }: ManualScreenProps) {
+export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, onToStructure }: ManualScreenProps) {
   const { db } = useDb();
   const slots = useMemo(() => structureFor(draft).slots, [draft]);
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(() => {
+    if (startSlotKey === undefined) return 0;
+    const found = slots.findIndex((s) => s.slotKey === startSlotKey);
+    return found < 0 ? 0 : found;
+  });
   const [query, setQuery] = useState('');
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
   const [saving, setSaving] = useState<string | undefined>(undefined);
@@ -201,7 +206,7 @@ export function ManualScreen({ draft, onSelect, onBack, onDone, onToStructure }:
           </div>
         )}
 
-        <div className="screen__cta">
+        <div className="screen__cta screen__cta--sticky">
           {isLast ? (
             filled === total ? (
               <button className="btn btn--primary" onClick={onDone}>

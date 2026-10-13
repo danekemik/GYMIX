@@ -51,43 +51,52 @@ export function plural(n: number, [one, few, many]: [string, string, string]): s
   return `${n} ${many}`;
 }
 
+export interface RosterSlot {
+  readonly slotKey: string;
+  readonly label: string;
+  readonly alt?: string;
+}
+
 export interface RosterRow {
   readonly key: string;
   readonly label: string;
   readonly alt?: string;
   readonly count: number;
+  readonly slots: readonly RosterSlot[];
 }
 
 /**
  * Слоты структуры, сгруппированные по целевой группе, в порядке появления.
  * Слот с альтернативами («Бицепс или Трицепс») остаётся отдельной строкой.
+ * Внутри строки сохраняется исходный порядок слотов — он нужен для раскрытия.
  */
 export function rosterRows(slots: readonly Slot[]): RosterRow[] {
   const order: string[] = [];
-  const counts = new Map<string, number>();
+  const byKey = new Map<string, { label: string; alt?: string; slots: RosterSlot[] }>();
 
   for (const slot of slots) {
-    const key = rosterKey(slot);
-    counts.set(key, (counts.get(key) ?? 0) + 1);
-    if (counts.get(key) === 1) order.push(key);
+    const label = slot.allowedGroupIds[0] ?? 'Слот';
+    const alt = slot.alternativeGroupIds.join(' или ');
+    const key = alt ? `${label}±${alt}` : label;
+    let entry = byKey.get(key);
+    if (entry === undefined) {
+      entry = { label, ...(alt ? { alt } : {}), slots: [] };
+      byKey.set(key, entry);
+      order.push(key);
+    }
+    entry.slots.push({ slotKey: slot.slotKey, label, ...(alt ? { alt } : {}) });
   }
 
   return order.map((key) => {
-    const label = key.split('±')[0]!;
-    const alt = key.split('±')[1];
+    const entry = byKey.get(key)!;
     return {
       key,
-      label,
-      ...(alt ? { alt } : {}),
-      count: counts.get(key)!,
+      label: entry.label,
+      ...(entry.alt ? { alt: entry.alt } : {}),
+      count: entry.slots.length,
+      slots: entry.slots,
     };
   });
-}
-
-function rosterKey(slot: Slot): string {
-  const label = slot.allowedGroupIds[0] ?? 'Слот';
-  const alt = slot.alternativeGroupIds.join(' или ');
-  return alt ? `${label}±${alt}` : label;
 }
 
 /** Уникальные группы охвата для карточки объёма. */

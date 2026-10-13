@@ -17,3 +17,8 @@
 .app__main--tabs {
   padding-bottom: calc(108px + env(safe-area-inset-bottom) + var(--phone-bottom-inset, 0px));
 }
+
+/* экран с липким CTA сам держит нижний отступ — резерв не нужен */
+.app__main:has(.screen__cta--sticky) {
+  padding-bottom: 0;
+}

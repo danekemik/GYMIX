@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { plural, rosterRows, structureFor, type Draft } from '../lib/draft';
 
 interface StructureScreenProps {
@@ -6,14 +6,26 @@ interface StructureScreenProps {
   onBack: () => void;
   onManual: () => void;
   onGenerate: () => void;
+  onOpenSlot: (slotKey: string) => void;
 }
 
-export function StructureScreen({ draft, onBack, onManual, onGenerate }: StructureScreenProps) {
+export function StructureScreen({ draft, onBack, onManual, onGenerate, onOpenSlot }: StructureScreenProps) {
   const progressLabelId = useId();
+  const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(new Set());
   const structure = structureFor(draft);
   const rows = rosterRows(structure.slots);
   const total = structure.exerciseCount;
-  const filled = Object.values(draft.selections ?? {}).filter((name) => name.length > 0).length;
+  const selections = draft.selections ?? {};
+  const filled = Object.values(selections).filter((name) => name.length > 0).length;
+
+  const toggle = (key: string) => {
+    setOpenKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
 
   return (
     <div className="screen">
@@ -52,27 +64,54 @@ export function StructureScreen({ draft, onBack, onManual, onGenerate }: Structu
 
         <ol className="structure">
           {rows.map((row) => {
-            const rowFilled = draft.selections === undefined
-              ? 0
-              : structure.slots
-                  .filter((slot) => {
-                    const label = slot.allowedGroupIds[0] ?? 'Слот';
-                    const alt = slot.alternativeGroupIds.join(' или ');
-                    return alt ? `${label}±${alt}` === row.key : label === row.key;
-                  })
-                  .filter((slot) => (draft.selections![slot.slotKey] ?? '').length > 0).length;
+            const isOpen = openKeys.has(row.key);
+            const rowFilled = row.slots.filter((slot) => (selections[slot.slotKey] ?? '').length > 0).length;
+            const done = rowFilled === row.count;
             return (
-              <li key={row.key} className="structure__row">
-                <span className="structure__group">
-                  {row.label}
-                  {row.alt && <em className="slots__alt">или {row.alt}</em>}
-                </span>
-                <span className="structure__side">
-                  <span className="slots__count">{row.count} ×</span>
-                  <span className={rowFilled === row.count ? 'structure__status structure__status--ok' : 'structure__status'}>
-                    {rowFilled === 0 ? 'не выбрано' : rowFilled === row.count ? 'готово' : `${rowFilled} из ${row.count}`}
+              <li key={row.key} className={isOpen ? 'structure__row structure__row--open' : 'structure__row'}>
+                <button
+                  type="button"
+                  className="structure__toggle"
+                  aria-expanded={isOpen}
+                  onClick={() => toggle(row.key)}
+                >
+                  <span className="structure__group">
+                    {row.label}
+                    {row.alt && <em className="slots__alt">или {row.alt}</em>}
                   </span>
-                </span>
+                  <span className="structure__side">
+                    <span className="slots__count">{row.count} ×</span>
+                    <span className={done ? 'structure__status structure__status--ok' : 'structure__status'}>
+                      {rowFilled === 0 ? 'не выбрано' : done ? 'готово' : `${rowFilled} из ${row.count}`}
+                    </span>
+                    <svg className="structure__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                      <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                </button>
+
+                {isOpen && (
+                  <ul className="structure__slots">
+                    {row.slots.map((slot, index) => {
+                      const chosen = selections[slot.slotKey] ?? '';
+                      return (
+                        <li key={slot.slotKey}>
+                          <button
+                            type="button"
+                            className={chosen ? 'slot-row slot-row--done' : 'slot-row'}
+                            onClick={() => onOpenSlot(slot.slotKey)}
+                          >
+                            <span className="slot-row__index">{index + 1}</span>
+                            <span className="slot-row__value">{chosen || 'Выбрать упражнение'}</span>
+                            <svg className="slot-row__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                              <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </li>
             );
           })}
@@ -83,7 +122,7 @@ export function StructureScreen({ draft, onBack, onManual, onGenerate }: Structu
           вручную или сгенерируй подбор.
         </aside>
 
-        <div className="screen__cta">
+        <div className="screen__cta screen__cta--sticky">
           <button className="btn btn--primary" onClick={onManual}>
             Выбрать упражнения
           </button>

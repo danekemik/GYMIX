@@ -19,6 +19,31 @@
   padding-top: var(--space-m);
 }
 
+/* липкий низ: действия остаются в зоне досягаемости на длинных экранах */
+.screen__cta--sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: var(--base);
+  padding-bottom: calc(var(--space-m) + env(safe-area-inset-bottom) + var(--phone-bottom-inset, 0px));
+}
+
+.screen__cta--sticky::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 100%;
+  height: var(--space-m);
+  background: linear-gradient(to top, var(--base), transparent);
+  pointer-events: none;
+}
+
+/* отступ body компенсирует сам липкий CTA */
+.screen:has(.screen__cta--sticky) .screen__body {
+  padding-bottom: 0;
+}
+
 .context {
   display: flex;
   align-items: baseline;

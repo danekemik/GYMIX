@@ -72,6 +72,7 @@ export function App() {
   const [resume, setResume] = useState<Nullable<ResumedSession>>(undefined);
   const [fromTemplate, setFromTemplate] = useState(false);
   const [selections, setSelections] = useState<Record<string, string>>({});
+  const [manualSlotKey, setManualSlotKey] = useState<Nullable<string>>(undefined);
   const [sub, setSub] = useState<Nullable<Sub>>(undefined);
 
   const exitBuilder = () => {
@@ -83,6 +84,7 @@ export function App() {
     setResume(undefined);
     setFromTemplate(false);
     setSelections({});
+    setManualSlotKey(undefined);
   };
 
   const startBuilder = (type: WorkoutType) => {
@@ -139,6 +141,7 @@ export function App() {
       setSelections(next);
       setFromTemplate(false);
       setGenerated(undefined);
+      setManualSlotKey(undefined);
       setStep('manual');
     } catch {
       // Безобидный фолбэк: остаёмся на главной при сбое чтения шаблона.
@@ -180,7 +183,14 @@ export function App() {
       <StructureScreen
         draft={draft}
         onBack={() => setStep('volume')}
-        onManual={() => setStep('manual')}
+        onManual={() => {
+          setManualSlotKey(undefined);
+          setStep('manual');
+        }}
+        onOpenSlot={(slotKey) => {
+          setManualSlotKey(slotKey);
+          setStep('manual');
+        }}
         onGenerate={() => {
           setSeed(randomSeed());
           setGenerated(undefined);
@@ -192,6 +202,7 @@ export function App() {
     body = (
       <ManualScreen
         draft={draft}
+        {...(manualSlotKey !== undefined ? { startSlotKey: manualSlotKey } : {})}
         onSelect={(slotKey, name) => {
           const next = { ...selections };
           if (name === '') delete next[slotKey];
@@ -262,6 +273,7 @@ export function App() {
           const next: Record<string, string> = {};
           for (const entry of generated.entries) next[entry.slotKey] = entry.exercise.name;
           setSelections(next);
+          setManualSlotKey(undefined);
           setStep('manual');
         }}
         onRegenerate={() => {
