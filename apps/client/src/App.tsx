@@ -8,6 +8,7 @@ import { getCatalog } from './lib/catalog';
 import type { Draft } from './lib/draft';
 import type { ResumedSession } from './lib/session';
 import { workoutFromTemplate } from './lib/templates';
+import { withViewTransition } from './lib/viewTransition';
 import { ExecuteScreen, type FinishPayload } from './screens/ExecuteScreen';
 import { FinishScreen } from './screens/FinishScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
@@ -109,6 +110,11 @@ export function App() {
   const openTemplates = () => setSub({ kind: 'templates' });
   const openRecord = (id: string) => setSub({ kind: 'record', id });
 
+  // «Главная → Формат»: лаймовая кнопка перелетает в нижнюю «Продолжить»,
+  // остальной экран мягко перекрёстно затухает (View Transitions API).
+  const openFormats = () => withViewTransition(() => setStep('type'));
+  const closeFormats = () => withViewTransition(() => setStep('home'));
+
   const openTemplate = async (templateId: string) => {
     if (db === undefined) return;
     try {
@@ -144,7 +150,7 @@ export function App() {
     body = (
       <TypeScreen
         onSelect={startBuilder}
-        onClose={() => setStep('home')}
+        onClose={closeFormats}
       />
     );
   } else if (step === 'mgs') {
@@ -322,7 +328,7 @@ export function App() {
   } else if (tab === 'workouts') {
     body = (
       <WorkoutsScreen
-        onCreate={() => setStep('type')}
+        onCreate={openFormats}
         onOpenActivity={openHistory}
         onOpenSession={openRecord}
         onResume={(session) => {

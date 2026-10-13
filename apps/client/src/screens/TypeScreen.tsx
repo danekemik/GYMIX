@@ -45,7 +45,7 @@ export function TypeScreen({ onSelect, onClose }: TypeScreenProps) {
         </div>
 
         <div className="screen__cta">
-          <Button variant="primary" onClick={() => onSelect(selected)}>
+          <Button variant="primary" className="vt-formats-cta" onClick={() => onSelect(selected)}>
             Продолжить
           </Button>
         </div>

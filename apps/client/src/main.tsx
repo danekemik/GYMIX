@@ -15,6 +15,7 @@ import './styles/segmented.css';
 import './styles/slots.css';
 import './styles/tabbar.css';
 import './styles/topbar.css';
+import './styles/transitions.css';
 import './styles/type-list.css';
 import './styles/workouts.css';
 

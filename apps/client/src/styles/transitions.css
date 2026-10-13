@@ -1,0 +1,53 @@
+/* ——— Переход «Выбрать тренировку» → экран форматов ———
+ * Общий элемент-«пилюля» перелетает из hero-кнопки на главной в нижнюю
+ * кнопку «Продолжить» на экране форматов, а остальной интерфейс мягко
+ * перекрёстно затухает. Анимируется только в браузерах с View Transitions
+ * API; иначе переход мгновенный (см. lib/viewTransition.ts). */
+
+.hero__cta,
+.vt-formats-cta {
+  view-transition-name: formats-pill;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Общий элемент: морфинг положения, размера и радиуса скругления. */
+  ::view-transition-group(formats-pill) {
+    animation-duration: 440ms;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  ::view-transition-old(formats-pill) {
+    animation: 180ms var(--ease) both vt-fade-out;
+  }
+
+  ::view-transition-new(formats-pill) {
+    animation: 320ms var(--ease-out) both vt-fade-in;
+  }
+
+  /* Остальной экран: быстрый перекрёстный фейд без смещения корпуса телефона. */
+  ::view-transition-old(root) {
+    animation: 180ms var(--ease) both vt-fade-out;
+  }
+
+  ::view-transition-new(root) {
+    animation: 300ms var(--ease-out) both vt-fade-in;
+  }
+}
+
+@keyframes vt-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
