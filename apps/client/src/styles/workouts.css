@@ -357,7 +357,8 @@ button.section-more {
 
 .recent-row__plate .type-icon--upper-body,
 .recent-row__plate .type-icon--lower-body,
-.recent-row__plate .type-icon--push {
+.recent-row__plate .type-icon--push,
+.recent-row__plate .type-icon--pull {
   width: 34px;
   height: 34px;
 }

@@ -79,7 +79,8 @@
 .type-icon--full-body,
 .type-icon--upper-body,
 .type-icon--lower-body,
-.type-icon--push {
+.type-icon--push,
+.type-icon--pull {
   display: block;
   background-color: currentColor;
   -webkit-mask: var(--type-icon-mask) center / contain no-repeat;
@@ -90,6 +91,7 @@
 .type-icon--upper-body { --type-icon-mask: url('../assets/type-upper-body.png'); }
 .type-icon--lower-body { --type-icon-mask: url('../assets/type-lower-body.png'); }
 .type-icon--push { --type-icon-mask: url('../assets/type-push.png'); }
+.type-icon--pull { --type-icon-mask: url('../assets/type-pull.png'); }
 
 .type-row__plate .type-icon--full-body {
   width: 28px;
@@ -98,7 +100,8 @@
 
 .type-row__plate .type-icon--upper-body,
 .type-row__plate .type-icon--lower-body,
-.type-row__plate .type-icon--push {
+.type-row__plate .type-icon--push,
+.type-row__plate .type-icon--pull {
   width: 30px;
   height: 30px;
 }

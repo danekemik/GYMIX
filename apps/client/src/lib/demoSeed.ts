@@ -25,7 +25,7 @@ interface DemoSpec {
 const DEMO_SPECS: readonly DemoSpec[] = [
   { type: 'Full Body', volume: 'Расширенная', exercises: 10, durationMin: 53, daysAgo: 1, weightFrom: 20, weightTo: 60 },
   { type: 'Upper Body', volume: 'Стандартная', exercises: 7, durationMin: 34, daysAgo: 3, weightFrom: 15, weightTo: 45 },
-  { type: 'Legs', volume: 'Стандартная', exercises: 6, durationMin: 41, daysAgo: 6, weightFrom: 30, weightTo: 90 },
+  { type: 'Lower Body', volume: 'Стандартная', exercises: 6, durationMin: 41, daysAgo: 6, weightFrom: 30, weightTo: 90 },
   { type: 'Push', volume: 'Компактная', exercises: 4, durationMin: 26, daysAgo: 9, weightFrom: 10, weightTo: 40 },
 ];
 

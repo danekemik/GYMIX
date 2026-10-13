@@ -19,7 +19,9 @@ export interface WorkoutTypeCard {
  * берутся из матрицы, а не захардкожены.
  */
 export function workoutTypeCards(): WorkoutTypeCard[] {
-  return STRUCTURES.filter((s) => s.volume === 'Стандартная').map((structure) => {
+  return STRUCTURES.filter(
+    (s) => s.volume === 'Стандартная' && s.type !== 'Legs',
+  ).map((structure) => {
     const groups = [...new Set(structure.slots.flatMap((slot) => slot.allowedGroupIds))];
     const counts = (['Компактная', 'Стандартная', 'Расширенная'] as const).map(
       (volume) => MATRIX[structure.type][volume],

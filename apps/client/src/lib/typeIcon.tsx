@@ -7,6 +7,7 @@ export function typeIcon(type: string): ReactElement {
   if (type === 'Upper Body') return <span className="type-icon type-icon--upper-body" />;
   if (type === 'Lower Body') return <span className="type-icon type-icon--lower-body" />;
   if (type === 'Push') return <span className="type-icon type-icon--push" />;
+  if (type === 'Pull') return <span className="type-icon type-icon--pull" />;
   if (type === 'Muscle Group Split') return <IconTorso />;
   if (type === 'Legs') return <IconLegs />;
   return <IconFigure />;
