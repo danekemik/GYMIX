@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { VOLUME_LEVELS, type VolumeLevel } from '@gymix/structures';
 import { Button } from '../components/Button';
 import { exerciseCount, plural, type Draft } from '../lib/draft';
-import { coverageGroups, structureFor } from '../lib/draft';
 import { isMgs } from '../lib/workoutTypes';
 
 interface VolumeScreenProps {
@@ -41,10 +40,6 @@ export function VolumeScreen({ draft, onVolumeChange, onContinue, onBack }: Volu
 
         <div className="volume-grid">
           {VOLUME_LEVELS.map((value) => {
-            const structure = structureFor({ ...draft, volume: value });
-            const groups = isMgs(draft.type)
-              ? [draft.mgsGroup ?? 'группа на выбор']
-              : coverageGroups(structure.slots);
             const count = exerciseCount({ ...draft, volume: value });
             const selected = volume === value;
             return (
@@ -67,11 +62,6 @@ export function VolumeScreen({ draft, onVolumeChange, onContinue, onBack }: Volu
                 <span className="volume-card__bottom">
                   <span className="volume-card__count">
                     {plural(count, ['упражнение', 'упражнения', 'упражнений'])}
-                  </span>
-                  <span className="volume-card__groups">
-                    {groups.length > 1
-                      ? plural(groups.length, ['группа', 'группы', 'групп'])
-                      : groups[0]}
                   </span>
                 </span>
               </button>
