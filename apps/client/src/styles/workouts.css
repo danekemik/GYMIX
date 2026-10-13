@@ -354,7 +354,8 @@ button.section-more {
 .recent-row__plate .type-icon--upper-body,
 .recent-row__plate .type-icon--lower-body,
 .recent-row__plate .type-icon--push,
-.recent-row__plate .type-icon--pull {
+.recent-row__plate .type-icon--pull,
+.recent-row__plate .type-icon--muscle-group-split {
   width: 34px;
   height: 34px;
 }
