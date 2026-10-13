@@ -12,12 +12,6 @@ interface VolumeScreenProps {
   onBack: () => void;
 }
 
-const VOLUME_SUBTITLE: Record<VolumeLevel, string> = {
-  Компактная: 'Быстрая тренировка',
-  Стандартная: 'Сбалансированный объём',
-  Расширенная: 'Максимальный объём',
-};
-
 export function VolumeScreen({ draft, onVolumeChange, onContinue, onBack }: VolumeScreenProps) {
   const [volume, setVolume] = useState<VolumeLevel>(draft.volume);
 
@@ -70,7 +64,6 @@ export function VolumeScreen({ draft, onVolumeChange, onContinue, onBack }: Volu
                     </span>
                   )}
                 </span>
-                <span className="volume-card__sub">{VOLUME_SUBTITLE[value]}</span>
                 <span className="volume-card__bottom">
                   <span className="volume-card__count">
                     {plural(count, ['упражнение', 'упражнения', 'упражнений'])}
