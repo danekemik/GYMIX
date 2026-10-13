@@ -75,6 +75,19 @@
   height: 22px;
 }
 
+/* Силуэт Full Body: PNG-маска, окрашивается в currentColor как остальные иконки. */
+.type-icon--full-body {
+  display: block;
+  background-color: currentColor;
+  -webkit-mask: url('../assets/type-full-body.png') center / contain no-repeat;
+  mask: url('../assets/type-full-body.png') center / contain no-repeat;
+}
+
+.type-row__plate .type-icon--full-body {
+  width: 22px;
+  height: 26px;
+}
+
 .type-row--on .type-row__plate {
   background: var(--accent);
   color: var(--accent-ink);

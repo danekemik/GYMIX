@@ -350,6 +350,11 @@ button.section-more {
   height: 24px;
 }
 
+.recent-row__plate .type-icon--full-body {
+  width: 24px;
+  height: 28px;
+}
+
 .recent-row__body {
   display: flex;
   flex-direction: column;
