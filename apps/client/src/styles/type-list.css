@@ -93,11 +93,7 @@
 .type-icon--push { --type-icon-mask: url('../assets/type-push.png'); }
 .type-icon--pull { --type-icon-mask: url('../assets/type-pull.png'); }
 
-.type-row__plate .type-icon--full-body {
-  width: 28px;
-  height: 32px;
-}
-
+.type-row__plate .type-icon--full-body,
 .type-row__plate .type-icon--upper-body,
 .type-row__plate .type-icon--lower-body,
 .type-row__plate .type-icon--push,

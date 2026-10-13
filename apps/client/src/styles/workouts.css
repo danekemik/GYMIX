@@ -350,11 +350,7 @@ button.section-more {
   height: 24px;
 }
 
-.recent-row__plate .type-icon--full-body {
-  width: 32px;
-  height: 36px;
-}
-
+.recent-row__plate .type-icon--full-body,
 .recent-row__plate .type-icon--upper-body,
 .recent-row__plate .type-icon--lower-body,
 .recent-row__plate .type-icon--push,
