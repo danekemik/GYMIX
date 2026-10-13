@@ -75,17 +75,32 @@
   height: 22px;
 }
 
-/* Силуэт Full Body: PNG-маска, окрашивается в currentColor как остальные иконки. */
-.type-icon--full-body {
+/* Силуэты форматов: PNG-маски, окрашиваются в currentColor как остальные иконки. */
+.type-icon--full-body,
+.type-icon--upper-body,
+.type-icon--lower-body,
+.type-icon--push {
   display: block;
   background-color: currentColor;
-  -webkit-mask: url('../assets/type-full-body.png') center / contain no-repeat;
-  mask: url('../assets/type-full-body.png') center / contain no-repeat;
+  -webkit-mask: var(--type-icon-mask) center / contain no-repeat;
+  mask: var(--type-icon-mask) center / contain no-repeat;
 }
+
+.type-icon--full-body { --type-icon-mask: url('../assets/type-full-body.png'); }
+.type-icon--upper-body { --type-icon-mask: url('../assets/type-upper-body.png'); }
+.type-icon--lower-body { --type-icon-mask: url('../assets/type-lower-body.png'); }
+.type-icon--push { --type-icon-mask: url('../assets/type-push.png'); }
 
 .type-row__plate .type-icon--full-body {
   width: 28px;
   height: 32px;
+}
+
+.type-row__plate .type-icon--upper-body,
+.type-row__plate .type-icon--lower-body,
+.type-row__plate .type-icon--push {
+  width: 30px;
+  height: 30px;
 }
 
 .type-row--on .type-row__plate {

@@ -355,6 +355,13 @@ button.section-more {
   height: 36px;
 }
 
+.recent-row__plate .type-icon--upper-body,
+.recent-row__plate .type-icon--lower-body,
+.recent-row__plate .type-icon--push {
+  width: 34px;
+  height: 34px;
+}
+
 .recent-row__body {
   display: flex;
   flex-direction: column;
