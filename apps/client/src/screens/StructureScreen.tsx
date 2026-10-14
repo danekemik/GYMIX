@@ -31,8 +31,9 @@ export function StructureScreen({ draft, onBack, onManual, onGenerate, onOpenSlo
       <div className="screen__body">
         <div className="volume-head">
           <span className="context__type">{draft.type}</span>
-          <span className="volume-head__meta">
-            {draft.volume} · {plural(total, ['упражнение', 'упражнения', 'упражнений'])}
+          <span className="volume-head__meta volume-head__meta--stack">
+            <span>{draft.volume}</span>
+            <span>{plural(total, ['упражнение', 'упражнения', 'упражнений'])}</span>
           </span>
         </div>
 

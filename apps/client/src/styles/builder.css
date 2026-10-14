@@ -19,6 +19,15 @@
   color: var(--ink-3);
 }
 
+.volume-head__meta--stack {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  line-height: 1.35;
+}
+
 .volume-grid {
   display: grid;
   gap: var(--space-xs);
