@@ -22,6 +22,16 @@ import './styles/workouts.css';
 const root = document.getElementById('root');
 if (!root) throw new Error('нет #root');
 
+// PGlite (Postgres в WASM) при первом монтировании пустого каталога в
+// IndexedDB бросает немой `FS.ErrnoError` из своей файловой обвязки. Ошибка
+// безвредна — база создаётся и засеивается корректно, — но всплывает как
+// непойманная и засоряет консоль. Гасим только её, прочие ошибки пропускаем.
+window.addEventListener('error', (event) => {
+  const value = event.error ?? event.message;
+  const name = typeof value === 'string' ? value : (value as { name?: string })?.name;
+  if (name === 'ErrnoError') event.preventDefault();
+});
+
 function StatusBar() {
   return (
     <div className="phone__statusbar" aria-hidden="true">
