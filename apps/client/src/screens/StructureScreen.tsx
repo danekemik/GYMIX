@@ -65,9 +65,11 @@ export function StructureScreen({ draft, onBack, onManual, onGenerate, onOpenSlo
                   </span>
                   <span className="structure__side">
                     <span className="slots__count">{row.count} ×</span>
-                    <span className={done ? 'structure__status structure__status--ok' : 'structure__status'}>
-                      {rowFilled === 0 ? 'не выбрано' : done ? 'готово' : `${rowFilled} из ${row.count}`}
-                    </span>
+                    {rowFilled > 0 && (
+                      <span className={done ? 'structure__status structure__status--ok' : 'structure__status'}>
+                        {done ? 'готово' : `${rowFilled} из ${row.count}`}
+                      </span>
+                    )}
                   </span>
                 </div>
 
@@ -95,11 +97,6 @@ export function StructureScreen({ draft, onBack, onManual, onGenerate, onOpenSlo
             );
           })}
         </ol>
-
-        <aside className="note">
-          Число слотов фиксировано — это структура тренировки. Заполни их
-          вручную или сгенерируй подбор.
-        </aside>
 
         <div className="screen__cta screen__cta--sticky">
           <button className="btn btn--primary" onClick={onManual}>
