@@ -30,6 +30,8 @@
   align-items: flex-end;
   text-align: right;
   line-height: 1.35;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .volume-grid {
