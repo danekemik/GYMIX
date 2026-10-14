@@ -75,7 +75,7 @@ export function StructureScreen({ draft, onBack, onManual, onGenerate, onOpenSlo
                 </div>
 
                 <ul className="structure__slots">
-                  {row.slots.map((slot, index) => {
+                  {row.slots.map((slot) => {
                     const chosen = selections[slot.slotKey] ?? '';
                     return (
                       <li key={slot.slotKey}>
@@ -84,7 +84,6 @@ export function StructureScreen({ draft, onBack, onManual, onGenerate, onOpenSlo
                           className={chosen ? 'slot-row slot-row--done' : 'slot-row'}
                           onClick={() => onOpenSlot(slot.slotKey)}
                         >
-                          {row.count > 1 && <span className="slot-row__index">{index + 1}</span>}
                           <span className="slot-row__value">{chosen || 'Выбрать упражнение'}</span>
                           <svg className="slot-row__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                             <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />

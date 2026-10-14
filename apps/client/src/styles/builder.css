@@ -268,24 +268,6 @@
   font-weight: 500;
 }
 
-.slot-row__index {
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--surface-2);
-  color: var(--ink-2);
-  font-size: var(--step--2);
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-.slot-row--done .slot-row__index {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
 .slot-row__value {
   flex: 1;
   min-width: 0;
