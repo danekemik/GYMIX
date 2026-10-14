@@ -181,28 +181,20 @@
 }
 
 .structure__row {
+  padding: var(--space-s) 0;
   border-bottom: var(--border);
 }
 
-.structure__toggle {
+.structure__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-s);
-  width: 100%;
-  padding: var(--space-s) 0;
-  text-align: left;
 }
 
 .structure__group {
   font-weight: 500;
   font-size: var(--step-0);
-  transition: color var(--dur) var(--ease);
-}
-
-.structure__toggle:hover .structure__group,
-.structure__row--open .structure__group {
-  color: var(--accent);
 }
 
 .structure__side {
@@ -210,18 +202,6 @@
   align-items: center;
   gap: var(--space-s);
   flex-shrink: 0;
-}
-
-.structure__chev {
-  width: 16px;
-  height: 16px;
-  color: var(--ink-3);
-  flex-shrink: 0;
-  transition: transform var(--dur) var(--ease);
-}
-
-.structure__row--open .structure__chev {
-  transform: rotate(180deg);
 }
 
 .structure__status {
@@ -239,7 +219,7 @@
   list-style: none;
   display: grid;
   gap: var(--space-2xs);
-  padding-bottom: var(--space-s);
+  margin-top: var(--space-xs);
 }
 
 .slot-row {
@@ -248,21 +228,29 @@
   gap: var(--space-s);
   width: 100%;
   padding: var(--space-xs) var(--space-s);
-  border: var(--border);
+  border: 1px dashed var(--line);
   border-radius: var(--radius-m);
-  background: var(--surface);
+  background: transparent;
   color: var(--ink-2);
   font-size: var(--step--1);
   text-align: left;
   transition:
     border-color var(--dur) var(--ease),
-    color var(--dur) var(--ease);
+    color var(--dur) var(--ease),
+    background var(--dur) var(--ease);
 }
 
 .slot-row:hover,
 .slot-row:focus-visible {
   border-color: var(--accent);
   color: var(--ink);
+}
+
+.slot-row--done {
+  border-style: solid;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 500;
 }
 
 .slot-row__index {
@@ -289,11 +277,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.slot-row--done .slot-row__value {
-  color: var(--ink);
-  font-weight: 500;
 }
 
 .slot-row__chev {
