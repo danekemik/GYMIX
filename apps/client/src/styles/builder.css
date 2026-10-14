@@ -19,6 +19,10 @@
   color: var(--ink-3);
 }
 
+.volume-head--stack {
+  align-items: flex-start;
+}
+
 .volume-head__meta--stack {
   margin-left: auto;
   display: flex;

@@ -29,7 +29,7 @@ export function StructureScreen({ draft, onBack, onManual, onGenerate, onOpenSlo
       </header>
 
       <div className="screen__body">
-        <div className="volume-head">
+        <div className="volume-head volume-head--stack">
           <span className="context__type">{draft.type}</span>
           <span className="volume-head__meta volume-head__meta--stack">
             <span>{draft.volume}</span>
