@@ -6,6 +6,7 @@ import { getCatalog } from '../lib/catalog';
 import { useDb } from '../hooks/useDb';
 import { excludedExerciseNames, excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
 import { ExerciseDetail } from '../components/ExerciseDetail';
+import { exerciseArt } from '../lib/exerciseArt';
 import { IconDumbbellArt } from '../lib/icons';
 
 interface ManualScreenProps {
@@ -148,6 +149,7 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
           )}
           {filtered.map((candidate) => {
             const isActive = candidate.name === selectedName;
+            const art = exerciseArt(candidate.name);
             return (
               <li key={candidate.name} className={`manual-card ${isActive ? 'manual-card--active' : ''}`}>
                 <button
@@ -155,8 +157,15 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
                   onClick={() => setDetail(candidate)}
                   aria-label={`Подробнее: ${candidate.name}`}
                 >
-                  <span className="manual-card__thumb" aria-hidden="true">
-                    <IconDumbbellArt className="manual-card__thumb-art" />
+                  <span
+                    className={`manual-card__thumb${art !== undefined ? ' manual-card__thumb--art' : ''}`}
+                    aria-hidden="true"
+                  >
+                    {art !== undefined ? (
+                      <img className="manual-card__thumb-img" src={art} alt="" loading="lazy" />
+                    ) : (
+                      <IconDumbbellArt className="manual-card__thumb-art" />
+                    )}
                   </span>
                   <span className="manual-card__info">
                     <span className="manual-card__name">{candidate.name}</span>

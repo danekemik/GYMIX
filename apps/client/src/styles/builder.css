@@ -363,6 +363,17 @@
   height: auto;
 }
 
+/* Иллюстрация упражнения (Everkinetic) — чёрная линия на светлой плитке. */
+.manual-card__thumb--art {
+  background: #eef1f2;
+}
+
+.manual-card__thumb-img {
+  width: 84%;
+  height: 84%;
+  object-fit: contain;
+}
+
 .manual-card__info {
   display: flex;
   flex-direction: column;

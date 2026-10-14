@@ -314,10 +314,16 @@
 
 /* --- S16: карточка упражнения --- */
 
+/* С иллюстрацией карточка выше шита — прокручиваем содержимое внутри. */
+.exercise-detail {
+  overflow-y: auto;
+}
+
 .exercise-detail__photo {
   position: relative;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   height: 120px;
   border-radius: var(--radius-m);
   background:
@@ -329,6 +335,19 @@
 .exercise-detail__art {
   width: min(60%, 160px);
   height: auto;
+}
+
+/* Иллюстрация упражнения (Everkinetic) — чёрная линия на светлой плитке. */
+.exercise-detail__photo--art {
+  flex: 0 0 auto;
+  height: 180px;
+  padding: var(--space-2xs);
+  background: #eef1f2;
+}
+
+.exercise-detail__photo-img {
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .exercise-detail__facts {

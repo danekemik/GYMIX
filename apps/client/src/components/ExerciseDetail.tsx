@@ -1,4 +1,5 @@
 import type { CatalogExercise } from '@gymix/catalog/parse';
+import { exerciseArt } from '../lib/exerciseArt';
 import { IconDumbbellArt } from '../lib/icons';
 
 interface ExerciseDetailProps {
@@ -24,6 +25,7 @@ export function ExerciseDetail({
   onToggleExclude,
   onClose,
 }: ExerciseDetailProps) {
+  const art = exerciseArt(exercise.name);
   return (
     <div className="overlay" onClick={onClose}>
       <section
@@ -34,8 +36,15 @@ export function ExerciseDetail({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="dialog__handle" aria-hidden="true" />
-        <div className="exercise-detail__photo" aria-hidden="true">
-          <IconDumbbellArt className="exercise-detail__art" />
+        <div
+          className={`exercise-detail__photo${art !== undefined ? ' exercise-detail__photo--art' : ''}`}
+          aria-hidden="true"
+        >
+          {art !== undefined ? (
+            <img className="exercise-detail__photo-img" src={art} alt="" />
+          ) : (
+            <IconDumbbellArt className="exercise-detail__art" />
+          )}
         </div>
         <header className="dialog__head">
           <div>
