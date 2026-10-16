@@ -73,8 +73,8 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
 
         {partial && (
           <div className="note">
-            Тренировка завершена частично — пропущенные упражнения не будут
-            засчитаны.
+            Тренировка завершена частично — неполные и пропущенные упражнения
+            не попадут в статистику.
           </div>
         )}
 
@@ -88,13 +88,17 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
         <ul className="finish-list">
           {workout.entries.map((entry, ex) => {
             const group = sets[ex] ?? [];
-            const done = skippedFlags?.[ex] !== true && group.length > 0 && group.every((s) => s.done);
+            const skipped = skippedFlags?.[ex] === true;
+            const touched = group.some((s) => s.done);
+            const done = !skipped && group.length > 0 && group.every((s) => s.done);
+            const status = done ? 'done' : !skipped && touched ? 'partial' : 'skip';
+            const statusLabel = status === 'done' ? 'Выполнено' : status === 'partial' ? 'Не завершено' : 'Пропущено';
             return (
               <li key={entry.slotKey} className="finish-ex">
                 <div className="finish-ex__head">
                   <span className="finish-ex__name">{entry.exercise.name}</span>
-                  <span className={`finish-tag ${done ? 'finish-tag--done' : 'finish-tag--skip'}`}>
-                    {done ? 'Выполнено' : 'Пропущено'}
+                  <span className={`finish-tag finish-tag--${status}`}>
+                    {statusLabel}
                   </span>
                 </div>
                 <span className="finish-ex__group">{entry.groupUsed}</span>
