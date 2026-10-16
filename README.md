@@ -11,7 +11,7 @@
 ```text
 .
 ├── apps/
-│   ├── client/          React + Vite + PGlite — локальный UI
+│   ├── client/          React + Vite + PGlite — офлайн-клиент с синхронизацией
 │   └── server/          Hono + PostgreSQL — REST API
 ├── packages/
 │   ├── structures/      Матрица «формат × объём», модель слота
@@ -20,7 +20,7 @@
 │   ├── generator/       Заполнение слотов упражнениями
 │   └── db/              Схема Drizzle, миграции, seed (PostgreSQL + PGlite)
 ├── reference/           Канон: спецификации, решения, каталог, данные
-├── docs/                Реализация backend и оставшаяся работа по синхронизации
+├── docs/                Backend, офлайн-синхронизация и эксплуатация
 ├── scripts/             verify_sync.py — проверка канона
 └── .github/workflows/   CI
 ```

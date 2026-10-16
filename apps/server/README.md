@@ -43,6 +43,7 @@ pnpm --filter @gymix/server start       # node dist/index.js (после build)
 | `src/auth/` | Логика аккаунта и токенов, `src/routes/auth.ts` |
 | `src/sync/ops.ts` | Движок идемпотентных операций тренировки |
 | `src/sync/snapshot.ts` | Снимок тренировки для клиента |
+| `src/sync/account.ts` | Версии снимков аккаунта, владение, конфликты и квитанции повторов |
 | `src/routes/` | REST-роуты (workouts, templates, exclusions, …) |
 | `src/jobs.ts` | Фоновая очистка сессий, кодов, stale-тренировок и удалённых аккаунтов |
 
@@ -65,6 +66,7 @@ pnpm --filter @gymix/server start       # node dist/index.js (после build)
 - **Исключения** — `GET/PUT /exclusions`
 - **Вес тела** — `GET/POST /body-weight`
 - **Прогресс** — `GET /progress`
+- **Офлайн-синхронизация** — `GET /sync/snapshot`, `POST /sync/change`; контракт и ограничения — в `docs/backend.md`
 
 ## Модель доступа
 
