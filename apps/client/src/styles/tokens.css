@@ -36,10 +36,19 @@
   --ink-2: #9299a0;
   --ink-3: #7b838a;
   --accent: #a8f53a;
+  --accent-hover: #b8f04a;
   --accent-ink: #0a0c08;
   --accent-soft: rgba(168, 245, 58, 0.14);
+  --accent-soft-ink: #cbe79a;
   --plate: #1d2921;
   --danger: #ff7a6b;
+
+  /* Функциональные оттенки поверхностей и оверлеев */
+  --surface-3: #262b2f;
+  --surface-veil: rgba(23, 26, 28, 0.9);
+  --surface-hero: #12171a;
+  --art-tile: #eef1f2;
+  --scrim: rgba(6, 9, 7, 0.72);
 
   /* FORM */
   --radius-s: 8px;
@@ -53,6 +62,7 @@
   --shadow-s: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow-l: 0 8px 24px rgba(0, 0, 0, 0.45);
   --glow-accent: 0 0 18px rgba(168, 245, 58, 0.22);
+  --glow-accent-strong: 0 0 26px rgba(168, 245, 58, 0.45), 0 0 70px rgba(168, 245, 58, 0.16);
 
   /* MOTION */
   --dur-fast: 120ms;

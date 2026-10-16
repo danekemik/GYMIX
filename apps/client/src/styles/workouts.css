@@ -17,7 +17,7 @@
   padding-bottom: var(--space-s);
   border-radius: var(--radius-2xl);
   border: 1px solid var(--line);
-  background: #12171a;
+  background: var(--surface-hero);
   margin-bottom: var(--space-m);
 }
 
@@ -29,9 +29,7 @@
   right: -58px;
   border-radius: 50%;
   background: radial-gradient(circle at 33% 28%, #d6ff8e 0%, var(--accent) 48%, #79ae1b 100%);
-  box-shadow:
-    0 0 26px rgb(168 245 58 / 0.45),
-    0 0 70px rgb(168 245 58 / 0.16);
+  box-shadow: var(--glow-accent-strong);
   pointer-events: none;
 }
 
@@ -61,7 +59,7 @@
   letter-spacing: 0.08em;
   font-size: var(--step--2);
   font-weight: 600;
-  color: #cbe79a;
+  color: var(--accent-soft-ink);
 }
 
 .hero__chip-dot {
@@ -78,7 +76,7 @@
   line-height: 1.05;
   letter-spacing: -0.02em;
   color: var(--ink);
-  margin-top: 8px;
+  margin-top: var(--space-2xs);
 }
 
 .hero__sub {
@@ -101,9 +99,7 @@
   border-radius: 999px;
   background: var(--accent);
   color: var(--accent-ink);
-  box-shadow:
-    0 0 26px rgb(168 245 58 / 0.45),
-    0 0 70px rgb(168 245 58 / 0.16);
+  box-shadow: var(--glow-accent-strong);
   transition: filter var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
 
@@ -124,6 +120,12 @@
 
 .hero__cta:active {
   transform: scale(0.99);
+}
+
+/* Лаймовая кнопка: лаймовый ореол на ней не виден — затемняем изнутри. */
+.hero__cta:focus-visible {
+  outline: 3px solid var(--accent-ink);
+  outline-offset: -3px;
 }
 
 /* ——— Заголовки секций: обычный регистр, меньше главного. ——— */
@@ -260,7 +262,7 @@ button.section-more {
 }
 
 .wk-card__tag {
-  padding: 3px 10px;
+  padding: var(--space-4xs) var(--space-2xs);
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--ink-2);
@@ -363,7 +365,7 @@ button.section-more {
 .recent-row__body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-4xs);
   min-width: 0;
 }
 
@@ -464,7 +466,7 @@ button.section-more {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-4xs);
 }
 
 .resume__title {
@@ -531,7 +533,7 @@ button.section-more {
 
 .menu-action {
   min-height: 48px;
-  padding: var(--space-s) 12px;
+  padding: var(--space-s);
   background: none;
   border: 0;
   border-top: var(--border);

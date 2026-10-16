@@ -208,13 +208,12 @@
   font-size: var(--step--2);
   font-weight: 450;
   color: var(--ink-3);
-  opacity: 0.8;
 }
 
 .plan__badge {
   flex-shrink: 0;
   padding: var(--space-4xs) var(--space-2xs);
-  border-radius: var(--radius-s);
+  border-radius: 999px;
   background: var(--surface-2);
   color: var(--ink-2);
   font-size: var(--step--2);
@@ -342,7 +341,7 @@
   flex: 0 0 auto;
   height: 180px;
   padding: var(--space-2xs);
-  background: #eef1f2;
+  background: var(--art-tile);
 }
 
 .exercise-detail__photo-img {
@@ -502,7 +501,16 @@
 
 .exec-card--skipped {
   border-style: dashed;
-  opacity: 0.68;
+  background: transparent;
+}
+
+/* Пропущенная карточка: приглушаем осознанно, сохраняя контраст ≥ 4.5:1. */
+.exec-card--skipped .exec-card__group {
+  color: var(--ink-3);
+}
+
+.exec-card--skipped .exec-card__name {
+  color: var(--ink-2);
 }
 
 .exec-card__tag {
@@ -741,6 +749,11 @@
   color: var(--accent-ink);
 }
 
+.set-check--on:focus-visible {
+  outline: 3px solid var(--accent-ink);
+  outline-offset: -3px;
+}
+
 .exec-footer {
   display: flex;
   align-items: center;
@@ -769,7 +782,7 @@
   display: grid;
   place-items: center;
   padding: var(--space-m);
-  background: rgba(6, 9, 7, 0.72);
+  background: var(--scrim);
 }
 
 .dialog {
@@ -906,7 +919,7 @@
 .finish-tag {
   flex-shrink: 0;
   padding: var(--space-4xs) var(--space-2xs);
-  border-radius: var(--radius-s);
+  border-radius: 999px;
   font-size: var(--step--2);
   font-weight: 600;
 }

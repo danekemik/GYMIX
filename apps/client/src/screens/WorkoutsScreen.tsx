@@ -136,7 +136,7 @@ export function WorkoutsScreen({
 
         <section className="hero" aria-label="Новая тренировка">
           <span className="hero__circle" aria-hidden>
-            <img className="hero__icon" src={fitnessIcon} alt="" />
+            <img className="hero__icon" src={fitnessIcon} alt="" width={46} height={46} />
           </span>
           <div className="hero__copy">
             <span className="hero__chip">
@@ -146,13 +146,13 @@ export function WorkoutsScreen({
             <h2 className="hero__title">
               {draft !== null && draft !== 'loading' ? (
                 <>
-                  Продолжить
+                  Продолжить{' '}
                   <br />
                   тренировку
                 </>
               ) : (
                 <>
-                  Поймай
+                  Поймай{' '}
                   <br />
                   свой ритм
                 </>

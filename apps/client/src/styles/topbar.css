@@ -41,7 +41,7 @@
 }
 
 .topbar__icon-btn:hover {
-  background: #262b2f;
+  background: var(--surface-3);
 }
 
 .topbar__icon-btn:active {

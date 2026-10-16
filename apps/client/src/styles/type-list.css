@@ -113,7 +113,7 @@
 .type-row__body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-4xs);
   min-width: 0;
 }
 
@@ -129,12 +129,12 @@
 .type-row__groups {
   display: flex;
   flex-wrap: wrap;
-  gap: 3px 4px;
-  margin-top: 3px;
+  gap: var(--space-4xs) var(--space-2xs);
+  margin-top: var(--space-3xs);
 }
 
 .type-row__group {
-  padding: 1px 6px;
+  padding: var(--space-4xs) var(--space-2xs);
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--ink-2);

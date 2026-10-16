@@ -365,7 +365,7 @@
 
 /* Иллюстрация упражнения (Everkinetic) — чёрная линия на светлой плитке. */
 .manual-card__thumb--art {
-  background: #eef1f2;
+  background: var(--art-tile);
 }
 
 .manual-card__thumb-img {
@@ -405,7 +405,7 @@
 
 .manual-card__chip {
   padding: var(--space-3xs) var(--space-2xs);
-  border-radius: var(--radius-s);
+  border-radius: 999px;
   background: var(--surface-2);
   color: var(--ink-2);
   font-size: var(--step--2);
@@ -432,6 +432,11 @@
 .manual-card__pick[aria-pressed='true'] {
   background: var(--accent);
   color: var(--accent-ink);
+}
+
+.manual-card__pick[aria-pressed='true']:focus-visible {
+  outline: 3px solid var(--accent-ink);
+  outline-offset: -3px;
 }
 
 .manual-card__exclude {
