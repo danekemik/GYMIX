@@ -72,6 +72,9 @@ importers:
       vite:
         specifier: ^6.0.0
         version: 6.4.4(@types/node@22.20.5)(tsx@4.23.15)
+      vitest:
+        specifier: ^3.2.7
+        version: 3.2.7(@types/node@22.20.5)(tsx@4.23.15)
 
   apps/server:
     dependencies:
@@ -171,6 +174,9 @@ importers:
       '@gymix/catalog':
         specifier: workspace:*
         version: link:../catalog
+      '@gymix/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@gymix/structures':
         specifier: workspace:*
         version: link:../structures

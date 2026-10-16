@@ -21,4 +21,3 @@ export interface SessionSnapshot {
 export interface FinishPayload extends SessionSnapshot {
   readonly saved: boolean;
 }
-

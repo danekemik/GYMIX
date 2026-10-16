@@ -109,6 +109,7 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
     setSaveError(undefined);
     try {
       await saveRecord(db, sessionId, {
+        baseRevision: record.revision,
         startedAt: started,
         completedAt: completed,
         exercises: draft.map((e) => ({

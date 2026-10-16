@@ -1,3 +1,4 @@
+import { localChange, workoutReadOnly } from '../data/sync/store';
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { GeneratedWorkout } from '@gymix/generator';
 import {
@@ -15,14 +16,6 @@ import type { SessionSnapshot, SetEntry } from '../domain/session';
 import type { GymixDb } from './db';
 import { buildWorkoutFromEntries } from './reconstruct';
 
-/**
- * Сессии в PGlite хранятся под локальным владельцем: у приложения пока нет
- * аутентификации, а `workout_sessions` требует пользователя и устройство.
- * Владелец создаётся один раз на первую запись.
- */
-const LOCAL_EMAIL = 'local@offline.gymix';
-const LOCAL_DEVICE_LABEL = 'Этот телефон';
-
 export interface HistoryItem {
   readonly id: string;
   readonly type: string;
@@ -34,16 +27,15 @@ export interface HistoryItem {
   readonly total: number;
 }
 
-let ownerCache: { userId: string; deviceId: string; } | undefined;
 
 /**
  * Снимок завершённой тренировки в историю. Пустая сессия сюда не доходит —
  * LOCKED (2026-10-05) блокирует финиш при 0 выполненных упражнений.
  */
-export async function saveSession(db: GymixDb, payload: SessionSnapshot): Promise<void> {
+async function _saveSession(db: GymixDb, payload: SessionSnapshot): Promise<string> {
   const owner = await ensureLocalOwner(db);
 
-  await db.db.transaction(async (tx) => {
+  return db.db.transaction(async (tx) => {
     const typeId = (
       await tx
         .select({ id: workoutTypes.id })
@@ -134,6 +126,7 @@ export async function saveSession(db: GymixDb, payload: SessionSnapshot): Promis
         endedAt,
       });
     }
+    return session.id;
   });
 }
 
@@ -213,6 +206,7 @@ export async function recentSessions(db: GymixDb, limit = 3): Promise<HistoryIte
 
 export interface DraftSummary {
   readonly sessionId: string;
+  readonly readOnly: boolean;
   readonly type: string;
   readonly volume: string;
   readonly startedAt: Date;
@@ -244,22 +238,26 @@ export interface ResumedSession extends DraftSession {
 
 /** Создать черновик: один активный на пользователя, старый вытесняется. */
 /** Гарантия единственного активного черновика при повторном вызове (StrictMode). */
-let creatingDraft: Promise<unknown> | undefined;
 
-/** Создать черновик сессии. Удаляет предыдущий активный (S11: один на пользователя). */
+const draftRequests = new WeakMap<GymixDb, WeakMap<GeneratedWorkout, Promise<DraftSession>>>();
 export function createDraft(db: GymixDb, workout: GeneratedWorkout): Promise<DraftSession> {
-  const task = (creatingDraft ?? Promise.resolve()).then(() => doCreateDraft(db, workout));
-  creatingDraft = task.catch(() => undefined);
-  return task;
+  let requests = draftRequests.get(db);
+  if (!requests) { requests = new WeakMap(); draftRequests.set(db, requests); }
+  let pending = requests.get(workout);
+  if (!pending) {
+    pending = localChange(db, result => `workout:${result.sessionId}`, scoped => doCreateDraft(scoped, workout));
+    requests.set(workout, pending);
+    void pending.catch(() => requests!.delete(workout));
+  }
+  return pending;
 }
 
 async function doCreateDraft(db: GymixDb, workout: GeneratedWorkout): Promise<DraftSession> {
   const owner = await ensureLocalOwner(db);
   const ids = await resolveTypeVolume(db, workout.type, workout.volume);
 
-  await db.db
-    .delete(workoutSessions)
-    .where(and(eq(workoutSessions.userId, owner.userId), eq(workoutSessions.status, 'active')));
+  const active = await activeDraft(db);
+  if (active) throw new Error('Сначала завершите или удалите текущую тренировку');
 
   const [session] = await db.db
     .insert(workoutSessions)
@@ -299,7 +297,7 @@ async function doCreateDraft(db: GymixDb, workout: GeneratedWorkout): Promise<Dr
 }
 
 /** Записать текущее состояние подходов в черновик (upsert по номеру подхода). */
-export async function persistDraft(
+async function _persistDraft(
   db: GymixDb,
   sessionId: string,
   byPosition: ReadonlyMap<number, string>,
@@ -346,7 +344,7 @@ export async function persistDraft(
  * интервал, продолжение открывает новый — паузы в длительность не попадают.
  * Одновременно открыт не более одного интервала (частичный unique-индекс).
  */
-export async function setDraftRunning(
+async function _setDraftRunning(
   db: GymixDb,
   sessionId: string,
   running: boolean,
@@ -374,6 +372,7 @@ export async function activeDraft(db: GymixDb): Promise<DraftSummary | null> {
   const rows = await db.db
     .select({
       id: workoutSessions.id,
+      owningDeviceId: workoutSessions.owningDeviceId,
       type: workoutTypes.key,
       volume: workoutVolumes.key,
       startedAt: workoutSessions.startedAt,
@@ -398,6 +397,7 @@ export async function activeDraft(db: GymixDb): Promise<DraftSummary | null> {
 
   return {
     sessionId: row.id,
+    readOnly: await workoutReadOnly(db, `workout:${row.id}`),
     type: row.type,
     volume: row.volume,
     startedAt: row.startedAt,
@@ -501,7 +501,7 @@ export async function resumeDraft(db: GymixDb, sessionId: string): Promise<Resum
 }
 
 /** Удалить черновик (каскадно: упражнения и подходы). */
-export async function deleteDraft(db: GymixDb, sessionId: string): Promise<void> {
+async function _deleteDraft(db: GymixDb, sessionId: string): Promise<void> {
   await db.db.delete(workoutSessions).where(eq(workoutSessions.id, sessionId));
 }
 
@@ -523,43 +523,7 @@ async function resolveTypeVolume(
 }
 
 export async function ensureLocalOwner(db: GymixDb): Promise<{ userId: string; deviceId: string; }> {
-  if (ownerCache !== undefined) return ownerCache;
-
-  const existing = await db.db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, LOCAL_EMAIL))
-    .limit(1);
-
-  let userId: string;
-  if (existing[0] !== undefined) {
-    userId = existing[0].id;
-  } else {
-    const inserted = await db.db
-      .insert(users)
-      .values({ email: LOCAL_EMAIL, passwordHash: 'local-offline' })
-      .returning({ id: users.id });
-    if (inserted[0] === undefined) throw new Error('локальный пользователь не создан');
-    userId = inserted[0].id;
-  }
-
-  const devicesForUser = await db.db
-    .select({ id: devices.id })
-    .from(devices)
-    .where(eq(devices.userId, userId))
-    .limit(1);
-  let deviceId = devicesForUser[0]?.id;
-  if (deviceId === undefined) {
-    const inserted = await db.db
-      .insert(devices)
-      .values({ userId, label: LOCAL_DEVICE_LABEL })
-      .returning({ id: devices.id });
-    if (inserted[0] === undefined) throw new Error('устройство не создано');
-    deviceId = inserted[0].id;
-  }
-
-  ownerCache = { userId, deviceId };
-  return ownerCache;
+  return { userId: db.account.userId, deviceId: db.account.deviceId };
 }
 
 /** Запятые из ввода приводим к десятичной точке, мусор отбрасываем. */
@@ -574,4 +538,17 @@ function parseReps(value: string | undefined): number | null {
   if (value === undefined || value === '') return null;
   const reps = Number.parseInt(value, 10);
   return Number.isInteger(reps) && reps > 0 ? reps : null;
+}
+export const saveSession = (db: GymixDb, payload: SessionSnapshot) => localChange(db, id => `workout:${id}`, scoped => _saveSession(scoped, payload));
+export const persistDraft = (db: GymixDb, id: string, byPosition: ReadonlyMap<number, string>, sets: readonly (readonly SetEntry[])[], skipped: readonly boolean[] = []) => localChange(db, `workout:${id}`, scoped => _persistDraft(scoped, id, byPosition, sets, skipped));
+export const setDraftRunning = (db: GymixDb, id: string, running: boolean) => localChange(db, `workout:${id}`, scoped => _setDraftRunning(scoped, id, running));
+export const deleteDraft = (db: GymixDb, id: string) => localChange(db, `workout:${id}`, scoped => _deleteDraft(scoped, id));
+export async function finishDraft(db: GymixDb, draft: DraftSession, payload: SessionSnapshot): Promise<void> {
+  await localChange(db, `workout:${draft.sessionId}`, async scoped => {
+    await _persistDraft(scoped, draft.sessionId, draft.byPosition, payload.sets, payload.skippedExercises);
+    await scoped.db.update(sessionIntervals).set({ endedAt: new Date(payload.endedAt) })
+      .where(and(eq(sessionIntervals.sessionId, draft.sessionId), isNull(sessionIntervals.endedAt)));
+    await scoped.db.update(workoutSessions).set({ status: 'completed', completedAt: new Date(payload.endedAt), updatedAt: new Date(), revision: sql`${workoutSessions.revision} + 1` })
+      .where(eq(workoutSessions.id, draft.sessionId));
+  });
 }

@@ -1,3 +1,4 @@
+import { SyncStatus } from './components/SyncStatus';
 import { useState } from 'react';
 import { generateWorkout, type GeneratedWorkout } from '@gymix/generator';
 import type { GeneratorMuscleGroup, VolumeLevel, WorkoutType } from '@gymix/structures';
@@ -52,7 +53,7 @@ type Step = 'home' | 'type' | 'mgs' | 'volume' | 'structure' | 'manual' | 'rando
 type Nullable<T> = T | undefined;
 
 /** Подэкраны поверх вкладок: история, запись тренировки, шаблоны. */
-type Sub = { kind: 'history' } | { kind: 'record'; id: string } | { kind: 'templates' };
+type Sub = { kind: 'history'; } | { kind: 'record'; id: string; } | { kind: 'templates'; };
 
 function randomSeed(): number {
   return Math.floor(Math.random() * 0xffffffff);
@@ -257,13 +258,13 @@ export function App() {
             entries: generated.entries.map((entry, i) =>
               i === index
                 ? {
-                    ...entry,
-                    exercise,
-                    isRepeat: generated.entries.some(
-                      (other, otherIndex) =>
-                        otherIndex !== index && other.exercise.name === exercise.name,
-                    ),
-                  }
+                  ...entry,
+                  exercise,
+                  isRepeat: generated.entries.some(
+                    (other, otherIndex) =>
+                      otherIndex !== index && other.exercise.name === exercise.name,
+                  ),
+                }
                 : entry,
             ),
           });
@@ -358,13 +359,13 @@ export function App() {
 
   return (
     <div className="app">
-      <main className={`app__main${step === 'home' && sub === undefined ? ' app__main--tabs' : ''}`}>{body}</main>
+      <main className={`app__main${step === 'home' && sub === undefined ? ' app__main--tabs' : ''}`}><SyncStatus />{body}</main>
       {step === 'home' && sub === undefined && <TabBar tabs={TABS} active={tab} onChange={openTab} />}
     </div>
   );
 }
 
-function SoonScreen({ tab }: { tab: string }) {
+function SoonScreen({ tab }: { tab: string; }) {
   const label = TABS.find((t) => t.id === tab)?.label ?? 'Раздел';
   return (
     <div className="screen">

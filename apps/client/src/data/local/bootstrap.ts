@@ -3,6 +3,7 @@ import { localDrizzle } from './drizzle';
 import { sql } from 'drizzle-orm';
 import { parseCatalog } from '@gymix/catalog/parse';
 import { collectMigrations, migrateBrowser, parseMigrationJournal, parseReference, seedFromData } from '@gymix/db/browser';
+import { initializeSyncStore } from '../sync/store';
 import { exercises } from '@gymix/db/schema';
 import catalogSource from '../../../../../reference/exercise_catalog_v1.md?raw';
 import referenceSource from '../../../../../reference/exercise_database.md?raw';
@@ -16,6 +17,7 @@ const sqlFor = new Map(Object.entries(sources).map(([path, source]) => [path.spl
 export async function bootstrapLocalDb(pglite: PGliteInterface): Promise<void> {
   await migrateBrowser(pglite, collectMigrations(parseMigrationJournal(journalSource), sqlFor));
   const db = localDrizzle(pglite);
+  await initializeSyncStore(db);
   await db.transaction(async (tx) => {
     const [row] = await tx.select({ n: sql<number>`count(*)::int` }).from(exercises);
     if ((row?.n ?? 0) === 0) {

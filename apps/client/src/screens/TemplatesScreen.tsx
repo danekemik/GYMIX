@@ -26,7 +26,7 @@ export function TemplatesScreen({
   onEditTemplate,
   onCreate,
 }: TemplatesScreenProps) {
-  const { db } = useDb();
+  const { db, revision } = useDb();
   const [templates, setTemplates] = useState<TemplateCard[] | 'loading'>('loading');
   const [menuFor, setMenuFor] = useState<MenuTarget>(null);
   const [renameFor, setRenameFor] = useState<MenuTarget>(null);
@@ -41,7 +41,7 @@ export function TemplatesScreen({
     } catch {
       setTemplates([]);
     }
-  }, [db]);
+  }, [db, revision]);
 
   useEffect(() => {
     void reload();
@@ -52,7 +52,7 @@ export function TemplatesScreen({
     if (title === '' || db === undefined || renameFor === null) return;
     setBusy(true);
     try {
-      await renameTemplate(db, renameFor.id, title);
+      await renameTemplate(db, renameFor.id, title, renameFor.title);
       setRenameFor(null);
       await reload();
     } finally {

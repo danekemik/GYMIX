@@ -38,7 +38,7 @@ export function PreviewScreen({
   onEditSelection,
   regenerable = true,
 }: PreviewScreenProps) {
-  const { db } = useDb();
+  const { db, revision } = useDb();
   const [replacing, setReplacing] = useState<number | null>(null);
   const [query, setQuery] = useState('');
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
@@ -60,7 +60,7 @@ export function PreviewScreen({
     return () => {
       alive = false;
     };
-  }, [db]);
+  }, [db, revision]);
 
   const total = workout.entries.length;
 

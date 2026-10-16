@@ -9,7 +9,7 @@ interface HistoryScreenProps {
 }
 
 export function HistoryScreen({ onOpen, onBack }: HistoryScreenProps) {
-  const { db } = useDb();
+  const { db, revision } = useDb();
   const [items, setItems] = useState<HistoryItem[] | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
 
@@ -22,7 +22,7 @@ export function HistoryScreen({ onOpen, onBack }: HistoryScreenProps) {
     return () => {
       alive = false;
     };
-  }, [db]);
+  }, [db, revision]);
 
   return (
     <div className="screen">

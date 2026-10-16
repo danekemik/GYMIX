@@ -1,3 +1,4 @@
+import { localChange } from '../data/sync/store';
 import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { bodyWeightEntries, exercises, sessionExercises, sessionSets, workoutSessions } from '@gymix/db/schema';
 import type { GymixDb } from './db';
@@ -94,7 +95,7 @@ export async function bodyWeightSeries(db: GymixDb, since?: Date): Promise<BodyW
 }
 
 /** Записать/обновить вес тела за конкретный день (S13). */
-export async function saveBodyWeight(db: GymixDb, date: string, value: number): Promise<void> {
+async function _saveBodyWeight(db: GymixDb, date: string, value: number): Promise<void> {
   const owner = await ensureLocalOwner(db);
   await db.db
     .insert(bodyWeightEntries)
@@ -104,3 +105,4 @@ export async function saveBodyWeight(db: GymixDb, date: string, value: number): 
       set: { value: String(value) },
     });
 }
+export const saveBodyWeight = (db: GymixDb, date: string, value: number) => localChange(db, `weight:${date}`, scoped => _saveBodyWeight(scoped, date, value));

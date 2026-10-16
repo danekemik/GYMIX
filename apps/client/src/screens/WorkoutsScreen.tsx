@@ -1,7 +1,7 @@
+import { takeOwnership } from '../data/sync/engine';
 import { useEffect, useState } from 'react';
 import { useDb } from '../hooks/useDb';
 import fitnessIcon from '../assets/fitness.png';
-import { ensureDemoSeed } from '../lib/demoSeed';
 import { getUserName } from '../lib/account';
 import { plural } from '../lib/draft';
 import { formatDay, formatDurationMs } from '../lib/format';
@@ -31,10 +31,11 @@ export function WorkoutsScreen({
   onOpenSession,
   onResume,
 }: WorkoutsScreenProps) {
-  const { db, error } = useDb();
+  const { db, error, revision } = useDb();
   const name = getUserName();
   const [recent, setRecent] = useState<HistoryItem[] | 'loading'>('loading');
   const [draft, setDraft] = useState<DraftSummary | null | 'loading'>('loading');
+  const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
   const [removeDraft, setRemoveDraft] = useState(false);
 
@@ -47,7 +48,7 @@ export function WorkoutsScreen({
     return () => {
       alive = false;
     };
-  }, [db]);
+  }, [db, revision]);
 
   useEffect(() => {
     if (db === undefined) return;
@@ -58,20 +59,19 @@ export function WorkoutsScreen({
     return () => {
       alive = false;
     };
-  }, [db]);
+  }, [db, revision]);
 
-  useEffect(() => {
-    if (db === undefined) return;
-    void ensureDemoSeed(db);
-  }, [db]);
+
 
   const continueDraft = async () => {
     if (db === undefined || draft === null || draft === 'loading') return;
     setBusy(true);
     try {
+      if (draft.readOnly) await takeOwnership(db, `workout:${draft.sessionId}`);
       const resumed = await resumeDraft(db, draft.sessionId);
       onResume(resumed);
-    } catch {
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Не удалось открыть тренировку');
       setBusy(false);
     }
   };
@@ -97,6 +97,7 @@ export function WorkoutsScreen({
       </header>
 
       <div className="screen__body">
+        {actionError && <p className="body-error" role="alert">{actionError}</p>}
         {error !== undefined && (
           <p className="body-error" role="alert">
             Не удалось открыть базу: {String(error)}
@@ -120,12 +121,12 @@ export function WorkoutsScreen({
             </div>
             <div className="resume__actions">
               <button className="btn btn--primary btn--sm" onClick={() => void continueDraft()} disabled={busy}>
-                Продолжить
+                {draft.readOnly ? 'Продолжить на этом устройстве' : 'Продолжить'}
               </button>
               <button
                 className="btn btn--ghost btn--sm resume__danger"
                 onClick={() => setRemoveDraft(true)}
-                disabled={busy}
+                disabled={busy || draft.readOnly}
               >
                 Удалить черновик
               </button>

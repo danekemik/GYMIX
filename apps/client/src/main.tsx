@@ -5,6 +5,8 @@ import { App } from './App';
 import { registerOfflineSupport } from './lib/offline';
 
 registerOfflineSupport();
+import { AuthScreen } from './screens/AuthScreen';
+import { useAuth } from './hooks/useAuth';
 import { DbProvider } from './hooks/useDb';
 import './styles/app.css';
 import './styles/builder.css';
@@ -51,21 +53,25 @@ function StatusBar() {
   );
 }
 
+function AccountApp({ children }: { children: import('react').ReactNode; }) {
+  const session = useAuth();
+  if (!session) return <div className="app"><AuthScreen /></div>;
+  return <DbProvider key={`${session.user.id}:${session.deviceId}`} account={{ userId: session.user.id, email: session.user.email, deviceId: session.deviceId }}>{children}</DbProvider>;
+}
+
 createRoot(root).render(
   <StrictMode>
-    <DbProvider>
-      <div className="phone">
-        <div className="device">
-          <StatusBar />
-          <App />
-        </div>
-        <span className="phone__island" aria-hidden="true" />
-        <span className="phone__home" aria-hidden="true" />
-        <span className="phone__button phone__button--silent" aria-hidden="true" />
-        <span className="phone__button phone__button--vol-up" aria-hidden="true" />
-        <span className="phone__button phone__button--vol-down" aria-hidden="true" />
-        <span className="phone__button phone__button--power" aria-hidden="true" />
+    <div className="phone">
+      <div className="device">
+        <StatusBar />
+        <AccountApp><App /></AccountApp>
       </div>
-    </DbProvider>
+      <span className="phone__island" aria-hidden="true" />
+      <span className="phone__home" aria-hidden="true" />
+      <span className="phone__button phone__button--silent" aria-hidden="true" />
+      <span className="phone__button phone__button--vol-up" aria-hidden="true" />
+      <span className="phone__button phone__button--vol-down" aria-hidden="true" />
+      <span className="phone__button phone__button--power" aria-hidden="true" />
+    </div>
   </StrictMode>,
 );

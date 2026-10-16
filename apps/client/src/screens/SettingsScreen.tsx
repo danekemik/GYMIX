@@ -1,3 +1,6 @@
+import { downloadLocalBackup } from '../data/sync/backup';
+import { signOut } from '../data/auth/api';
+import { getSession } from '../data/auth/session';
 import { useEffect, useMemo, useState } from 'react';
 import { useDb } from '../hooks/useDb';
 import {
@@ -13,7 +16,7 @@ interface SettingsScreenProps {
 }
 
 export function SettingsScreen({ onOpenHistory, onOpenTemplates }: SettingsScreenProps) {
-  const { db } = useDb();
+  const { db, revision } = useDb();
   const [items, setItems] = useState<ExcludedExercise[] | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
   const [query, setQuery] = useState('');
@@ -39,7 +42,7 @@ export function SettingsScreen({ onOpenHistory, onOpenTemplates }: SettingsScree
     return () => {
       alive = false;
     };
-  }, [db]);
+  }, [db, revision]);
 
   const filtered = useMemo(() => {
     if (items === undefined) return undefined;
@@ -78,6 +81,9 @@ export function SettingsScreen({ onOpenHistory, onOpenTemplates }: SettingsScree
       </header>
 
       <div className="screen__body">
+        <p className="body-muted">{getSession()?.user.email}</p>
+        <button className="btn btn--ghost" onClick={() => void signOut()}>Выйти из аккаунта</button>
+        <button className="btn btn--ghost" disabled={!db} onClick={() => { if (db) void downloadLocalBackup(db).catch(() => setError('Не удалось создать резервную копию')); }}>Скачать локальную резервную копию</button>
         <nav className="settings-nav" aria-label="Профиль">
           <button className="settings-link" onClick={onOpenTemplates}>
             <span className="settings-link__label">Мои тренировки</span>

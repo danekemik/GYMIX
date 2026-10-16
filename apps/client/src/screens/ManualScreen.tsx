@@ -19,7 +19,7 @@ interface ManualScreenProps {
 }
 
 export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, onToStructure }: ManualScreenProps) {
-  const { db } = useDb();
+  const { db, revision } = useDb();
   const slots = useMemo(() => structureFor(draft).slots, [draft]);
   const [index, setIndex] = useState(() => {
     if (startSlotKey === undefined) return 0;
@@ -40,7 +40,7 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
     return () => {
       alive = false;
     };
-  }, [db]);
+  }, [db, revision]);
 
   const slot = slots[index];
   const filled = Object.values(draft.selections ?? {}).filter((n) => n.length > 0).length;

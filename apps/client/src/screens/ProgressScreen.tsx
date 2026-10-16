@@ -15,7 +15,7 @@ import {
 const SIX_MONTHS_MS = 183 * 86_400_000;
 
 export function ProgressScreen() {
-  const { db } = useDb();
+  const { db, revision } = useDb();
   const [series, setSeries] = useState<ExerciseSeries[] | undefined>(undefined);
   const [body, setBody] = useState<BodyWeightPoint[] | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -43,7 +43,7 @@ export function ProgressScreen() {
   useEffect(() => {
     void reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, period]);
+  }, [db, period, revision]);
 
   useEffect(() => {
     setSelected((prev) => prev ?? series?.[0]?.name);

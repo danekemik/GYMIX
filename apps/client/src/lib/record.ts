@@ -1,3 +1,4 @@
+import { localChange } from '../data/sync/store';
 import { eq, sql } from 'drizzle-orm';
 import {
   sessionExercises,
@@ -24,6 +25,7 @@ export interface RecordExercise {
 }
 
 export interface RecordSnapshot {
+  readonly revision: number;
   readonly id: string;
   readonly type: string;
   readonly volume: string;
@@ -45,6 +47,7 @@ export async function loadRecord(db: GymixDb, sessionId: string): Promise<Record
   const session = await db.db
     .select({
       id: workoutSessions.id,
+      revision: workoutSessions.revision,
       type: workoutTypes.key,
       volume: workoutVolumes.key,
       startedAt: workoutSessions.startedAt,
@@ -104,6 +107,7 @@ export async function loadRecord(db: GymixDb, sessionId: string): Promise<Record
 
   return {
     id: row.id,
+    revision: row.revision,
     type: row.type,
     volume: row.volume,
     startedAt: row.startedAt,
@@ -124,10 +128,11 @@ export async function loadRecord(db: GymixDb, sessionId: string): Promise<Record
 export interface RecordPatchExercise {
   readonly id: string;
   readonly status: 'completed' | 'skipped';
-  readonly sets: readonly { id: string; weight: string | null; reps: number | null }[];
+  readonly sets: readonly { id: string; weight: string | null; reps: number | null; }[];
 }
 
 export interface RecordPatch {
+  readonly baseRevision: number;
   readonly startedAt: Date;
   readonly completedAt: Date;
   readonly exercises: readonly RecordPatchExercise[];
@@ -149,8 +154,10 @@ function parseReps(value: number | null): number | null {
  * упражнений, порядок, дату. Порядок переписывается заново по массиву —
  * двухфазно, чтобы не нарушить уникальный (session, position).
  */
-export async function saveRecord(db: GymixDb, sessionId: string, patch: RecordPatch): Promise<void> {
+async function _saveRecord(db: GymixDb, sessionId: string, patch: RecordPatch): Promise<void> {
   await db.db.transaction(async (tx) => {
+    const [current] = await tx.select().from(workoutSessions).where(eq(workoutSessions.id, sessionId));
+    if (!current || current.revision !== patch.baseRevision) throw new Error('Запись обновилась на другом устройстве. Ввод оставлен на экране; откройте запись заново перед сохранением.');
     await tx
       .update(workoutSessions)
       .set({
@@ -185,3 +192,4 @@ export async function saveRecord(db: GymixDb, sessionId: string, patch: RecordPa
     }
   });
 }
+export const saveRecord = (db: GymixDb, id: string, patch: RecordPatch) => localChange(db, `workout:${id}`, scoped => _saveRecord(scoped, id, patch));

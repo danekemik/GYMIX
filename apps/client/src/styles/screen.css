@@ -78,3 +78,6 @@
     width: 100%;
   }
 }
+.auth-form { display: grid; gap: 18px; padding-top: 24px; }
+.sync-notice { padding: 10px 18px; font-size: 12px; line-height: 1.5; }
+.sync-notice button { text-decoration: underline; }
