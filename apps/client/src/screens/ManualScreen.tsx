@@ -158,11 +158,13 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
                   aria-label={`Подробнее: ${candidate.name}`}
                 >
                   <span
-                    className={`manual-card__thumb${art !== undefined ? ' manual-card__thumb--art' : ''}`}
+                    className={`manual-card__thumb${
+                      art !== undefined ? (art.kind === 'photo' ? ' manual-card__thumb--photo' : ' manual-card__thumb--art') : ''
+                    }`}
                     aria-hidden="true"
                   >
                     {art !== undefined ? (
-                      <img className="manual-card__thumb-img" src={art} alt="" loading="lazy" />
+                      <img className="manual-card__thumb-img" src={art.src} alt="" loading="lazy" />
                     ) : (
                       <IconDumbbellArt className="manual-card__thumb-art" />
                     )}

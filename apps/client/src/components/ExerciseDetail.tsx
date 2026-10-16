@@ -37,11 +37,13 @@ export function ExerciseDetail({
       >
         <div className="dialog__handle" aria-hidden="true" />
         <div
-          className={`exercise-detail__photo${art !== undefined ? ' exercise-detail__photo--art' : ''}`}
+          className={`exercise-detail__photo${
+            art !== undefined ? (art.kind === 'photo' ? ' exercise-detail__photo--photo' : ' exercise-detail__photo--art') : ''
+          }`}
           aria-hidden="true"
         >
           {art !== undefined ? (
-            <img className="exercise-detail__photo-img" src={art} alt="" />
+            <img className="exercise-detail__photo-img" src={art.src} alt="" />
           ) : (
             <IconDumbbellArt className="exercise-detail__art" />
           )}

@@ -350,6 +350,20 @@
   max-height: 100%;
 }
 
+/* Фотография упражнения (free-exercise-db) — кадр заполняет плитку. */
+.exercise-detail__photo--photo {
+  flex: 0 0 auto;
+  height: 180px;
+  padding: 0;
+  background: var(--surface-2);
+}
+
+.exercise-detail__photo--photo .exercise-detail__photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .exercise-detail__facts {
   display: grid;
   gap: var(--space-2xs);

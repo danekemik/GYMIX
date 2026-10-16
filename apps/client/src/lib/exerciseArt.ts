@@ -1,6 +1,8 @@
 /**
- * Иллюстрации упражнений — набор Everkinetic (CC BY-SA 4.0).
- * Источник и лицензия: `src/assets/exercises/NOTICE.md`.
+ * Иллюстрации упражнений.
+ *
+ * Контурные схемы — набор Everkinetic (CC BY-SA 4.0); фотографии — free-exercise-db
+ * (Unlicense). Источники и лицензии: `src/assets/exercises/NOTICE.md`.
  *
  * Файлы лежат в `assets/exercises/<slug>.webp` и подключаются по slug через
  * таблицу соответствия каноническому названию упражнения.
@@ -123,8 +125,36 @@ const NAME_TO_SLUG: Record<string, string> = {
   'Bicycle Crunch': 'air-bike',
 };
 
-/** URL иллюстрации упражнения или `undefined`, если её ещё нет. */
-export function exerciseArt(name: string): string | undefined {
-  const slug = NAME_TO_SLUG[name];
-  return slug === undefined ? undefined : bySlug.get(slug);
+/**
+ * Каноническое название → slug фотографии (free-exercise-db, Unlicense).
+ * Для упражнений, которых нет в наборе Everkinetic.
+ */
+const NAME_TO_PHOTO: Record<string, string> = {
+  'High Row': 'high-row',
+  'Face Pull': 'face-pull',
+  'Жим штанги стоя': 'standing-barbell-press',
+  'Болгарские приседания': 'bulgarian-split-squat',
+  'Подъём ног в висе': 'hanging-leg-raise',
+  'Планка': 'plank',
+  'Pallof Press': 'pallof-press',
+  'Russian Twist': 'russian-twist',
+  'Wood Chop': 'cable-wood-chop',
+  'Румынская тяга на одной ноге': 'single-leg-deadlift',
+};
+
+const PHOTO_SLUGS = new Set<string>(Object.values(NAME_TO_PHOTO));
+
+/** Иллюстрация упражнения: `line` — контурная схема, `photo` — фотография. */
+export interface ExerciseArt {
+  src: string;
+  kind: 'line' | 'photo';
+}
+
+/** Иллюстрация упражнения или `undefined`, если её ещё нет. */
+export function exerciseArt(name: string): ExerciseArt | undefined {
+  const slug = NAME_TO_SLUG[name] ?? NAME_TO_PHOTO[name];
+  if (slug === undefined) return undefined;
+  const src = bySlug.get(slug);
+  if (src === undefined) return undefined;
+  return { src, kind: PHOTO_SLUGS.has(slug) ? 'photo' : 'line' };
 }
