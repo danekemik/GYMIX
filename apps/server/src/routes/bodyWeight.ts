@@ -13,7 +13,8 @@ import { readJson } from '../web.js';
 
 export function bodyWeightRouter(ctx: AppContext): Hono {
   const app = new Hono();
-  app.use('*', requireAuth(ctx));
+  app.use('/body-weight', requireAuth(ctx));
+  app.use('/body-weight/*', requireAuth(ctx));
 
   app.get('/body-weight', async (c) => {
     const { userId } = getPrincipal(c);

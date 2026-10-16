@@ -514,3 +514,12 @@ export const syncOperations = pgTable(
     index('sync_operations_session_idx').on(t.sessionId),
   ],
 );
+
+/** Applied account-sync requests survive record deletion and lost responses. */
+export const syncReceipts = pgTable('sync_receipts', {
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  operationId: uuid('operation_id').notNull(),
+  requestHash: text('request_hash').notNull(),
+  response: jsonb('response').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.userId, t.operationId] })]);

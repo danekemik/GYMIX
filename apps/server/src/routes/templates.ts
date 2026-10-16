@@ -45,7 +45,8 @@ export interface TemplateView {
 
 export function templatesRouter(ctx: AppContext): Hono {
   const app = new Hono();
-  app.use('*', requireAuth(ctx));
+  app.use('/templates', requireAuth(ctx));
+  app.use('/templates/*', requireAuth(ctx));
   const read = (c: Parameters<typeof readJson>[0]) => readJson(c);
 
   app.get('/templates', async (c) => {

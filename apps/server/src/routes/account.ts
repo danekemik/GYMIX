@@ -17,7 +17,8 @@ export const GRACE_PERIOD_MS = 7 * 86_400_000;
 
 export function accountRouter(ctx: AppContext): Hono {
   const app = new Hono();
-  app.use('*', requireAuth(ctx));
+  app.use('/account', requireAuth(ctx));
+  app.use('/account/*', requireAuth(ctx));
 
   app.get('/account', async (c) => {
     const { userId } = getPrincipal(c);

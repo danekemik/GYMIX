@@ -123,3 +123,4 @@ export interface ApplyOpsResult {
   owningDeviceId: string;
 }
 
+export * from "./sync.js";

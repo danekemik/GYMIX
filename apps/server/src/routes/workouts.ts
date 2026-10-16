@@ -26,7 +26,8 @@ const VOLUME_KEYS = new Set<string>(VOLUME_LEVELS);
 
 export function workoutsRouter(ctx: AppContext): Hono {
   const app = new Hono();
-  app.use('*', requireAuth(ctx));
+  app.use('/workouts', requireAuth(ctx));
+  app.use('/workouts/*', requireAuth(ctx));
 
   app.post('/workouts', async (c) => {
     const { userId, deviceId } = getPrincipal(c);

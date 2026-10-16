@@ -17,7 +17,8 @@ import { getPrincipal, requireAuth } from '../auth-mid.js';
 
 export function progressRouter(ctx: AppContext): Hono {
   const app = new Hono();
-  app.use('*', requireAuth(ctx));
+  app.use('/progress', requireAuth(ctx));
+  app.use('/progress/*', requireAuth(ctx));
 
   app.get('/progress', async (c) => {
     const { userId } = getPrincipal(c);
