@@ -28,7 +28,7 @@ interface Snapshot {
   readOnly: boolean;
   countedExercises: number;
   startedAt: string;
-  intervals: Array<{ startedAt: string; endedAt: string | null }>;
+  intervals: Array<{ startedAt: string; endedAt: string | null; }>;
   exercises: Array<{
     id: string;
     name: string;
@@ -285,4 +285,115 @@ describe('удаление тренировки', () => {
     });
     expect(refuse.status).toBe(409);
   });
+});
+
+
+describe('регрессии очереди без интернета', () => {
+  it('добавляет подход, заполняет его и завершает тренировку одним пакетом', async () => {
+    const session = await startWorkout(user.accessToken);
+    const exId = session.exercises[0]!.id;
+    const ops = [
+      { type: 'set_add', operationId: uuid(), payload: { sessionExerciseId: exId, setNumber: 4 } },
+      { type: 'set_upsert', operationId: uuid(), payload: { sessionExerciseId: exId, setNumber: 4, weight: 60, reps: 8, completedAt: nowIso() } },
+      { type: 'exercise_status', operationId: uuid(), payload: { sessionExerciseId: exId, status: 'completed' } },
+      { type: 'finish', operationId: uuid(), payload: {} },
+    ];
+    const res = await postOps(user.accessToken, session.id, 1, ops);
+    expect(res.status).toBe(200);
+    expect(res.body.result.applied).toHaveLength(4);
+    expect(res.body.result.rejected).toEqual([]);
+    expect(res.body.session.status).toBe('completed');
+    expect(Number(res.body.session.exercises[0].sets[3].weight)).toBe(60);
+    // Response may be lost: a replay with the original revision must succeed.
+    const retry = await postOps(user.accessToken, session.id, 1, ops);
+    expect(retry.body.result.conflict).toBe(false);
+    expect(retry.body.result.skipped).toHaveLength(4);
+    expect(retry.body.result.revision).toBe(2);
+  });
+
+  it('меняет порядок и продолжает после отклонённой операции', async () => {
+    const session = await startWorkout(user.accessToken);
+    const res = await postOps(user.accessToken, session.id, 1, [
+      { type: 'exercise_position', operationId: uuid(), payload: { sessionExerciseId: session.exercises[0]!.id, position: 2 } },
+      { type: 'finish', operationId: uuid(), payload: { completedAt: nowIso() } },
+      { type: 'set_upsert', operationId: uuid(), payload: { sessionExerciseId: session.exercises[0]!.id, setNumber: 1, weight: 40, reps: 5 } },
+    ]);
+    expect(res.status).toBe(200);
+    expect(res.body.result.applied).toHaveLength(2);
+    expect(res.body.result.rejected).toHaveLength(1);
+    expect(res.body.session.exercises[1].id).toBe(session.exercises[0]!.id);
+    expect(Number(res.body.session.exercises[1].sets[0].weight)).toBe(40);
+  });
+
+  it('дедуплицирует операции внутри пакета и запрещает подмену payload', async () => {
+    const session = await startWorkout(user.accessToken);
+    const op = { type: 'interval_open', operationId: uuid(), payload: {} };
+    const res = await postOps(user.accessToken, session.id, 1, [op, op]);
+    expect(res.status).toBe(200);
+    expect(res.body.result.applied).toHaveLength(1);
+    expect(res.body.session.intervals).toHaveLength(1);
+    const misuse = await postOps(user.accessToken, session.id, 2, [{ ...op, type: 'interval_close' }]);
+    expect(misuse.status).toBe(409);
+  });
+
+  it('передаёт владение и принимает изменения от нового устройства в одном пакете', async () => {
+    const session = await startWorkout(user.accessToken);
+    const second = await loginOnDevice(env.app, user.email, user.password, 'transfer-batch');
+    const res = await postOps(second.accessToken, session.id, 1, [
+      { type: 'transfer_ownership', operationId: uuid(), payload: {} },
+      { type: 'set_upsert', operationId: uuid(), payload: { sessionExerciseId: session.exercises[0]!.id, setNumber: 1, weight: 35, reps: 8 } },
+    ]);
+    expect(res.body.result.applied).toHaveLength(2);
+    expect(res.body.result.rejected).toEqual([]);
+    const revoked = await api(env.app, 'DELETE', `/api/v1/auth/devices/${second.deviceId}`, { token: user.accessToken });
+    expect(revoked.status).toBe(204);
+    expect((await api(env.app, 'GET', `/api/v1/workouts/${session.id}`, { token: user.accessToken })).status).toBe(200);
+    expect((await api(env.app, 'GET', '/api/v1/account', { token: second.accessToken })).status).toBe(401);
+  });
+});
+
+it('выдаёт историю страницами и разрешает исправлять её с другого устройства', async () => {
+  const completed: string[] = [];
+  for (let i = 0; i < 2; i++) {
+    const session = await startWorkout(user.accessToken);
+    const res = await postOps(user.accessToken, session.id, 1, [
+      { type: 'exercise_status', operationId: uuid(), payload: { sessionExerciseId: session.exercises[0]!.id, status: 'completed' } },
+      { type: 'finish', operationId: uuid(), payload: {} },
+    ]);
+    expect(res.body.session.status).toBe('completed');
+    completed.push(session.id);
+  }
+  const first = await api(env.app, 'GET', '/api/v1/workouts?limit=1', { token: user.accessToken });
+  expect(first.status).toBe(200);
+  expect(first.body.history).toHaveLength(1);
+  expect(first.body.nextCursor).toBeTypeOf('string');
+  const next = await api(env.app, 'GET', `/api/v1/workouts?limit=1&cursor=${first.body.nextCursor}`, { token: user.accessToken });
+  expect(next.status).toBe(200);
+  expect(new Set([first.body.history[0].id, next.body.history[0].id])).toEqual(new Set(completed));
+  expect(next.body.nextCursor).toBeNull();
+  const second = await loginOnDevice(env.app, user.email, user.password, 'history-editor');
+  const patch = await api(env.app, 'PATCH', `/api/v1/workouts/${completed[0]}`, {
+    token: second.accessToken,
+    body: { expectedRevision: 2, startedAt: new Date(Date.now() - 86400000).toISOString() },
+  });
+  expect(patch.status).toBe(200);
+  const stale = await api(env.app, 'PATCH', `/api/v1/workouts/${completed[0]}`, {
+    token: second.accessToken, body: { expectedRevision: 2, completedAt: null },
+  });
+  expect(stale.status).toBe(409);
+});
+
+it('откатывает побочные изменения отклонённой операции и сохраняет следующие', async () => {
+  const session = await startWorkout(user.accessToken);
+  const res = await postOps(user.accessToken, session.id, 1, [
+    { type: 'exercise_status', operationId: uuid(), payload: { sessionExerciseId: session.exercises[0]!.id, status: 'completed' } },
+    // finish closes the interval before checking its date: savepoint must undo it.
+    { type: 'finish', operationId: uuid(), payload: { completedAt: new Date(Date.parse(session.startedAt) - 1000).toISOString() } },
+    { type: 'set_upsert', operationId: uuid(), payload: { sessionExerciseId: session.exercises[0]!.id, setNumber: 1, weight: 25, reps: 8 } },
+  ]);
+  expect(res.status).toBe(200);
+  expect(res.body.result.applied).toHaveLength(2);
+  expect(res.body.result.rejected).toHaveLength(1);
+  expect(res.body.session.status).toBe('active');
+  expect(res.body.session.intervals[0].endedAt).toBeNull();
 });

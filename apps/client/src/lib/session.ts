@@ -11,7 +11,7 @@ import {
   workoutTypes,
   workoutVolumes,
 } from '@gymix/db/schema';
-import type { SessionSnapshot, SetEntry } from '../screens/ExecuteScreen';
+import type { SessionSnapshot, SetEntry } from '../domain/session';
 import type { GymixDb } from './db';
 import { buildWorkoutFromEntries } from './reconstruct';
 
@@ -34,7 +34,7 @@ export interface HistoryItem {
   readonly total: number;
 }
 
-let ownerCache: { userId: string; deviceId: string } | undefined;
+let ownerCache: { userId: string; deviceId: string; } | undefined;
 
 /**
  * Снимок завершённой тренировки в историю. Пустая сессия сюда не доходит —
@@ -43,96 +43,98 @@ let ownerCache: { userId: string; deviceId: string } | undefined;
 export async function saveSession(db: GymixDb, payload: SessionSnapshot): Promise<void> {
   const owner = await ensureLocalOwner(db);
 
-  const typeId = (
-    await db.db
-      .select({ id: workoutTypes.id })
-      .from(workoutTypes)
-      .where(eq(workoutTypes.key, payload.workout.type))
-      .limit(1)
-  )[0]?.id;
-  const volumeId = (
-    await db.db
-      .select({ id: workoutVolumes.id })
-      .from(workoutVolumes)
-      .where(eq(workoutVolumes.key, payload.workout.volume))
-      .limit(1)
-  )[0]?.id;
-  if (typeId === undefined || volumeId === undefined) {
-    throw new Error(`нет справочника тип/объём для ${payload.workout.type} · ${payload.workout.volume}`);
-  }
+  await db.db.transaction(async (tx) => {
+    const typeId = (
+      await tx
+        .select({ id: workoutTypes.id })
+        .from(workoutTypes)
+        .where(eq(workoutTypes.key, payload.workout.type))
+        .limit(1)
+    )[0]?.id;
+    const volumeId = (
+      await tx
+        .select({ id: workoutVolumes.id })
+        .from(workoutVolumes)
+        .where(eq(workoutVolumes.key, payload.workout.volume))
+        .limit(1)
+    )[0]?.id;
+    if (typeId === undefined || volumeId === undefined) {
+      throw new Error(`нет справочника тип/объём для ${payload.workout.type} · ${payload.workout.volume}`);
+    }
 
-  const endedAt = new Date(payload.endedAt);
-  const [session] = await db.db
-    .insert(workoutSessions)
-    .values({
-      userId: owner.userId,
-      owningDeviceId: owner.deviceId,
-      typeId,
-      volumeId,
-      startedAt: new Date(payload.startedAt),
-      completedAt: endedAt,
-      status: 'completed',
-    })
-    .returning({ id: workoutSessions.id });
-  if (session === undefined) throw new Error('сессия не создана');
-
-  const exerciseRows = await db.db
-    .select({ id: exercises.id, name: exercises.canonicalNameRu })
-    .from(exercises);
-  const exerciseId = new Map(exerciseRows.map((r) => [r.name, r.id]));
-
-  const exerciseValues = payload.workout.entries.map((entry, index) => {
-    const group = payload.sets[index] ?? [];
-    const done = group.length > 0 && group.every((s) => s.done);
-    const isSkipped = payload.skippedExercises?.[index] === true;
-    return {
-      sessionId: session.id,
-      exerciseId: exerciseId.get(entry.exercise.name),
-      exerciseNameSnapshot: entry.exercise.name,
-      position: index + 1,
-      status: (done && !isSkipped ? 'completed' : 'skipped') as 'completed' | 'skipped',
-    };
-  });
-  const exerciseRowsInserted = await db.db
-    .insert(sessionExercises)
-    .values(exerciseValues)
-    .returning({ id: sessionExercises.id, position: sessionExercises.position });
-  const byPosition = new Map(exerciseRowsInserted.map((r) => [r.position, r.id]));
-
-  const setValues: Array<{
-    sessionExerciseId: string;
-    setNumber: number;
-    weight: string | null;
-    reps: number | null;
-    completedAt: Date;
-  }> = [];
-  payload.sets.forEach((group, index) => {
-    if (payload.skippedExercises?.[index] === true) return;
-    const sessionExerciseId = byPosition.get(index + 1);
-    if (sessionExerciseId === undefined) return;
-    group.forEach((set, setIndex) => {
-      if (!set.done) return;
-      setValues.push({
-        sessionExerciseId,
-        setNumber: setIndex + 1,
-        weight: parseWeight(set.weight),
-        reps: parseReps(set.reps),
+    const endedAt = new Date(payload.endedAt);
+    const [session] = await tx
+      .insert(workoutSessions)
+      .values({
+        userId: owner.userId,
+        owningDeviceId: owner.deviceId,
+        typeId,
+        volumeId,
+        startedAt: new Date(payload.startedAt),
         completedAt: endedAt,
+        status: 'completed',
+      })
+      .returning({ id: workoutSessions.id });
+    if (session === undefined) throw new Error('сессия не создана');
+
+    const exerciseRows = await tx
+      .select({ id: exercises.id, name: exercises.canonicalNameRu })
+      .from(exercises);
+    const exerciseId = new Map(exerciseRows.map((r) => [r.name, r.id]));
+
+    const exerciseValues = payload.workout.entries.map((entry, index) => {
+      const group = payload.sets[index] ?? [];
+      const done = group.length > 0 && group.every((s) => s.done);
+      const isSkipped = payload.skippedExercises?.[index] === true;
+      return {
+        sessionId: session.id,
+        exerciseId: exerciseId.get(entry.exercise.name),
+        exerciseNameSnapshot: entry.exercise.name,
+        position: index + 1,
+        status: (done && !isSkipped ? 'completed' : 'skipped') as 'completed' | 'skipped',
+      };
+    });
+    const exerciseRowsInserted = await tx
+      .insert(sessionExercises)
+      .values(exerciseValues)
+      .returning({ id: sessionExercises.id, position: sessionExercises.position });
+    const byPosition = new Map(exerciseRowsInserted.map((r) => [r.position, r.id]));
+
+    const setValues: Array<{
+      sessionExerciseId: string;
+      setNumber: number;
+      weight: string | null;
+      reps: number | null;
+      completedAt: Date;
+    }> = [];
+    payload.sets.forEach((group, index) => {
+      if (payload.skippedExercises?.[index] === true) return;
+      const sessionExerciseId = byPosition.get(index + 1);
+      if (sessionExerciseId === undefined) return;
+      group.forEach((set, setIndex) => {
+        if (!set.done) return;
+        setValues.push({
+          sessionExerciseId,
+          setNumber: setIndex + 1,
+          weight: parseWeight(set.weight),
+          reps: parseReps(set.reps),
+          completedAt: endedAt,
+        });
       });
     });
-  });
-  if (setValues.length > 0) await db.db.insert(sessionSets).values(setValues);
+    if (setValues.length > 0) await tx.insert(sessionSets).values(setValues);
 
-  // Длительность — сумма активных интервалов (LOCKED): храним один закрытый
-  // интервал на завершённую сессию, чтобы история считала время без пауз.
-  const durationMs = Math.max(0, payload.durationMs ?? endedAt.getTime() - new Date(payload.startedAt).getTime());
-  if (durationMs > 0) {
-    await db.db.insert(sessionIntervals).values({
-      sessionId: session.id,
-      startedAt: new Date(endedAt.getTime() - durationMs),
-      endedAt,
-    });
-  }
+    // Длительность — сумма активных интервалов (LOCKED): храним один закрытый
+    // интервал на завершённую сессию, чтобы история считала время без пауз.
+    const durationMs = Math.max(0, payload.durationMs ?? endedAt.getTime() - new Date(payload.startedAt).getTime());
+    if (durationMs > 0) {
+      await tx.insert(sessionIntervals).values({
+        sessionId: session.id,
+        startedAt: new Date(endedAt.getTime() - durationMs),
+        endedAt,
+      });
+    }
+  });
 }
 
 /** Завершённые сессии от новых к старым (вкладка «История», S13). */
@@ -457,10 +459,10 @@ export async function resumeDraft(db: GymixDb, sessionId: string): Promise<Resum
     const own = byExercise.get(exRow.id) ?? [];
     return own.length > 0
       ? own.map((set) => ({
-          weight: set.weight != null ? String(Number(set.weight)) : '',
-          reps: set.reps?.toString() ?? '',
-          done: set.completedAt !== null,
-        }))
+        weight: set.weight != null ? String(Number(set.weight)) : '',
+        reps: set.reps?.toString() ?? '',
+        done: set.completedAt !== null,
+      }))
       : Array.from({ length: 3 }, () => ({ weight: '', reps: '', done: false }));
   });
 
@@ -507,7 +509,7 @@ async function resolveTypeVolume(
   db: GymixDb,
   type: string,
   volume: string,
-): Promise<{ typeId: string; volumeId: string }> {
+): Promise<{ typeId: string; volumeId: string; }> {
   const typeId = (
     await db.db.select({ id: workoutTypes.id }).from(workoutTypes).where(eq(workoutTypes.key, type)).limit(1)
   )[0]?.id;
@@ -520,7 +522,7 @@ async function resolveTypeVolume(
   return { typeId, volumeId };
 }
 
-export async function ensureLocalOwner(db: GymixDb): Promise<{ userId: string; deviceId: string }> {
+export async function ensureLocalOwner(db: GymixDb): Promise<{ userId: string; deviceId: string; }> {
   if (ownerCache !== undefined) return ownerCache;
 
   const existing = await db.db

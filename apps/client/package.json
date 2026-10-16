@@ -18,7 +18,8 @@
     "@gymix/structures": "workspace:*",
     "drizzle-orm": "^0.45.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "@gymix/contracts": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

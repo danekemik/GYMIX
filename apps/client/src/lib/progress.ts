@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { bodyWeightEntries, exercises, sessionExercises, sessionSets, workoutSessions } from '@gymix/db/schema';
 import type { GymixDb } from './db';
 import { ensureLocalOwner } from './session';
@@ -20,7 +20,7 @@ export interface ExerciseSeries {
 }
 
 /** Лучший подход сессии: макс. вес, при равенстве — макс. повторения. */
-function bestSet(sets: ReadonlyArray<{ weight: number; reps: number; date: Date }>): ExercisePoint {
+function bestSet(sets: ReadonlyArray<{ weight: number; reps: number; date: Date; }>): ExercisePoint {
   let best = sets[0]!;
   for (const s of sets) {
     if (s.weight > best.weight || (s.weight === best.weight && s.reps > best.reps)) best = s;
@@ -37,6 +37,7 @@ export async function progressSeries(db: GymixDb, since?: Date): Promise<Exercis
   const rows = await db.db
     .select({
       name: exercises.canonicalNameRu,
+      sessionId: workoutSessions.id,
       snapshot: sessionExercises.exerciseNameSnapshot,
       date: workoutSessions.startedAt,
       weight: sessionSets.weight,
@@ -46,15 +47,15 @@ export async function progressSeries(db: GymixDb, since?: Date): Promise<Exercis
     .innerJoin(sessionExercises, eq(sessionSets.sessionExerciseId, sessionExercises.id))
     .innerJoin(workoutSessions, eq(sessionExercises.sessionId, workoutSessions.id))
     .leftJoin(exercises, eq(sessionExercises.exerciseId, exercises.id))
-    .where(eq(workoutSessions.status, 'completed'))
+    .where(and(eq(workoutSessions.status, 'completed'), eq(sessionExercises.status, 'completed'), isNotNull(sessionSets.completedAt)))
     .orderBy(asc(workoutSessions.startedAt));
 
-  const byName = new Map<string, Map<string, { weight: number; reps: number; date: Date }[]>>();
+  const byName = new Map<string, Map<string, { weight: number; reps: number; date: Date; }[]>>();
   for (const row of rows) {
     if (row.weight === null || row.reps === null) continue;
     const name = row.name ?? row.snapshot;
-    const sessionKey = `${row.date.getTime()}`;
-    const bySession = byName.get(name) ?? new Map<string, { weight: number; reps: number; date: Date }[]>();
+    const sessionKey = row.sessionId;
+    const bySession = byName.get(name) ?? new Map<string, { weight: number; reps: number; date: Date; }[]>();
     const sets = bySession.get(sessionKey) ?? [];
     sets.push({ weight: Number(row.weight), reps: row.reps, date: row.date });
     bySession.set(sessionKey, sets);

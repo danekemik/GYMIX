@@ -5,27 +5,8 @@ import { plural } from '../lib/draft';
 import { createDraft, deleteDraft, persistDraft, setDraftRunning, type DraftSession, type ResumedSession } from '../lib/session';
 import { saveSession } from '../lib/session';
 
-export interface SetEntry {
-  readonly weight: string;
-  readonly reps: string;
-  readonly done: boolean;
-}
-
-/** Снимок выполненной сессии: расширяется флагом сохранения для итога. */
-export interface SessionSnapshot {
-  readonly workout: GeneratedWorkout;
-  readonly sets: readonly (readonly SetEntry[])[];
-  /** Явно пропущенные упражнения (S10): не засчитываются в X/Y. */
-  readonly skippedExercises?: readonly boolean[];
-  readonly startedAt: number;
-  readonly endedAt: number;
-  /** Активное время без пауз (S10, LOCKED) — попадает в историю. */
-  readonly durationMs?: number;
-}
-
-export interface FinishPayload extends SessionSnapshot {
-  readonly saved: boolean;
-}
+import type { SetEntry, SessionSnapshot, FinishPayload } from '../domain/session';
+export type { SetEntry, SessionSnapshot, FinishPayload } from '../domain/session';
 
 interface ExecuteScreenProps {
   workout: GeneratedWorkout;
@@ -102,13 +83,13 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
       intervalStartRef.current = null;
       setRunning(false);
       if (draft !== null && draft !== 'created' && db !== undefined) {
-        void setDraftRunning(db, draft.sessionId, false).catch(() => {});
+        void setDraftRunning(db, draft.sessionId, false).catch(() => { });
       }
     } else {
       intervalStartRef.current = now;
       setRunning(true);
       if (draft !== null && draft !== 'created' && db !== undefined) {
-        void setDraftRunning(db, draft.sessionId, true).catch(() => {});
+        void setDraftRunning(db, draft.sessionId, true).catch(() => { });
       }
     }
   };
@@ -200,7 +181,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
 
   const deleteDraftNow = async () => {
     if (draft !== null && draft !== 'created' && db !== undefined) {
-      await deleteDraft(db, draft.sessionId).catch(() => {});
+      await deleteDraft(db, draft.sessionId).catch(() => { });
     }
     onExit();
   };
@@ -226,7 +207,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
         ? await saveSession(dbNow, payload).then(() => true).catch(() => false)
         : false;
     if (saved && draft !== null && draft !== 'created' && dbNow !== undefined) {
-      await deleteDraft(dbNow, draft.sessionId).catch(() => {});
+      await deleteDraft(dbNow, draft.sessionId).catch(() => { });
     }
     onFinish({ ...payload, saved });
   };

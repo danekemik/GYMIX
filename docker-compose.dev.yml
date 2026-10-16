@@ -1,0 +1,20 @@
+# Local database only. API runs with pnpm server:dev on the host.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gymix
+      POSTGRES_PASSWORD: gymix
+      POSTGRES_DB: gymix
+    ports:
+      - "127.0.0.1:${GYMIX_DB_PORT:-55432}:5432"
+    volumes:
+      - gymix-dev-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gymix -d gymix"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  gymix-dev-db:

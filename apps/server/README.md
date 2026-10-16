@@ -12,8 +12,10 @@ pnpm install
 pnpm --filter @gymix/server dev        # tsx watch, http://localhost:3000
 ```
 
+Локальная PostgreSQL: `pnpm db:up` из корня, порт 55432. Подготовка схемы: `pnpm db:prepare`.
+
 Для разработки достаточно локального PostgreSQL: скопируйте
-`apps/server/.env.example` в `.env` и задайте `DATABASE_URL`. Миграции и посев
+`apps/server/.env.example` в `apps/server/.env` и задайте `DATABASE_URL`. Миграции и посев
 референсных справочников выполняются на старте (`APP_MIGRATE`, `APP_SEED`),
 если заданы `MIGRATIONS_DIR` и `REFERENCE_DIR`. В режиме `EMAIL_MODE=console`
 коды подтверждения печатаются в лог.
@@ -78,7 +80,8 @@ refresh он ротируется, а повторное использован�
 ### Docker Compose
 
 ```bash
-JWT_SECRET="$(openssl rand -base64 48)" docker compose up --build
+# Задайте POSTGRES_PASSWORD, JWT_SECRET, APP_ORIGINS и SMTP_HOST
+docker compose up --build
 ```
 
 Поднимаются PostgreSQL и сервер. `docker-compose.yml` ждёт готовности БД,
@@ -90,3 +93,5 @@ JWT_SECRET="$(openssl rand -base64 48)" docker compose up --build
 Полный список с пояснениями — в [`.env.example`](./.env.example). Ключевые:
 `DATABASE_URL`, `JWT_SECRET` (≥32 символа), `APP_ORIGINS`, `EMAIL_MODE`,
 `MIGRATIONS_DIR`, `REFERENCE_DIR`.
+
+Подробности реализации и оставшаяся работа: [docs/backend.md](../../docs/backend.md).

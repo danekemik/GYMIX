@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt, or, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Db } from '@gymix/db/seed-data';
 import {
@@ -18,6 +18,7 @@ import { getPrincipal, requireAuth } from '../auth-mid.js';
 import { readJson } from '../web.js';
 import { applyOps, parseOperations } from '../sync/ops.js';
 import { getSessionSnapshot } from '../sync/snapshot.js';
+import { operationBatchSchema } from '@gymix/contracts';
 import { VOLUME_LEVELS, WORKOUT_TYPES } from '@gymix/structures';
 
 const TYPE_KEYS = new Set<string>(WORKOUT_TYPES);
@@ -58,6 +59,40 @@ export function workoutsRouter(ctx: AppContext): Hono {
     });
     const snapshot = await getSessionSnapshot(ctx.db, id, deviceId, ctx.clock);
     return c.json({ session: snapshot }, 201);
+  });
+
+  app.get('/workouts', async (c) => {
+    const { userId } = getPrincipal(c);
+    const limit = z.coerce.number().int().min(1).max(100).parse(c.req.query('limit') ?? '20');
+    let cursor: { completedAt: string; id: string; } | undefined;
+    const raw = c.req.query('cursor');
+    if (raw) {
+      try {
+        if (raw.length > 300) throw new Error();
+        cursor = z.object({ completedAt: z.string().datetime(), id: z.string().uuid() })
+          .parse(JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')));
+      } catch { throw HttpError.invalidRequest('Некорректный курсор истории'); }
+    }
+    const rows = await ctx.db.select({
+      id: workoutSessions.id, type: workoutTypes.key, volume: workoutVolumes.key,
+      startedAt: workoutSessions.startedAt, completedAt: workoutSessions.completedAt,
+      revision: workoutSessions.revision,
+      done: sql<number>`count(${sessionExercises.id}) filter (where ${sessionExercises.status} = 'completed')::int`,
+      total: sql<number>`count(${sessionExercises.id})::int`,
+    }).from(workoutSessions)
+      .innerJoin(workoutTypes, eq(workoutTypes.id, workoutSessions.typeId))
+      .innerJoin(workoutVolumes, eq(workoutVolumes.id, workoutSessions.volumeId))
+      .leftJoin(sessionExercises, eq(sessionExercises.sessionId, workoutSessions.id))
+      .where(and(eq(workoutSessions.userId, userId), eq(workoutSessions.status, 'completed'),
+        cursor ? or(lt(workoutSessions.completedAt, new Date(cursor.completedAt)),
+          and(eq(workoutSessions.completedAt, new Date(cursor.completedAt)), lt(workoutSessions.id, cursor.id))) : undefined))
+      .groupBy(workoutSessions.id, workoutTypes.key, workoutVolumes.key)
+      .orderBy(desc(workoutSessions.completedAt), desc(workoutSessions.id)).limit(limit + 1);
+    const page = rows.slice(0, limit);
+    const last = page.at(-1);
+    const nextCursor = rows.length > limit && last?.completedAt
+      ? Buffer.from(JSON.stringify({ completedAt: last.completedAt.toISOString(), id: last.id })).toString('base64url') : null;
+    return c.json({ history: page, nextCursor });
   });
 
   app.get('/workouts/active', async (c) => {
@@ -118,33 +153,26 @@ export function workoutsRouter(ctx: AppContext): Hono {
   app.post('/workouts/:id/ops', async (c) => {
     const { userId, deviceId } = getPrincipal(c);
     const sessionId = requireUuid(c.req.param('id'));
-    const body = z
-      .object({
-        expectedRevision: z.number().int().positive().default(1),
-        ops: z.array(z.unknown()).min(1),
-      })
-      .parse(await readJson(c));
-
-    const result = await applyOps(ctx.db, ctx, {
-      userId,
-      deviceId,
-      sessionId,
-      expectedRevision: body.expectedRevision,
-      operations: parseOperations(body.ops),
+    const body = operationBatchSchema.parse(await readJson(c));
+    const response = await ctx.db.transaction(async (tx) => {
+      const result = await applyOps(tx, ctx, {
+        userId, deviceId, sessionId,
+        expectedRevision: body.expectedRevision, operations: parseOperations(body.ops)
+      });
+      const snapshot = await getSessionSnapshot(tx, sessionId, deviceId, ctx.clock);
+      return { result, session: snapshot };
     });
-
-    const snapshot = await getSessionSnapshot(ctx.db, sessionId, deviceId, ctx.clock);
-    return c.json({ result, session: snapshot });
+    return c.json(response);
   });
 
   app.delete('/workouts/:id', async (c) => {
     const { userId, deviceId } = getPrincipal(c);
     const sessionId = requireUuid(c.req.param('id'));
-    const session = await requireOwnedSession(ctx.db, sessionId, userId, deviceId);
-    if (session.status !== 'active') {
-      throw new HttpError(409, 'conflict', 'Завершённую тренировку удалить нельзя');
-    }
-    await ctx.db.delete(workoutSessions).where(eq(workoutSessions.id, sessionId));
+    await ctx.db.transaction(async (tx) => {
+      const session = await lockedSession(tx, sessionId, userId, deviceId);
+      if (session.status !== 'active') throw new HttpError(409, 'conflict', 'Завершённую тренировку удалить нельзя');
+      await tx.delete(workoutSessions).where(eq(workoutSessions.id, sessionId));
+    });
     return c.body(null, 204);
   });
 
@@ -153,26 +181,24 @@ export function workoutsRouter(ctx: AppContext): Hono {
     const sessionId = requireUuid(c.req.param('id'));
     const body = z
       .object({
+        expectedRevision: z.number().int().positive(),
         startedAt: z.string().datetime({ offset: true }).optional(),
         completedAt: z.string().datetime({ offset: true }).nullable().optional(),
       })
       .parse(await readJson(c));
 
-    await requireOwnedSession(ctx.db, sessionId, userId, deviceId);
-
-    const patches: Record<string, unknown> = {
-      updatedAt: ctx.clock(),
-      revision: sql`${workoutSessions.revision} + 1`,
-    };
-    if (body.startedAt !== undefined) patches.startedAt = new Date(body.startedAt);
-    if (body.completedAt !== undefined) {
-      patches.completedAt = body.completedAt === null ? null : new Date(body.completedAt);
-    }
-    await ctx.db
-      .update(workoutSessions)
-      .set(patches as never)
-      .where(eq(workoutSessions.id, sessionId));
-    const snapshot = await getSessionSnapshot(ctx.db, sessionId, deviceId, ctx.clock);
+    const snapshot = await ctx.db.transaction(async (tx) => {
+      const session = await lockedSession(tx, sessionId, userId, deviceId);
+      if (session.revision !== body.expectedRevision) throw new HttpError(409, 'session_conflict', 'Тренировка уже изменена, обновите данные');
+      const startedAt = body.startedAt ? new Date(body.startedAt) : session.startedAt;
+      const completedAt = body.completedAt === undefined ? session.completedAt : body.completedAt === null ? null : new Date(body.completedAt);
+      if (session.status === 'completed' && !completedAt) throw HttpError.invalidRequest('У завершённой тренировки должна быть дата завершения');
+      if (session.status === 'active' && completedAt) throw HttpError.invalidRequest('Для завершения используйте операцию finish');
+      if (completedAt && completedAt < startedAt) throw HttpError.invalidRequest('Дата завершения раньше начала');
+      await tx.update(workoutSessions).set({ startedAt, completedAt, updatedAt: ctx.clock(), revision: session.revision + 1 })
+        .where(eq(workoutSessions.id, sessionId));
+      return getSessionSnapshot(tx, sessionId, deviceId, ctx.clock);
+    });
     return c.json({ session: snapshot });
   });
 
@@ -192,7 +218,7 @@ export async function createSession(
     type: string;
     volume: string;
     sourceTemplateId?: string;
-    exercises: Array<{ name: string; position: number; defaultSets: number }>;
+    exercises: Array<{ name: string; position: number; defaultSets: number; }>;
     startedAt?: string;
   },
 ): Promise<string> {
@@ -300,7 +326,7 @@ async function findSession(
   db: Db,
   sessionId: string,
   userId: string,
-): Promise<{ id: string; status: 'active' | 'completed' }> {
+): Promise<{ id: string; status: 'active' | 'completed'; }> {
   const [row] = await db
     .select({ id: workoutSessions.id, status: workoutSessions.status })
     .from(workoutSessions)
@@ -309,21 +335,14 @@ async function findSession(
   return row;
 }
 
-async function requireOwnedSession(
-  db: Db,
-  sessionId: string,
-  userId: string,
-  deviceId: string,
-): Promise<{ id: string; status: 'active' | 'completed' }> {
-  const row = await findSession(db, sessionId, userId);
-  const [ownership] = await db
-    .select({ owningDeviceId: workoutSessions.owningDeviceId })
-    .from(workoutSessions)
-    .where(eq(workoutSessions.id, sessionId));
-  if (ownership?.owningDeviceId !== deviceId) {
+async function lockedSession(db: Db, sessionId: string, userId: string, deviceId: string) {
+  const [session] = await db.select().from(workoutSessions)
+    .where(and(eq(workoutSessions.id, sessionId), eq(workoutSessions.userId, userId))).for('update');
+  if (!session) throw HttpError.notFound('Тренировка не найдена');
+  if (session.status === 'active' && session.owningDeviceId !== deviceId) {
     throw new HttpError(423, 'ownership_required', 'Тренировку ведёт другое устройство');
   }
-  return row;
+  return session;
 }
 
 function requireUuid(value: string): string {

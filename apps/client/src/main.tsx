@@ -2,6 +2,9 @@ import '@fontsource-variable/unbounded';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { registerOfflineSupport } from './lib/offline';
+
+registerOfflineSupport();
 import { DbProvider } from './hooks/useDb';
 import './styles/app.css';
 import './styles/builder.css';
@@ -21,23 +24,6 @@ import './styles/workouts.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('нет #root');
-
-// PGlite (Postgres в WASM) при первом монтировании пустого каталога в
-// IndexedDB отклоняет служебный промис с `FS.ErrnoError` из своей файловой
-// обвязки. Ошибка безвредна — база создаётся и засеивается корректно, — но
-// всплывает как непойманная и засоряет консоль. Гасим только её, прочие
-// ошибки пропускаем.
-function isPgliteFsNoise(reason: unknown): boolean {
-  if (typeof reason === 'string') return reason.startsWith('ErrnoError');
-  return (reason as { name?: unknown } | null | undefined)?.name === 'ErrnoError';
-}
-
-window.addEventListener('unhandledrejection', (event) => {
-  if (isPgliteFsNoise(event.reason)) event.preventDefault();
-});
-window.addEventListener('error', (event) => {
-  if (isPgliteFsNoise(event.error ?? event.message)) event.preventDefault();
-});
 
 function StatusBar() {
   return (

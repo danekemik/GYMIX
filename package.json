@@ -14,7 +14,11 @@
     "server:dev": "pnpm --filter @gymix/server dev",
     "server:build": "pnpm --filter @gymix/server build",
     "server:start": "pnpm --filter @gymix/server start",
-    "migrations:generate": "pnpm --filter @gymix/db migrations:generate"
+    "migrations:generate": "pnpm --filter @gymix/db migrations:generate",
+    "build": "turbo build",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d --wait",
+    "db:stop": "docker compose -f docker-compose.dev.yml stop",
+    "db:prepare": "pnpm --filter @gymix/server db:prepare"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

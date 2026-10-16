@@ -7,6 +7,7 @@ import { seed } from '@gymix/db';
 import type { Db } from '@gymix/db/seed-data';
 import { loadCatalog } from '@gymix/catalog';
 import { createApp, type AppContext } from '../src/app.js';
+import { createPostgresTestDb } from './postgres.js';
 import { createTokenService } from '../src/tokens.js';
 import { createMailer } from '../src/mailer.js';
 import { createLogger } from '../src/logger.js';
@@ -50,10 +51,11 @@ export interface TestEnv {
 }
 
 export async function createTestEnv(): Promise<TestEnv> {
-  const pglite = new PGlite();
-  const pgDb = drizzle(pglite);
-  await migrate(pgDb, { migrationsFolder: MIGRATIONS_DIR });
-  const db = pgDb as unknown as Db;
+  const postgresUrl = process.env['TEST_DATABASE_URL'];
+  const storage = postgresUrl
+    ? await createPostgresTestDb(postgresUrl, MIGRATIONS_DIR)
+    : await createPgliteTestDb();
+  const { db } = storage;
   await seed(db);
 
   const config = testConfig();
@@ -68,8 +70,15 @@ export async function createTestEnv(): Promise<TestEnv> {
     ctx,
     app,
     db,
-    close: async () => pglite.close(),
+    close: storage.close,
   };
+}
+
+async function createPgliteTestDb() {
+  const pglite = new PGlite();
+  const pgDb = drizzle(pglite);
+  await migrate(pgDb, { migrationsFolder: MIGRATIONS_DIR });
+  return { db: pgDb as unknown as Db, close: () => pglite.close() };
 }
 
 export interface ApiResult {
@@ -77,18 +86,28 @@ export interface ApiResult {
   body: any;
 }
 
+const installations = new Map<string, string>();
+
 export async function api(
   app: Hono,
   method: string,
   path: string,
-  init?: { body?: unknown; token?: string; headers?: Record<string, string> },
+  init?: { body?: unknown; token?: string; headers?: Record<string, string>; },
 ): Promise<ApiResult> {
   const headers = new Headers(init?.headers ?? {});
   headers.set('Content-Type', 'application/json');
   headers.set('User-Agent', init?.headers?.['User-Agent'] ?? 'e2e-test');
   if (init?.token) headers.set('Authorization', `Bearer ${init.token}`);
   const request: RequestInit = { method, headers };
-  if (init?.body !== undefined) request.body = JSON.stringify(init.body);
+  if (init?.body !== undefined) {
+    let body = init.body;
+    if (path === '/api/v1/auth/login' || path === '/api/v1/auth/verify-email') {
+      const agent = headers.get('User-Agent')!;
+      if (!installations.has(agent)) installations.set(agent, crypto.randomUUID());
+      body = { installationId: installations.get(agent), ...(body as object) };
+    }
+    request.body = JSON.stringify(body);
+  }
   const res = await app.request(path, request);
   const text = await res.text();
   let body: any = null;
@@ -148,7 +167,7 @@ export async function loginOnDevice(
   email: string,
   password: string,
   userAgent: string,
-): Promise<{ accessToken: string; refreshToken: string; deviceId: string }> {
+): Promise<{ accessToken: string; refreshToken: string; deviceId: string; }> {
   const res = await api(app, 'POST', '/api/v1/auth/login', {
     body: { email, password },
     headers: { 'User-Agent': userAgent },
@@ -161,7 +180,7 @@ export async function loginOnDevice(
   };
 }
 
-export function authToken(user: { accessToken: string }): string {
+export function authToken(user: { accessToken: string; }): string {
   return user.accessToken;
 }
 

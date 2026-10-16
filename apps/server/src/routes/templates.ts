@@ -61,7 +61,7 @@ export function templatesRouter(ctx: AppContext): Hono {
         title: z.string().trim().min(1).max(60),
         type: z.string().min(1),
         volume: z.string().min(1),
-        entries: z.array(entrySchema).max(60),
+        entries: z.array(entrySchema).min(1).max(60),
       })
       .parse(await read(c));
 
@@ -69,20 +69,23 @@ export function templatesRouter(ctx: AppContext): Hono {
     const exerciseIds = await resolveExerciseIds(ctx, body.entries.map((e) => e.exerciseName));
     assertPositions(body.entries.map((e) => e.position));
 
-    const [created] = await ctx.db
-      .insert(workoutTemplates)
-      .values({ userId, title: body.title, typeId: template.typeId, volumeId: template.volumeId })
-      .returning();
+    const created = await ctx.db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(workoutTemplates)
+        .values({ userId, title: body.title, typeId: template.typeId, volumeId: template.volumeId })
+        .returning();
 
-    await ctx.db.insert(templateExercises).values(
-      body.entries.map((entry) => ({
-        templateId: created!.id,
-        exerciseId: exerciseIds.get(entry.exerciseName)!,
-        slotKey: entry.slotKey,
-        position: entry.position,
-        defaultSets: entry.defaultSets,
-      })),
-    );
+      await tx.insert(templateExercises).values(
+        body.entries.map((entry) => ({
+          templateId: created!.id,
+          exerciseId: exerciseIds.get(entry.exerciseName)!,
+          slotKey: entry.slotKey,
+          position: entry.position,
+          defaultSets: entry.defaultSets,
+        })),
+      );
+      return created!;
+    });
     const view = await getTemplate(ctx, created!.id, userId);
     return c.json({ template: view }, 201);
   });
@@ -106,7 +109,7 @@ export function templatesRouter(ctx: AppContext): Hono {
     await requireOwnTemplate(ctx, templateId, userId);
     const body = z
       .object({
-        entries: z.array(entrySchema).max(60),
+        entries: z.array(entrySchema).min(1).max(60),
       })
       .parse(await read(c));
     const exerciseIds = await resolveExerciseIds(ctx, body.entries.map((e) => e.exerciseName));
@@ -138,24 +141,27 @@ export function templatesRouter(ctx: AppContext): Hono {
     await requireOwnTemplate(ctx, templateId, userId);
     const source = await getTemplate(ctx, templateId, userId);
     const { typeId, volumeId } = await resolveTypeVolume(ctx, source.type, source.volume);
-    const [created] = await ctx.db
-      .insert(workoutTemplates)
-      .values({
-        userId,
-        title: `${source.title} (копия)`,
-        typeId,
-        volumeId,
-      })
-      .returning();
-    await ctx.db.insert(templateExercises).values(
-      source.entries.map((entry) => ({
-        templateId: created!.id,
-        exerciseId: entry.exerciseId,
-        slotKey: entry.slotKey,
-        position: entry.position,
-        defaultSets: entry.defaultSets,
-      })),
-    );
+    const created = await ctx.db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(workoutTemplates)
+        .values({
+          userId,
+          title: `${source.title} (копия)`,
+          typeId,
+          volumeId,
+        })
+        .returning();
+      await tx.insert(templateExercises).values(
+        source.entries.map((entry) => ({
+          templateId: created!.id,
+          exerciseId: entry.exerciseId,
+          slotKey: entry.slotKey,
+          position: entry.position,
+          defaultSets: entry.defaultSets,
+        })),
+      );
+      return created!;
+    });
     const view = await getTemplate(ctx, created!.id, userId);
     return c.json({ template: view }, 201);
   });
@@ -240,7 +246,7 @@ async function resolveTypeVolume(
   ctx: AppContext,
   type: string,
   volume: string,
-): Promise<{ typeId: string; volumeId: string }> {
+): Promise<{ typeId: string; volumeId: string; }> {
   const [typeRow] = await ctx.db
     .select({ id: workoutTypes.id })
     .from(workoutTypes)

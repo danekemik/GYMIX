@@ -82,6 +82,20 @@ describe('удаление аккаунта', () => {
     });
     expect(revive.status).toBe(201);
     expect(revive.body.restored).toBe(true);
+    const blocked = await api(env.app, 'POST', '/api/v1/auth/login', {
+      body: { email: user.email, password: 'fresh-secret-1' },
+    });
+    expect(blocked.status).toBe(403);
+    const [pending] = await env.db.select().from(users).where(eq(users.email, user.email));
+    expect(pending!.deletedAt).not.toBeNull();
+    const verify = await api(env.app, 'POST', '/api/v1/auth/verify-email', {
+      body: { email: user.email, code: env.ctx.mailer.sent.at(-1)!.code },
+    });
+    expect(verify.status).toBe(200);
+    const replay = await api(env.app, 'POST', '/api/v1/auth/verify-email', {
+      body: { email: user.email, code: env.ctx.mailer.sent.at(-1)!.code },
+    });
+    expect(replay.status).toBe(400);
 
     const login = await api(env.app, 'POST', '/api/v1/auth/login', {
       body: { email: user.email, password: 'fresh-secret-1' },

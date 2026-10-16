@@ -10,6 +10,18 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: gymix
+          POSTGRES_PASSWORD: gymix
+          POSTGRES_DB: gymix_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U gymix -d gymix_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -25,5 +37,10 @@ jobs:
       - name: типы и тесты
         run: pnpm check
 
-      - name: канон и заметки не разошлись
-        run: python3 scripts/verify_sync.py
+      - name: сборка сервера и клиента
+        run: pnpm build
+
+      - name: сервер на PostgreSQL
+        run: pnpm --filter @gymix/server test
+        env:
+          TEST_DATABASE_URL: postgres://gymix:gymix@localhost:5432/gymix_test

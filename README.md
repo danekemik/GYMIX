@@ -15,10 +15,12 @@
 │   └── server/          Hono + PostgreSQL — REST API
 ├── packages/
 │   ├── structures/      Матрица «формат × объём», модель слота
+│   ├── contracts/       Общие типы и валидация API
 │   ├── catalog/         Каталог упражнений из reference/ в типы
 │   ├── generator/       Заполнение слотов упражнениями
 │   └── db/              Схема Drizzle, миграции, seed (PostgreSQL + PGlite)
 ├── reference/           Канон: спецификации, решения, каталог, данные
+├── docs/                Реализация backend и оставшаяся работа по синхронизации
 ├── scripts/             verify_sync.py — проверка канона
 └── .github/workflows/   CI
 ```
@@ -44,6 +46,9 @@ PostgreSQL на сервере, одна схема на Drizzle и одни м�
 
 ```bash
 pnpm install
+pnpm db:up      # локальная PostgreSQL, порт 55432
+pnpm db:prepare # миграции и справочники
+pnpm build      # production-сборки клиента и сервера
 pnpm test        # тесты доменного слоя и сервера
 pnpm typecheck   # строгий TypeScript, включая тесты
 pnpm check       # типы + тесты + проверка канона, то же что в CI
@@ -61,6 +66,8 @@ pnpm --filter @gymix/client build
 
 Папки-дубли нет намеренно: раньше `sources/` была копией `reference/`, и держать
 два одинаковых набора файлов смысла не имело.
+
+Текущий backend, запуск PostgreSQL и границы готовности синхронизации: [docs/backend.md](docs/backend.md).
 
 Ключевые решения, структура каталога и что уже закрыто — в
 [`reference/README.md`](reference/README.md).

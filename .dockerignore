@@ -10,3 +10,9 @@ coverage
 apps/server/.env
 reference/*.docx
 .DS_Store
+
+**/.env
+**/.env.*
+!**/.env.example
+**/.turbo
+**/coverage

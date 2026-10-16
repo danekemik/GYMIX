@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { hash, verify } from '@node-rs/argon2';
 
 /** Пароль хранится argon2id; параметры — рекомендуемые для Node-сервисов. */
@@ -34,8 +34,8 @@ export function sha256Hex(value: string): string {
  * HMAC от него — перебор по 10^6 вариантам бессмыслен без секрета.
  */
 export function codeDigest(secret: string, purpose: string, email: string, code: string): string {
-  return createHash('sha256')
-    .update(`${secret}\u0000${purpose}\u0000${email.toLocaleLowerCase()}\u0000${code}`)
+  return createHmac('sha256', secret)
+    .update(`${purpose}\u0000${email.toLowerCase()}\u0000${code}`)
     .digest('hex');
 }
 

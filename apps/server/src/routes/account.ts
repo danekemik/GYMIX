@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { eq } from 'drizzle-orm';
-import { authSessions, devices, users } from '@gymix/db/schema';
+import { and, eq, isNull } from 'drizzle-orm';
+import { authSessions, devices, emailCodes, users } from '@gymix/db/schema';
 import type { AppContext } from '../app.js';
 import { getPrincipal, requireAuth } from '../auth-mid.js';
 import { toPublicUser } from '../auth/service.js';
@@ -26,7 +26,7 @@ export function accountRouter(ctx: AppContext): Hono {
     const deviceRows = await ctx.db
       .select({ id: devices.id })
       .from(devices)
-      .where(eq(devices.userId, userId));
+      .where(and(eq(devices.userId, userId), isNull(devices.revokedAt)));
     return c.json({
       user: toPublicUser(user),
       deviceCount: deviceRows.length,
@@ -55,6 +55,7 @@ export function accountRouter(ctx: AppContext): Hono {
         .update(users)
         .set({ deletedAt: now, updatedAt: now })
         .where(eq(users.id, userId));
+      await tx.update(emailCodes).set({ consumedAt: now }).where(eq(emailCodes.userId, userId));
       await tx.delete(authSessions).where(eq(authSessions.userId, userId));
     });
     return c.json({

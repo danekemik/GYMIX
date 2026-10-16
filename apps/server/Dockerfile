@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Сервер Gymix: многостадийная сборка pnpm-монорепозитория.
 #
 # Собираем бандл (@gymix/* вшиваются tsup-ом), затем в рантайм-образ
@@ -12,6 +13,7 @@ RUN corepack enable
 # Манифесты отдельным слоем — кэш установки не сбрасывается на правках кода.
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc tsconfig.base.json ./
 COPY apps/server/package.json apps/server/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/structures/package.json packages/structures/package.json
 COPY packages/catalog/package.json packages/catalog/package.json
 COPY packages/generator/package.json packages/generator/package.json
@@ -31,6 +33,7 @@ RUN corepack enable
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc tsconfig.base.json ./
 COPY apps/server/package.json apps/server/package.json
+COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/structures/package.json packages/structures/package.json
 COPY packages/catalog/package.json packages/catalog/package.json
 COPY packages/generator/package.json packages/generator/package.json
@@ -46,5 +49,7 @@ ENV PORT=3000 \
     MIGRATIONS_DIR=/repo/packages/db/drizzle \
     REFERENCE_DIR=/repo/reference
 EXPOSE 3000
+
+USER node
 
 CMD ["node", "apps/server/dist/index.js"]
