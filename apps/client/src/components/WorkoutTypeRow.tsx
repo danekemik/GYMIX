@@ -1,4 +1,3 @@
-import { typeLabel } from '../lib/workoutTypes';
 import { useId } from 'react';
 import { typeIcon } from '../lib/typeIcon';
 import { previewGroups, type WorkoutTypeCard } from '../lib/workoutTypes';
@@ -29,7 +28,6 @@ export function WorkoutTypeRow({ card, selected, onSelect }: WorkoutTypeRowProps
       </span>
       <span className="type-row__body">
         <span className="type-row__name">{card.type}</span>
-        <span className="type-row__description">{typeLabel(card.type)}</span>
         {groups.length > 0 && (
           <span className="type-row__groups" id={metaId}>
             {groups.map((group) => (

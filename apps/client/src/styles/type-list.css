@@ -1,5 +1,5 @@
-/* ——— Экран выбора типа: единое меню-список из 7 форматов, все видны
- * без прокрутки. Слева — пиктограмма, справа — радио-индикатор выбора. ——— */
+/* Экран выбора типа: единый список форматов.
+ * Слева — пиктограмма, справа — радио-индикатор выбора. */
 
 .type-list {
   display: flex;
@@ -134,6 +134,7 @@
 }
 
 .type-row__group {
+  max-width: 100%;
   padding: var(--space-4xs) var(--space-2xs);
   border-radius: 999px;
   background: var(--surface-2);
@@ -141,7 +142,7 @@
   font-size: var(--step--2);
   font-weight: 500;
   line-height: 1.5;
-  white-space: nowrap;
+  white-space: normal;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 
