@@ -21,7 +21,7 @@ async function decode<T>(response: Response): Promise<T> {
 let refresh: Promise<AccountSession> | undefined;
 async function refreshSession(expected: AccountSession): Promise<AccountSession> {
   // One refresh across all tabs: rotating a token twice would revoke the session.
-  return navigator.locks.request('gymix:refresh', async () => {
+  return navigator.locks.request('gymix:refresh', { signal: AbortSignal.timeout(15000) }, async () => {
     const actual = reloadSession();
     if (!actual || actual.user.id !== expected.user.id) throw new ApiError(401, 'unauthorized', 'Войдите в аккаунт повторно');
     if (actual.refreshToken !== expected.refreshToken) return actual;

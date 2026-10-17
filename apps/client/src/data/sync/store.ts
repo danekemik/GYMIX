@@ -16,11 +16,12 @@ export async function initializeSyncStore(db: Db): Promise<void> {
   await db.execute(sql`CREATE TABLE IF NOT EXISTS local_sync_meta (key text PRIMARY KEY, version text, payload jsonb)`);
   await db.execute(sql`CREATE TABLE IF NOT EXISTS local_recovery (id uuid PRIMARY KEY, key text NOT NULL, payload jsonb, saved_at timestamptz NOT NULL DEFAULT now())`);
 }
-const listeners = new Set<() => void>();
+export type StoreChange = 'local' | 'sync';
+const listeners = new Set<(reason: StoreChange) => void>();
 const channel = typeof window !== 'undefined' ? new BroadcastChannel('gymix:local-changes') : null;
-channel?.addEventListener('message', () => listeners.forEach(fn => fn()));
-export function notifyStore(): void { listeners.forEach(fn => fn()); channel?.postMessage('changed'); }
-export function subscribeStore(fn: () => void): () => void { listeners.add(fn); return () => listeners.delete(fn); }
+channel?.addEventListener('message', event => listeners.forEach(fn => fn(event.data === 'sync' ? 'sync' : 'local')));
+export function notifyStore(reason: StoreChange = 'local'): void { listeners.forEach(fn => fn(reason)); channel?.postMessage(reason); }
+export function subscribeStore(fn: (reason: StoreChange) => void): () => void { listeners.add(fn); return () => listeners.delete(fn); }
 
 export async function localChange<T>(db: GymixDb, key: string | ((result: T) => string), mutate: (scoped: GymixDb) => Promise<T>): Promise<T> {
   const result = await db.db.transaction(async (tx) => {

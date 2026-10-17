@@ -5,6 +5,7 @@ import { ApiError } from '../data/auth/api';
 import { getSession } from '../data/auth/session';
 import { synchronize, resolveConflict } from '../data/sync/engine';
 import { queueEntries, subscribeStore, type QueueEntry } from '../data/sync/store';
+import { startSyncRunner } from '../data/sync/runner';
 import { AuthScreen } from '../screens/AuthScreen';
 
 export function SyncStatus() {
@@ -20,32 +21,41 @@ export function SyncStatus() {
     if (!db) return;
     let stopped = false;
     const refresh = async () => { const current = await queueEntries(db.db); if (!stopped) setQueue(current); };
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let running = false;
-    const run = async () => {
-      if (running || stopped || getSession()?.user.id !== db.account.userId) return;
-      running = true;
-      try {
-        await navigator.locks.request(`gymix:sync:${db.account.userId}`, { ifAvailable: true }, async lock => {
-          if (!lock || stopped) return;
-          setBusy(true);
+    const runner = startSyncRunner({
+      run: async () => {
+        if (getSession()?.user.id !== db.account.userId) return false;
+        return navigator.locks.request(`gymix:sync:${db.account.userId}`, { ifAvailable: true }, async lock => {
+          if (!lock || stopped) return false;
           await synchronize(db);
-          if (!stopped) { setMessage(''); setNeedsLogin(false); setSynced(true); }
+          await refresh();
+          return true;
         });
-      } catch (error) {
-        if (!stopped) {
-          setNeedsLogin(error instanceof ApiError && error.status === 401);
-          setMessage(error instanceof ApiError ? error.message : 'Нет связи с сервером. Изменения сохранены на устройстве.');
-        }
-      } finally { running = false; if (!stopped) { setBusy(false); void refresh(); } }
+      },
+      onBusy: setBusy,
+      onSuccess: () => { setMessage(''); setNeedsLogin(false); setSynced(true); },
+      onError: error => {
+        setNeedsLogin(error instanceof ApiError && error.status === 401);
+        setMessage(error instanceof ApiError ? error.message : 'Нет связи с сервером. Изменения сохранены на устройстве.');
+        void refresh().catch(() => undefined);
+      },
+    });
+    const unsubscribe = subscribeStore(reason => {
+      void refresh().catch(() => undefined);
+      if (reason === 'local') runner.request();
+    });
+    const online = () => runner.request();
+    const visible = () => { if (document.visibilityState === 'visible') runner.request(); };
+    window.addEventListener('online', online);
+    document.addEventListener('visibilitychange', visible);
+    runner.request(true);
+    return () => {
+      stopped = true;
+      runner.stop();
+      setBusy(false);
+      unsubscribe();
+      window.removeEventListener('online', online);
+      document.removeEventListener('visibilitychange', visible);
     };
-    const schedule = () => { void refresh(); clearTimeout(timer); timer = setTimeout(() => void run(), 300); };
-    const unsubscribe = subscribeStore(schedule);
-    const visible = () => { if (document.visibilityState === 'visible') schedule(); };
-    window.addEventListener('online', schedule); document.addEventListener('visibilitychange', visible);
-    const interval = setInterval(schedule, 15000);
-    void refresh(); void run();
-    return () => { stopped = true; clearTimeout(timer); clearInterval(interval); unsubscribe(); window.removeEventListener('online', schedule); document.removeEventListener('visibilitychange', visible); };
   }, [db, retry]);
   const resolve = async (entry: QueueEntry, choice: 'server' | 'local') => {
     if (!db) return;
@@ -65,7 +75,7 @@ export function SyncStatus() {
   return <aside className="sync-notice" aria-label="Синхронизация" data-state={alert ? 'alert' : pending ? 'pending' : 'idle'}>
     <div className="sync-notice__status">
       <span className="sync-notice__dot" aria-hidden />
-      <p role="status" className="sync-notice__text">{!db ? 'Открываем локальную базу…' : busy ? 'Синхронизация…' : conflicts.length ? 'Есть изменения, требующие решения.' : queue.length ? `Сохранено на устройстве · ждут отправки: ${queue.length}` : message || (synced ? 'Все изменения синхронизированы' : 'Проверяем синхронизацию…')}</p>
+      <p role="status" className="sync-notice__text">{!db ? 'Открываем локальную базу…' : conflicts.length ? 'Есть изменения, требующие решения.' : queue.length ? `Сохранено на устройстве · ждут отправки: ${queue.length}` : message || (busy ? 'Синхронизация…' : synced ? 'Все изменения синхронизированы' : 'Проверяем синхронизацию…')}</p>
     </div>
     {message && queue.length > 0 && <p className="sync-notice__text sync-notice__text--muted">{message}</p>}
     {showActions && <div className="sync-notice__actions">

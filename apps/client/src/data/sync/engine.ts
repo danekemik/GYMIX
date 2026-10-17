@@ -24,7 +24,7 @@ export async function synchronize(db: GymixDb, request: SyncTransport = accountR
       const pending = await rows(tx, sql`SELECT seq FROM local_outbox WHERE key=${item.change.key} LIMIT 1`);
       if (!pending.length) await writeEntity(tx, db.account.userId, reply.record.key, reply.record.payload);
     });
-    notifyStore();
+    notifyStore('sync');
   }
   const snapshot = await request<SyncSnapshot>('/sync/snapshot');
   if (snapshot.userId !== db.account.userId) throw new Error('Сервер вернул данные другого аккаунта');
@@ -44,7 +44,7 @@ export async function synchronize(db: GymixDb, request: SyncTransport = accountR
       }
     }
   });
-  if (changed) notifyStore();
+  if (changed) notifyStore('sync');
 }
 
 export async function resolveConflict(db: GymixDb, key: string, choice: 'server' | 'local', request: SyncTransport = accountRequest): Promise<void> {
@@ -82,5 +82,5 @@ export async function takeOwnership(db: GymixDb, key: string): Promise<void> {
     if (pending.length) throw new Error('Сначала разрешите конфликт локальных изменений');
     await writeEntity(tx, db.account.userId, key, reply.record.payload); await remember(tx, reply.record);
   });
-  notifyStore();
+  notifyStore('sync');
 }

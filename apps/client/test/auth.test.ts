@@ -27,7 +27,7 @@ it('не скрывает ошибку записи в хранилище', () =
 it('обновляет истёкший вход один раз для параллельных запросов', async () => {
   const { accountRequest } = await import('../src/data/auth/api');
   setSession(session('a'));
-  vi.stubGlobal('navigator', { locks: { request: async (_key: string, task: () => Promise<unknown>) => task() } });
+  vi.stubGlobal('navigator', { locks: { request: async (_key: string, _options: unknown, task: () => Promise<unknown>) => task() } });
   let refreshes = 0;
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith('/auth/refresh')) { refreshes++; return Response.json({ accessToken: 'new-access', refreshToken: 'new-refresh', deviceId: 'device' }); }
@@ -40,11 +40,32 @@ it('обновляет истёкший вход один раз для пара
 it('не удаляет локальный вход, когда обновить сессию не удалось без сети', async () => {
   const { accountRequest } = await import('../src/data/auth/api');
   setSession(session('offline'));
-  vi.stubGlobal('navigator', { locks: { request: async (_key: string, task: () => Promise<unknown>) => task() } });
+  vi.stubGlobal('navigator', { locks: { request: async (_key: string, _options: unknown, task: () => Promise<unknown>) => task() } });
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     if (url.endsWith('/auth/refresh')) throw new TypeError('offline');
     return Response.json({ error: { code: 'unauthorized' } }, { status: 401 });
   }));
   await expect(accountRequest('/account')).rejects.toThrow('offline');
   expect(reloadSession()?.user.id).toBe('offline');
+});
+
+it('ограничивает ожидание занятой блокировки обновления токена и сохраняет локальный вход', async () => {
+  const { accountRequest } = await import('../src/data/auth/api');
+  setSession(session('locked'));
+  const controller = new AbortController();
+  const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(controller.signal);
+  let waiting = false;
+  vi.stubGlobal('navigator', { locks: { request: async (_key: string, options: { signal: AbortSignal }) => {
+    waiting = true;
+    return new Promise((_resolve, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true }));
+  } } });
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: { code: 'unauthorized' } }, { status: 401 })));
+  try {
+    const request = expect(accountRequest('/account')).rejects.toThrow('refresh timeout');
+    await vi.waitFor(() => expect(waiting).toBe(true));
+    controller.abort(new Error('refresh timeout'));
+    await request;
+    expect(timeout).toHaveBeenCalledWith(15000);
+    expect(getSession()?.user.id).toBe('locked');
+  } finally { timeout.mockRestore(); }
 });
