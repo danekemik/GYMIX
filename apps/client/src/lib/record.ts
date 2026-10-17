@@ -1,5 +1,5 @@
 import { localChange } from '../data/sync/store';
-import { eq, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import {
   sessionExercises,
   sessionIntervals,
@@ -75,22 +75,16 @@ export async function loadRecord(db: GymixDb, sessionId: string): Promise<Record
     .orderBy(sessionExercises.position);
 
   const exerciseIds = exercises.map((e) => e.id);
-  const setRows = (
-    await Promise.all(
-      exerciseIds.map((id) =>
-        db.db
-          .select({
-            id: sessionSets.id,
-            sessionExerciseId: sessionSets.sessionExerciseId,
-            setNumber: sessionSets.setNumber,
-            weight: sessionSets.weight,
-            reps: sessionSets.reps,
-          })
-          .from(sessionSets)
-          .where(eq(sessionSets.sessionExerciseId, id)),
-      ),
-    )
-  ).flat();
+  const setRows = exerciseIds.length ? await db.db
+    .select({
+      id: sessionSets.id,
+      sessionExerciseId: sessionSets.sessionExerciseId,
+      setNumber: sessionSets.setNumber,
+      weight: sessionSets.weight,
+      reps: sessionSets.reps,
+    })
+    .from(sessionSets)
+    .where(inArray(sessionSets.sessionExerciseId, exerciseIds)) : [];
 
   const intervalRows = await db.db
     .select({

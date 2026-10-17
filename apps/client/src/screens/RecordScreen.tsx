@@ -1,7 +1,8 @@
+import { useLocalRead } from '../hooks/useLocalRead';
 import { useEffect, useMemo, useState } from 'react';
 import { useDb } from '../hooks/useDb';
 import { formatDate, formatDurationMs } from '../lib/format';
-import { loadRecord, saveRecord, type RecordExercise, type RecordSnapshot } from '../lib/record';
+import { saveRecord, type RecordExercise, type RecordSnapshot } from '../lib/record';
 
 interface RecordScreenProps {
   sessionId: string;
@@ -36,28 +37,18 @@ function toEditable(snapshot: RecordSnapshot): EditExercise[] {
 
 export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
   const { db } = useDb();
-  const [record, setRecord] = useState<RecordSnapshot | undefined>(undefined);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const { data: loaded, error: readError, reload } = useLocalRead<RecordSnapshot>(`record:${sessionId}`);
+  const [record, setRecord] = useState<RecordSnapshot | undefined>(loaded);
+  const error = readError?.message;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<EditExercise[]>([]);
   const [date, setDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>(undefined);
 
-  const reload = async () => {
-    if (db === undefined) return;
-    try {
-      setRecord(await loadRecord(db, sessionId));
-      setError(undefined);
-    } catch (e: unknown) {
-      setError(String(e));
-    }
-  };
-
-  useEffect(() => {
-    void reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, sessionId]);
+  // Keep the revision from which an edit started. Background refresh must not
+  // make an old form silently overwrite changes from another device.
+  useEffect(() => { if (!editing) setRecord(loaded); }, [loaded, editing]);
 
   const done = useMemo(
     () => record?.exercises.filter((e) => e.status === 'completed').length ?? 0,
@@ -147,7 +138,7 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
 
         {error === undefined && record === undefined && <p className="body-muted">Загружаем запись…</p>}
 
-        {error === undefined && record !== undefined && (
+        {record !== undefined && (
           <>
             <aside className="note">
               <span className="context__type">{record.type}</span>

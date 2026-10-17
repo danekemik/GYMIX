@@ -1,6 +1,7 @@
 import { PGlite } from '@electric-sql/pglite';
 import { worker } from '@electric-sql/pglite/worker';
 import { bootstrapLocalDb } from './bootstrap';
+import { serveReadModels } from './read-server';
 
 // All tabs share one leader. Migration and seed finish before clients can query.
 worker({
@@ -11,6 +12,7 @@ worker({
     try {
       await pglite.waitReady;
       await bootstrapLocalDb(pglite);
+      serveReadModels(pglite, accountId);
       return pglite;
     } catch (error) {
       await pglite.close();

@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
-import { useDb } from '../hooks/useDb';
+import { useLocalRead } from '../hooks/useLocalRead';
 import { formatDay, formatDurationMs } from '../lib/format';
-import { sessionsForHistory, type HistoryItem } from '../lib/session';
+import { type HistoryItem } from '../lib/session';
 
 interface HistoryScreenProps {
   embedded?: boolean;
@@ -10,20 +9,7 @@ interface HistoryScreenProps {
 }
 
 export function HistoryScreen({ onOpen, onBack, embedded = false }: HistoryScreenProps) {
-  const { db, revision } = useDb();
-  const [items, setItems] = useState<HistoryItem[] | undefined>(undefined);
-  const [error, setError] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (db === undefined) return;
-    let alive = true;
-    sessionsForHistory(db)
-      .then((rows) => alive && setItems(rows))
-      .catch((e: unknown) => alive && setError(String(e)));
-    return () => {
-      alive = false;
-    };
-  }, [db, revision]);
+  const { data: items, error } = useLocalRead<HistoryItem[]>('history');
 
   return (
     <div className={embedded ? "library__content" : "screen"}>
@@ -41,7 +27,7 @@ export function HistoryScreen({ onOpen, onBack, embedded = false }: HistoryScree
       <div className="screen__body">
         {error !== undefined && (
           <p className="body-error" role="alert">
-            Не удалось загрузить историю: {error}
+            Не удалось загрузить историю: {error.message}
           </p>
         )}
 

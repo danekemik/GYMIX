@@ -1,7 +1,7 @@
+import { queryReadModel } from './data/local/read-rpc';
+import type { DraftSummary } from './lib/session';
 import { LibraryScreen } from './screens/LibraryScreen';
 import { readBuilderPreferences, saveBuilderPreferences } from './lib/builderPreferences';
-import { activeDraft } from './lib/session';
-import { workoutFromHistory } from './lib/reuseWorkout';
 import { SyncStatus } from './components/SyncStatus';
 import { useEffect, useRef, useState } from 'react';
 import { generateWorkout, type GeneratedWorkout } from '@gymix/generator';
@@ -12,7 +12,6 @@ import { isMgs } from './lib/workoutTypes';
 import { getCatalog } from './lib/catalog';
 import type { Draft } from './lib/draft';
 import type { ResumedSession } from './lib/session';
-import { workoutFromTemplate } from './lib/templates';
 import { ExecuteScreen, type FinishPayload } from './screens/ExecuteScreen';
 import { FinishScreen } from './screens/FinishScreen';
 import { ManualScreen } from './screens/ManualScreen';
@@ -111,7 +110,7 @@ export function App() {
   const openTemplate = async (templateId: string) => {
     if (db === undefined) return;
     try {
-      const workout = await workoutFromTemplate(db, templateId);
+      const workout = await queryReadModel<GeneratedWorkout>(db, `template:${templateId}`);
       setStepType(workout.type);
       setStepVolume(workout.volume);
       setStepMgsGroup(isMgs(workout.type) ? workout.entries[0]?.groupUsed : undefined);
@@ -126,7 +125,7 @@ export function App() {
   const openTemplateEdit = async (templateId: string) => {
     if (db === undefined) return;
     try {
-      const workout = await workoutFromTemplate(db, templateId);
+      const workout = await queryReadModel<GeneratedWorkout>(db, `template:${templateId}`);
       const next: Record<string, string> = {};
       for (const entry of workout.entries) next[entry.slotKey] = entry.exercise.name;
       setStepType(workout.type);
@@ -144,7 +143,7 @@ export function App() {
 
   const repeatWorkout = async (sessionId: string) => {
     if (!db) throw new Error('Локальная база ещё открывается');
-    const workout = await workoutFromHistory(db, sessionId);
+    const workout = await queryReadModel<GeneratedWorkout>(db, `repeat:${sessionId}`);
     setGenerated(workout);
     setResume(undefined);
     setStepType(workout.type);
@@ -172,7 +171,7 @@ export function App() {
     if (!db || starting) return;
     setStarting(true);
     try {
-      if (await activeDraft(db)) {
+      if (await queryReadModel<DraftSummary | null>(db, 'active')) {
         setNavigationError('У тебя уже есть начатая тренировка. Продолжи или удали её на экране «Сегодня».');
         return;
       }
@@ -363,7 +362,7 @@ export function App() {
   } else if (sub?.kind === 'settings') {
     body = <SettingsScreen onBack={() => setSub(undefined)} />;
   } else if (sub?.kind === 'record') {
-    body = <RecordScreen sessionId={sub.id} onBack={openHistory} />;
+    body = <RecordScreen key={sub.id} sessionId={sub.id} onBack={openHistory} />;
   } else if (tab === 'today') {
     body = (
       <WorkoutsScreen

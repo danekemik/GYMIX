@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useLocalRead } from '../hooks/useLocalRead';
+import { useState } from 'react';
 import { useDb } from '../hooks/useDb';
 import { formatDay } from '../lib/format';
 import { IconDots, IconTorso } from '../lib/icons';
@@ -6,7 +7,6 @@ import {
   copyTemplate,
   deleteTemplate,
   renameTemplate,
-  templatesFor,
   type TemplateCard,
 } from '../lib/templates';
 
@@ -28,28 +28,14 @@ export function TemplatesScreen({
   onEditTemplate,
   onCreate,
 }: TemplatesScreenProps) {
-  const { db, revision } = useDb();
-  const [templates, setTemplates] = useState<TemplateCard[] | 'loading'>('loading');
+  const { db } = useDb();
+  const { data, error: loadError, reload } = useLocalRead<TemplateCard[]>('templates');
+  const templates = data ?? 'loading';
   const [menuFor, setMenuFor] = useState<MenuTarget>(null);
   const [renameFor, setRenameFor] = useState<MenuTarget>(null);
   const [renameValue, setRenameValue] = useState('');
   const [removeFor, setRemoveFor] = useState<MenuTarget>(null);
-  const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState(false);
-
-  const reload = useCallback(async () => {
-    if (db === undefined) return;
-    try {
-      setTemplates(await templatesFor(db));
-      setLoadError(false);
-    } catch {
-      setLoadError(true);
-    }
-  }, [db, revision]);
-
-  useEffect(() => {
-    void reload();
-  }, [reload]);
 
   const doRename = async () => {
     const title = renameValue.trim();
@@ -101,7 +87,7 @@ export function TemplatesScreen({
 
       <div className="screen__body">
         <section className="mine" aria-label="Мои тренировки">
-          {loadError ? <div className="note note--error" role="alert">Не удалось загрузить сохранённые тренировки.<button className="text-action" onClick={() => void reload()}>Повторить</button></div> : templates === 'loading' ? (
+          {loadError && data === undefined ? <div className="note note--error" role="alert">Не удалось загрузить сохранённые тренировки.<button className="text-action" onClick={() => void reload()}>Повторить</button></div> : templates === 'loading' ? (
             <p className="body-muted">Загружаем тренировки…</p>
           ) : templates.length === 0 ? (
             <div className="empty-train">

@@ -1,3 +1,5 @@
+import { serveReadModels } from '../src/data/local/read-server';
+import { createReadClient } from '../src/data/local/read-rpc';
 import { weeklyActivity } from '../src/lib/weeklyActivity';
 import { previousWorkingSets, workoutFromHistory } from '../src/lib/reuseWorkout';
 import { loadRecord, saveRecord } from '../src/lib/record';
@@ -84,6 +86,29 @@ it('полная тренировка без сети сохраняется в 
   const suggestions = await previousWorkingSets(first, repeated.entries.map(e => e.exercise.name));
   expect(suggestions.get(repeated.entries[0]!.exercise.name)?.[0]).toEqual({ weight: '42', reps: '8', done: false });
   expect((await readEntity(first.db, first.account.userId, `workout:${draft.sessionId}`))?.kind === 'workout').toBe(true);
+  const stopReads = serveReadModels(first.pglite, first.account.userId);
+  const reader = createReadClient(first.account);
+  try {
+    expect((await reader.initialize()).exercises).toBeGreaterThan(100);
+    const history = await reader.query('history') as { completedAt: Date; id: string; }[];
+    expect(history[0]?.id).toBe(draft.sessionId);
+    expect(history[0]?.completedAt).toBeInstanceOf(Date);
+    expect(await reader.query('active')).toBeNull();
+    const loadedRecord = await reader.query(`record:${draft.sessionId}`) as { startedAt: Date; exercises: unknown[]; };
+    expect(loadedRecord.startedAt).toBeInstanceOf(Date);
+    expect(loadedRecord.exercises).toHaveLength(plan.entries.length);
+    expect((await reader.query(`repeat:${draft.sessionId}`) as { entries: unknown[]; }).entries).toHaveLength(plan.entries.length);
+    const past = await reader.query('previous', { names: [plan.entries[0]!.exercise.name] }) as Map<string, unknown>;
+    expect(past).toBeInstanceOf(Map); expect(past.has(plan.entries[0]!.exercise.name)).toBe(true);
+    const active = await createDraft(first, plan);
+    const resumed = await reader.query(`resume:${active.sessionId}`) as { sessionId: string; byPosition: Map<number, string>; };
+    expect(resumed.sessionId).toBe(active.sessionId);
+    expect(resumed.byPosition).toBeInstanceOf(Map);
+
+
+    expect((await reader.query('progress:all') as { series: unknown[]; }).series.length).toBeGreaterThan(0);
+  } finally { reader.close(); stopReads(); }
+
 
 
 }, 30000);

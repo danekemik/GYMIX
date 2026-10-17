@@ -1,12 +1,12 @@
+import { useLocalRead } from '../hooks/useLocalRead';
 import { downloadLocalBackup } from '../data/sync/backup';
 import { signOut } from '../data/auth/api';
 import { getSession } from '../data/auth/session';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useDb } from '../hooks/useDb';
 import {
   includeAllExcluded,
   includeExerciseByName,
-  listExcluded,
   type ExcludedExercise,
 } from '../lib/exclusions';
 
@@ -15,33 +15,12 @@ interface SettingsScreenProps {
 }
 
 export function SettingsScreen({ onBack }: SettingsScreenProps) {
-  const { db, revision } = useDb();
-  const [items, setItems] = useState<ExcludedExercise[] | undefined>(undefined);
+  const { db } = useDb();
+  const { data: items, error: readError, reload } = useLocalRead<ExcludedExercise[]>('exclusions');
   const [error, setError] = useState<string | undefined>(undefined);
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmingAll, setConfirmingAll] = useState(false);
-
-  const reload = async () => {
-    if (db === undefined) return;
-    try {
-      setItems(await listExcluded(db));
-      setError(undefined);
-    } catch (e: unknown) {
-      setError(String(e));
-    }
-  };
-
-  useEffect(() => {
-    if (db === undefined) return;
-    let alive = true;
-    void listExcluded(db)
-      .then((rows) => alive && setItems(rows))
-      .catch((e: unknown) => alive && setError(String(e)));
-    return () => {
-      alive = false;
-    };
-  }, [db, revision]);
 
   const filtered = useMemo(() => {
     if (items === undefined) return undefined;
@@ -94,17 +73,17 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
             </p>
           </div>
 
-          {error !== undefined && (
+          {(error !== undefined || readError !== undefined) && (
             <p className="body-error" role="alert">
-              Не удалось загрузить список: {error}
+              Не удалось загрузить список: {error ?? readError?.message}
             </p>
           )}
 
-          {error === undefined && items === undefined && (
+          {error === undefined && readError === undefined && items === undefined && (
             <p className="body-muted">Загружаем список…</p>
           )}
 
-          {error === undefined && items !== undefined && (
+          {items !== undefined && (
             <>
               <div className="field settings__search">
                 <label className="field__label" htmlFor="settings-query">

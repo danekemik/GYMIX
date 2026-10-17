@@ -1,5 +1,5 @@
 import { RestTimer } from '../components/RestTimer';
-import { previousWorkingSets } from '../lib/reuseWorkout';
+import { queryPreviousSets } from '../data/local/read-rpc';
 import { workoutReadOnly } from '../data/sync/store';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GeneratedWorkout } from '@gymix/generator';
@@ -154,7 +154,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
       .then(async (created) => {
         if (!alive) return;
         setDraft(created);
-        const previous = await previousWorkingSets(db, workout.entries.map(entry => entry.exercise.name)).catch(() => new Map());
+        const previous = await queryPreviousSets(db, workout.entries.map(entry => entry.exercise.name)).catch(() => new Map());
         if (!alive || !previous.size) return;
         setPrevious(previous);
         setSets(current => current.map((group, ex) => group.map((set, index) => {
@@ -172,7 +172,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
   useEffect(() => {
     if (!resume || !db) return;
     let alive = true;
-    previousWorkingSets(db, workout.entries.map(entry => entry.exercise.name)).then(value => { if (alive) setPrevious(value); }).catch(() => {});
+    queryPreviousSets(db, workout.entries.map(entry => entry.exercise.name)).then(value => { if (alive) setPrevious(value); }).catch(() => {});
     return () => { alive = false; };
   }, [db, workout, resume]);
 

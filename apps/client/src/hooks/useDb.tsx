@@ -1,3 +1,4 @@
+import { invalidateReads } from '../data/local/read-cache';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { GymixDb, LocalAccount } from '../lib/db';
 import { subscribeStore } from '../data/sync/store';
@@ -30,7 +31,10 @@ export function DbProvider({ children, account }: { children: ReactNode; account
     };
   }, [account.userId, account.deviceId]);
 
-  useEffect(() => subscribeStore(() => setState(previous => ({ ...previous, revision: previous.revision + 1 }))), []);
+  useEffect(() => subscribeStore(() => {
+    if (state.db) invalidateReads(state.db);
+    setState(previous => ({ ...previous, revision: previous.revision + 1 }));
+  }), [state.db]);
 
   return <DbContext.Provider value={state}>{children}</DbContext.Provider>;
 }

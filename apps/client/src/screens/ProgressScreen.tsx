@@ -1,3 +1,4 @@
+import { useLocalRead } from '../hooks/useLocalRead';
 import { SettingsButton } from '../components/SettingsButton';
 import { WeekActivity } from '../components/WeekActivity';
 import { useEffect, useMemo, useState } from 'react';
@@ -7,45 +8,24 @@ import { Segmented } from '../components/Segmented';
 import { plural } from '../lib/draft';
 import { formatDate } from '../lib/format';
 import {
-  bodyWeightSeries,
-  progressSeries,
   saveBodyWeight,
   type BodyWeightPoint,
   type ExerciseSeries,
 } from '../lib/progress';
 
-const SIX_MONTHS_MS = 183 * 86_400_000;
 
 export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
-  const { db, revision } = useDb();
-  const [series, setSeries] = useState<ExerciseSeries[] | undefined>(undefined);
-  const [body, setBody] = useState<BodyWeightPoint[] | undefined>(undefined);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const { db } = useDb();
   const [selected, setSelected] = useState<string | undefined>(undefined);
   const [period, setPeriod] = useState<'6m' | 'all'>('6m');
   const [metric, setMetric] = useState<'weight' | 'reps'>('weight');
   const [weightInput, setWeightInput] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const reload = async () => {
-    if (db === undefined) return;
-    try {
-      const [s, b] = await Promise.all([
-        progressSeries(db, period === '6m' ? new Date(Date.now() - SIX_MONTHS_MS) : undefined),
-        bodyWeightSeries(db, period === '6m' ? new Date(Date.now() - SIX_MONTHS_MS) : undefined),
-      ]);
-      setSeries(s);
-      setBody(b);
-      setError(undefined);
-    } catch (e: unknown) {
-      setError(String(e));
-    }
-  };
-
-  useEffect(() => {
-    void reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, period, revision]);
+  const { data, error: readError, reload } = useLocalRead<{ series: ExerciseSeries[]; body: BodyWeightPoint[]; }>(`progress:${period}`, `progress:${period}:${new Date().toDateString()}`);
+  const series = data?.series;
+  const body = data?.body;
+  const error = readError?.message;
 
   useEffect(() => {
     setSelected((prev) => series?.some(item => item.name === prev) ? prev : series?.[0]?.name);
@@ -109,7 +89,7 @@ export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
 
         {error === undefined && series === undefined && <p className="body-muted">Загружаем прогресс…</p>}
 
-        {error === undefined && series !== undefined && (
+        {series !== undefined && (
           <section className="progress-card">
             <div className="progress-card__head">
               <h2 className="progress-card__title">Упражнения</h2>

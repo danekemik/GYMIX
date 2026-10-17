@@ -1,9 +1,9 @@
+import { queryExcludedNames } from '../data/local/read-rpc';
 import { useEffect, useState } from 'react';
 import { InsufficientCatalogError, generateWorkout, type GeneratedWorkout, type InsufficientSlot } from '@gymix/generator';
 import type { Draft } from '../lib/draft';
 import { getCatalog } from '../lib/catalog';
 import { useDb } from '../hooks/useDb';
-import { excludedExerciseNames } from '../lib/exclusions';
 
 interface RandomizerScreenProps {
   draft: Draft;
@@ -28,7 +28,7 @@ export function RandomizerScreen({ draft, seed, onContinue, onRegenerate, onBack
     setFailed(false); setMissing([]);
     if (!db) { if (dbError) setFailed(true); return; }
     let alive = true;
-    void excludedExerciseNames(db).then(names => {
+    void queryExcludedNames(db).then(names => {
       if (!alive) return;
       const result = generateWorkout(getCatalog(), {
         type: draft.type, volume: draft.volume,

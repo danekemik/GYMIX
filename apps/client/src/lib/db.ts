@@ -1,9 +1,8 @@
+import { attachReadClient, closeReadClient, createReadClient } from '../data/local/read-rpc';
 import { PGliteWorker } from '@electric-sql/pglite/worker';
 import type { PgliteDatabase } from 'drizzle-orm/pglite';
 import { localDrizzle } from '../data/local/drizzle';
-import { sql } from 'drizzle-orm';
 import type { Db } from '@gymix/db/browser';
-import { devices, exercises, muscleGroups, users } from '@gymix/db/schema';
 
 export interface LocalAccount { userId: string; email: string; deviceId: string; }
 
@@ -32,14 +31,12 @@ async function initDb(account: LocalAccount): Promise<GymixDb> {
   try {
     await pglite.waitReady;
     const db = localDrizzle(pglite) as Db & PgliteDatabase;
-    await db.transaction(async (tx) => {
-      await tx.insert(users).values({ id: account.userId, email: account.email, passwordHash: 'local-account', emailVerifiedAt: new Date() })
-        .onConflictDoUpdate({ target: users.id, set: { email: account.email } });
-      await tx.insert(devices).values({ id: account.deviceId, userId: account.userId, label: 'Этот браузер' }).onConflictDoNothing();
-    });
-    const [exerciseCount] = await db.select({ n: sql<number>`count(*)::int` }).from(exercises);
-    const [groupCount] = await db.select({ n: sql<number>`count(*)::int` }).from(muscleGroups);
-    return { db, pglite, account, counts: { exercises: exerciseCount?.n ?? 0, muscleGroups: groupCount?.n ?? 0 } };
+    const reader = createReadClient(account);
+    let counts;
+    try { counts = await reader.initialize(); } catch (error) { reader.close(); throw error; }
+    const result = { db, pglite, account, counts };
+    attachReadClient(result, reader);
+    return result;
   } catch (error) {
     await pglite.close();
     worker.terminate();
@@ -49,5 +46,5 @@ async function initDb(account: LocalAccount): Promise<GymixDb> {
 
 export async function resetDb(): Promise<void> {
   const connections = [...instances.values()]; instances.clear();
-  await Promise.all(connections.map(async (pending) => { const db = await pending.catch(() => undefined); await db?.pglite.close(); }));
+  await Promise.all(connections.map(async (pending) => { const db = await pending.catch(() => undefined); if (db) { closeReadClient(db); await db.pglite.close(); } }));
 }

@@ -1,24 +1,17 @@
+import { useLocalRead } from '../hooks/useLocalRead';
 import { useEffect, useState } from 'react';
-import { useDb } from '../hooks/useDb';
-import { weeklyActivity, type WeeklyActivity } from '../lib/weeklyActivity';
+import { type WeeklyActivity } from '../lib/weeklyActivity';
 import { plural } from '../lib/draft';
 
 export function WeekActivity() {
-  const { db, revision } = useDb();
-  const [activity, setActivity] = useState<WeeklyActivity>();
-  const [failed, setFailed] = useState(false);
   // A day change also refreshes the current week when the app stays open.
   const [date, setDate] = useState(() => new Date().toDateString());
+  const { data: activity, error } = useLocalRead<WeeklyActivity>('week', `week:${date}`);
+  const failed = Boolean(error);
   useEffect(() => {
     const timer = window.setInterval(() => setDate(new Date().toDateString()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
-  useEffect(() => {
-    if (!db) return;
-    let alive = true;
-    weeklyActivity(db).then(value => { if (alive) { setActivity(value); setFailed(false); } }).catch(() => { if (alive) setFailed(true); });
-    return () => { alive = false; };
-  }, [db, revision, date]);
   const today = (new Date().getDay() + 6) % 7;
   return <section className="week" aria-label="Активность на этой неделе">
     <div className="section-head"><h2 className="section-title">Эта неделя</h2><span className="body-muted">{activity ? plural(activity.count, ['тренировка', 'тренировки', 'тренировок']) : failed ? 'Не удалось загрузить' : 'Загружаем…'}</span></div>

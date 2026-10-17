@@ -1,3 +1,4 @@
+import { queryExcludedNames } from '../data/local/read-rpc';
 import { typeLabel } from '../lib/workoutTypes';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -10,7 +11,7 @@ import type { CatalogExercise } from '@gymix/catalog/parse';
 import { plural, type Draft } from '../lib/draft';
 import { getCatalog } from '../lib/catalog';
 import { useDb } from '../hooks/useDb';
-import { excludedExerciseNames, excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
+import { excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
 
 interface PreviewScreenProps {
   starting?: boolean;
@@ -59,7 +60,7 @@ export function PreviewScreen({
   useEffect(() => {
     if (db === undefined) return;
     let alive = true;
-    void excludedExerciseNames(db)
+    void queryExcludedNames(db)
       .then((names) => alive && setExcluded(new Set(names)))
       .catch(() => alive && setExcluded(new Set()));
     return () => {

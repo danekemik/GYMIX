@@ -12,7 +12,6 @@ export function SyncStatus() {
   const { db } = useDb();
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [busy, setBusy] = useState(false);
-  const [synced, setSynced] = useState(false);
   const [message, setMessage] = useState('');
   const [needsLogin, setNeedsLogin] = useState(false);
   const [login, setLogin] = useState(false);
@@ -32,7 +31,7 @@ export function SyncStatus() {
         });
       },
       onBusy: setBusy,
-      onSuccess: () => { setMessage(''); setNeedsLogin(false); setSynced(true); },
+      onSuccess: () => { setMessage(''); setNeedsLogin(false); },
       onError: error => {
         setNeedsLogin(error instanceof ApiError && error.status === 401);
         setMessage(error instanceof ApiError ? error.message : 'Нет связи с сервером. Изменения сохранены на устройстве.');
@@ -70,12 +69,14 @@ export function SyncStatus() {
   if (login) return <AuthScreen reauthenticate onCancel={() => setLogin(false)} onSuccess={() => { setLogin(false); setRetry(x => x + 1); }} />;
   const conflicts = queue.filter(x => x.state === 'conflict');
   const alert = needsLogin || conflicts.length > 0;
-  const pending = queue.length > 0 || message !== '';
-  const showActions = Boolean(db) && (alert || pending || !synced);
-  return <aside className="sync-notice" aria-label="Синхронизация" data-state={alert ? 'alert' : pending ? 'pending' : 'idle'}>
+  // Sync runs in the background. Only actionable conflicts or reauthentication
+  // belong in the global UI; opening/reading/success/offline are silent.
+  if (!alert) return null;
+  const showActions = true;
+  return <aside className="sync-notice" aria-label="Синхронизация" data-state="alert">
     <div className="sync-notice__status">
       <span className="sync-notice__dot" aria-hidden />
-      <p role="status" className="sync-notice__text">{!db ? 'Открываем локальную базу…' : conflicts.length ? 'Есть изменения, требующие решения.' : queue.length ? `Сохранено на устройстве · ждут отправки: ${queue.length}` : message ? (needsLogin ? 'Данные на устройстве · нужен вход' : 'Данные на устройстве · нет связи') : (busy ? 'Синхронизация…' : synced ? 'Сохранено и синхронизировано' : 'Проверяем синхронизацию…')}</p>
+      <p role="status" className="sync-notice__text">{conflicts.length ? 'Есть изменения, требующие решения.' : 'Нужно повторно войти для синхронизации.'}</p>
     </div>
     {showActions && <details className="sync-notice__details" open={alert || undefined}>
       <summary>Подробнее</summary>

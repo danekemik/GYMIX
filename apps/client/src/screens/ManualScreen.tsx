@@ -1,10 +1,11 @@
+import { queryExcludedNames } from '../data/local/read-rpc';
 import { useEffect, useMemo, useState } from 'react';
 import { slotCandidates } from '@gymix/generator';
 import type { CatalogExercise } from '@gymix/catalog/parse';
 import { plural, structureFor, type Draft } from '../lib/draft';
 import { getCatalog } from '../lib/catalog';
 import { useDb } from '../hooks/useDb';
-import { excludedExerciseNames, excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
+import { excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
 import { ExerciseDetail } from '../components/ExerciseDetail';
 import { exerciseArt } from '../lib/exerciseArt';
 import { IconDumbbellArt } from '../lib/icons';
@@ -34,7 +35,7 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
   useEffect(() => {
     if (db === undefined) return;
     let alive = true;
-    void excludedExerciseNames(db)
+    void queryExcludedNames(db)
       .then((names) => alive && setExcluded(new Set(names)))
       .catch(() => alive && setExcluded(new Set()));
     return () => {

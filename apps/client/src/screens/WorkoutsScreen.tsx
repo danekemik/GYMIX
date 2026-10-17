@@ -1,5 +1,7 @@
+import { queryReadModel } from '../data/local/read-rpc';
+import { useLocalRead } from '../hooks/useLocalRead';
 import { takeOwnership } from '../data/sync/engine';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useDb } from '../hooks/useDb';
 import fitnessIcon from '../assets/fitness.png';
 import { SettingsButton } from '../components/SettingsButton';
@@ -11,10 +13,7 @@ import { formatDay, formatDurationMs } from '../lib/format';
 import { IconArrowRight, IconChevronRight, IconClock } from '../lib/icons';
 import { typeIcon } from '../lib/typeIcon';
 import {
-  activeDraft,
   deleteDraft,
-  recentSessions,
-  resumeDraft,
   type DraftSummary,
   type HistoryItem,
   type ResumedSession,
@@ -44,46 +43,23 @@ export function WorkoutsScreen({
   onOpenSession,
   onResume,
 }: WorkoutsScreenProps) {
-  const { db, error, revision } = useDb();
+  const { db, error } = useDb();
   const name = getUserName();
-  const [recent, setRecent] = useState<HistoryItem[] | 'loading'>('loading');
-  const [draft, setDraft] = useState<DraftSummary | null | 'loading'>('loading');
+  const historyRead = useLocalRead<HistoryItem[]>('history');
+  const draftRead = useLocalRead<DraftSummary | null>('active');
+  const recent = historyRead.data?.slice(0, 3) ?? 'loading';
+  const draft = draftRead.data === undefined ? 'loading' : draftRead.data;
+  const loadError = Boolean(historyRead.error || draftRead.error);
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [loadKey, setLoadKey] = useState(0);
-  const [loadError, setLoadError] = useState(false);
   const [removeDraft, setRemoveDraft] = useState(false);
-
-  useEffect(() => {
-    if (db === undefined) return;
-    let alive = true;
-    recentSessions(db, 3)
-      .then((rows) => alive && setRecent(rows))
-      .catch(() => { if (alive) setLoadError(true); });
-    return () => {
-      alive = false;
-    };
-  }, [db, revision, loadKey]);
-
-  useEffect(() => {
-    if (db === undefined) return;
-    let alive = true;
-    activeDraft(db)
-      .then((row) => alive && setDraft(row))
-      .catch(() => { if (alive) setLoadError(true); });
-    return () => {
-      alive = false;
-    };
-  }, [db, revision, loadKey]);
-
-
 
   const continueDraft = async () => {
     if (db === undefined || draft === null || draft === 'loading') return;
     setBusy(true);
     try {
       if (draft.readOnly) await takeOwnership(db, `workout:${draft.sessionId}`);
-      const resumed = await resumeDraft(db, draft.sessionId);
+      const resumed = await queryReadModel<ResumedSession>(db, `resume:${draft.sessionId}`);
       onResume(resumed);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Не удалось открыть тренировку');
@@ -96,7 +72,7 @@ export function WorkoutsScreen({
     setBusy(true);
     try {
       await deleteDraft(db, draft.sessionId);
-      setDraft(null);
+      await draftRead.reload();
     } finally {
       setBusy(false);
       setRemoveDraft(false);
@@ -111,7 +87,7 @@ export function WorkoutsScreen({
       </header>
 
       <div className="screen__body">
-        {loadError && <div className="note note--error" role="alert">Не удалось загрузить тренировки. <button className="text-action" onClick={() => { setLoadError(false); setLoadKey(value => value + 1); }}>Повторить</button></div>}
+        {loadError && <div className="note note--error" role="alert">Не удалось загрузить тренировки. <button className="text-action" onClick={() => { void historyRead.reload(); void draftRead.reload(); }}>Повторить</button></div>}
         {actionError && <p className="body-error" role="alert">{actionError}</p>}
         {error !== undefined && (
           <p className="body-error" role="alert">
