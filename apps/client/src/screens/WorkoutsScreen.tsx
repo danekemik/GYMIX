@@ -1,6 +1,7 @@
 import { takeOwnership } from '../data/sync/engine';
 import { useEffect, useState } from 'react';
 import { useDb } from '../hooks/useDb';
+import fitnessIcon from '../assets/fitness.png';
 import { SettingsButton } from '../components/SettingsButton';
 import { WeekActivity } from '../components/WeekActivity';
 import type { Draft } from '../lib/draft';
@@ -105,7 +106,7 @@ export function WorkoutsScreen({
   return (
     <div className="screen screen--home">
       <header className="topbar">
-        <div><p className="today-date">{new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' })}</p><h1 className="topbar__title">Сегодня</h1></div>
+        <h1 className="topbar__title topbar__title--greeting">{name ? `Привет, ${name}` : 'Привет!'}</h1>
         <SettingsButton onClick={onSettings} />
       </header>
 
@@ -148,22 +149,28 @@ export function WorkoutsScreen({
           </section>
         )}
 
-        {draft === 'loading' ? <div className="today-start" aria-busy="true"><p className="body-muted">Проверяем сохранённые тренировки…</p></div> : draft === null && (
-          <section className="today-start" aria-label="Начать тренировку">
-            <p className="eyebrow">{name ? `${name}, с возвращением` : 'Быстрый старт'}</p>
-            <h2 className="today-start__title">{recent !== 'loading' && recent.length ? typeLabel(recent[0]!.type) : 'Начни с первой тренировки'}</h2>
-            {recent !== 'loading' && recent.length > 0 ? <>
-              <p className="body-muted">Последний раз: {formatDay(recent[0]!.completedAt)} · {plural(recent[0]!.total, ['упражнение', 'упражнения', 'упражнений'])}</p>
-              <button className="btn btn--primary" disabled={busy} onClick={() => {
-                setBusy(true); setActionError('');
-                void onRepeat(recent[0]!.id).catch(() => setActionError('Не удалось повторить тренировку. Попробуй ещё раз.')).finally(() => setBusy(false));
-              }}>{busy ? 'Открываем…' : 'Повторить последнюю'}<IconArrowRight /></button>
-              <button className="text-action" onClick={onCreate} disabled={busy}>Собрать другую тренировку</button>
-            </> : <>
-              <p className="body-muted">Выбери формат и состав. Вес и повторы запишешь во время занятия.</p>
-              <button className="btn btn--primary" onClick={onCreate}>Собрать тренировку<IconArrowRight /></button>
-            </>}
-          </section>
+        <section className="hero" aria-label="Новая тренировка">
+          <span className="hero__circle" aria-hidden="true">
+            <img className="hero__icon" src={fitnessIcon} alt="" width={46} height={46} />
+          </span>
+          <div className="hero__copy">
+            <span className="hero__chip"><span className="hero__chip-dot" aria-hidden="true" />Готов двигаться?</span>
+            <h2 className="hero__title">Поймай<br />свой ритм</h2>
+            <p className="hero__sub">Собери занятие под себя</p>
+          </div>
+          <button className="hero__cta" onClick={onCreate} disabled={busy || draft !== null} aria-describedby={draft !== null ? 'start-availability' : undefined}>
+            <span className="hero__cta-label">Начать тренировку</span><IconArrowRight className="hero__cta-arrow" />
+          </button>
+          {draft !== null && <p id="start-availability" className="hero__availability">{draft === 'loading' ? 'Проверяем сохранённую тренировку…' : 'Сначала заверши текущее занятие или продолжи его выше.'}</p>}
+        </section>
+
+        {draft === null && recent !== 'loading' && recent.length > 0 && (
+          <button className="btn btn--ghost repeat-last" disabled={busy} onClick={() => {
+            setBusy(true); setActionError('');
+            void onRepeat(recent[0]!.id).catch(() => setActionError('Не удалось повторить тренировку. Попробуй ещё раз.')).finally(() => setBusy(false));
+          }}>
+            <span><strong>{busy ? 'Открываем…' : 'Повторить последнюю'}</strong><small>{typeLabel(recent[0]!.type)} · {formatDay(recent[0]!.completedAt)}</small></span><IconChevronRight />
+          </button>
         )}
 
         <WeekActivity />
