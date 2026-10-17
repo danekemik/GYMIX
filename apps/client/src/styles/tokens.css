@@ -1,9 +1,7 @@
 :root {
-  /* TYPE — весь интерфейс на Unbounded Variable (400–700). Толщина зависит
-   * от контекста: 700 — главные заголовки, 600 — заголовки/кнопки/акценты,
-   * 550 — названия в списках, 500 — вторичные подписи, 450 — подписи/мета. */
+  /* Display carries the identity; working text stays compact and legible. */
   --font-display: 'Unbounded Variable', 'Unbounded', system-ui, sans-serif;
-  --font-text: 'Unbounded Variable', 'Unbounded', system-ui, sans-serif;
+  --font-text: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
 
   --step--2: 0.75rem;
   --step--1: 0.875rem;
@@ -61,8 +59,8 @@
   /* SHADOW — контактная, амбиентная и лёгкое свечение лайм-элементов */
   --shadow-s: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow-l: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --glow-accent: 0 0 18px rgba(168, 245, 58, 0.22);
-  --glow-accent-strong: 0 0 26px rgba(168, 245, 58, 0.45), 0 0 70px rgba(168, 245, 58, 0.16);
+  --glow-accent: none;
+  --glow-accent-strong: none;
 
   /* MOTION */
   --dur-fast: 120ms;

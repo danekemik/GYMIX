@@ -1,3 +1,4 @@
+import { workoutFromHistory } from './lib/reuseWorkout';
 import { SyncStatus } from './components/SyncStatus';
 import { useState } from 'react';
 import { generateWorkout, type GeneratedWorkout } from '@gymix/generator';
@@ -9,7 +10,6 @@ import { getCatalog } from './lib/catalog';
 import type { Draft } from './lib/draft';
 import type { ResumedSession } from './lib/session';
 import { workoutFromTemplate } from './lib/templates';
-import { withViewTransition } from './lib/viewTransition';
 import { ExecuteScreen, type FinishPayload } from './screens/ExecuteScreen';
 import { FinishScreen } from './screens/FinishScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
@@ -113,10 +113,9 @@ export function App() {
   const openTemplates = () => setSub({ kind: 'templates' });
   const openRecord = (id: string) => setSub({ kind: 'record', id });
 
-  // «Главная → Формат»: лаймовая кнопка перелетает в нижнюю «Продолжить»,
-  // остальной экран мягко перекрёстно затухает (View Transitions API).
-  const openFormats = () => withViewTransition(() => setStep('type'));
-  const closeFormats = () => withViewTransition(() => setStep('home'));
+  // Navigation is immediate and never waits for an animated overlay.
+  const openFormats = () => setStep('type');
+  const closeFormats = () => setStep('home');
 
   const openTemplate = async (templateId: string) => {
     if (db === undefined) return;
@@ -147,6 +146,18 @@ export function App() {
     } catch {
       // Безобидный фолбэк: остаёмся на главной при сбое чтения шаблона.
     }
+  };
+
+  const repeatWorkout = async (sessionId: string) => {
+    if (!db) throw new Error('Локальная база ещё открывается');
+    const workout = await workoutFromHistory(db, sessionId);
+    setGenerated(workout);
+    setResume(undefined);
+    setStepType(workout.type);
+    setStepVolume(workout.volume);
+    setFromTemplate(true);
+    setSub(undefined);
+    setStep('preview');
   };
 
   let body;
@@ -341,6 +352,8 @@ export function App() {
     body = (
       <WorkoutsScreen
         onCreate={openFormats}
+        onOpenTemplates={openTemplates}
+        onRepeat={repeatWorkout}
         onOpenActivity={openHistory}
         onOpenSession={openRecord}
         onResume={(session) => {
@@ -359,6 +372,7 @@ export function App() {
 
   return (
     <div className="app">
+      <div className="app__brand" aria-label="GYMIX">GYM<span>IX</span></div>
       <main className={`app__main${step === 'home' && sub === undefined ? ' app__main--tabs' : ''}`}><SyncStatus />{body}</main>
       {step === 'home' && sub === undefined && <TabBar tabs={TABS} active={tab} onChange={openTab} />}
     </div>

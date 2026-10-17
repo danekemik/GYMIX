@@ -1,3 +1,4 @@
+import { previousWorkingSets } from '../lib/reuseWorkout';
 import { workoutReadOnly } from '../data/sync/store';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GeneratedWorkout } from '@gymix/generator';
@@ -49,6 +50,8 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
   );
   const [modal, setModal] = useState<Modal>(null);
   const [skipIndex, setSkipIndex] = useState(0);
+  const [lastCompleted, setLastCompleted] = useState<{ ex: number; set: number; } | null>(null);
+  const [prefilled, setPrefilled] = useState(false);
   const [toast, setToast] = useState<'ok' | 'error' | null>(null);
   const startedAt = useRef<number>(resume?.startedAt ?? Date.now());
   const [draft, setDraft] = useState<DraftSession | 'created' | null>(resume ?? null);
@@ -105,16 +108,31 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
     [sets, skipped],
   );
 
+  const savingRef = useRef<Promise<void> | null>(null);
+  const saveAgain = useRef(false);
+  const finishingRef = useRef(false);
+  const latestInput = useRef({ sets, skipped });
+  latestInput.current = { sets, skipped };
   const persist = async () => {
     if (draft === null || draft === 'created' || db === undefined || finishing || readOnly) return;
+    if (savingRef.current) { saveAgain.current = true; return savingRef.current.catch(() => undefined); }
+    const save = async () => {
+      do {
+        saveAgain.current = false;
+        const latest = latestInput.current;
+        await persistDraft(db, draft.sessionId, draft.byPosition, latest.sets, latest.skipped);
+      } while (saveAgain.current && !finishingRef.current);
+    };
+    const pending = save();
+    savingRef.current = pending;
     try {
-      await persistDraft(db, draft.sessionId, draft.byPosition, sets, skipped);
+      await pending;
       setToast('ok');
       window.clearTimeout(toastTimer.current);
       toastTimer.current = window.setTimeout(() => setToast(null), TOAST_HIDE_DELAY);
     } catch {
       setToast('error');
-    }
+    } finally { if (savingRef.current === pending) savingRef.current = null; }
   };
   const persistRef = useRef(persist);
   persistRef.current = persist;
@@ -131,8 +149,16 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
     if (resume !== undefined || db === undefined) return;
     let alive = true;
     createDraft(db, workout)
-      .then((created) => {
-        if (alive) setDraft(created);
+      .then(async (created) => {
+        if (!alive) return;
+        setDraft(created);
+        const previous = await previousWorkingSets(db, workout.entries.map(entry => entry.exercise.name)).catch(() => new Map());
+        if (!alive || !previous.size) return;
+        setSets(current => current.map((group, ex) => group.map((set, index) => {
+          const suggestion = previous.get(workout.entries[ex]!.exercise.name)?.[index];
+          return suggestion && !set.done && set.weight === '' && set.reps === '' ? { ...suggestion } : set;
+        })));
+        setPrefilled(true);
       })
       .catch(() => { if (alive) setToast('error'); });
     return () => {
@@ -204,12 +230,14 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
       durationMs: elapsedMs(),
     };
     if (!db || !draft || draft === 'created' || finishing || readOnly) { setToast('error'); return; }
+    finishingRef.current = true;
     setFinishing(true);
     try {
+      await savingRef.current?.catch(() => undefined);
       await finishDraft(db, draft, payload);
       onFinish({ ...payload, saved: true });
     } catch { setToast('error'); }
-    finally { setFinishing(false); }
+    finally { finishingRef.current = false; setFinishing(false); }
 
   };
 
@@ -263,6 +291,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
         </div>
 
         <div className="exec-body">
+          {prefilled && <p className="exec-prefill">Подставлены прошлые значения. Изменяй их под сегодняшнюю тренировку.</p>}
           {workout.entries.map((entry, ex) => {
             const group = sets[ex] ?? [];
             const skippedHere = skipped[ex] === true;
@@ -320,7 +349,10 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
                             className={`set-check ${set.done ? 'set-check--on' : ''}`}
                             aria-pressed={set.done}
                             aria-label={`Подход ${index + 1} выполнен`}
-                            onClick={() => update(ex, index, { done: !set.done })}
+                            onClick={() => {
+                              update(ex, index, { done: !set.done });
+                              setLastCompleted(set.done ? null : { ex, set: index });
+                            }}
                           >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
                               <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
@@ -366,11 +398,16 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
         </div>
 
         <div className="exec-footer">
+          {lastCompleted && <div className="exec-undo" role="status">Подход {lastCompleted.set + 1} отмечен
+            <button type="button" onClick={() => {
+              update(lastCompleted.ex, lastCompleted.set, { done: false }); setLastCompleted(null);
+            }}>Отменить</button>
+          </div>}
           <span className="exec-footer__hint">
             {plural(completed, ['упражнение', 'упражнения', 'упражнений'])} готово
           </span>
           <button className="btn btn--primary exec-footer__cta" onClick={finish}>
-            Завершить
+            {finishing ? 'Сохраняем…' : 'Завершить'}
           </button>
         </div>
 

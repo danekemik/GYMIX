@@ -1,3 +1,4 @@
+import { typeLabel } from '../lib/workoutTypes';
 import { useState } from 'react';
 import { VOLUME_LEVELS, type VolumeLevel } from '@gymix/structures';
 import { Button } from '../components/Button';
@@ -32,7 +33,7 @@ export function VolumeScreen({ draft, onVolumeChange, onContinue, onBack }: Volu
 
       <div className="screen__body">
         <div className="volume-head">
-          <span className="context__type">{draft.type}</span>
+          <span className="context__type">{typeLabel(draft.type)}</span>
           {isMgs(draft.type) && draft.mgsGroup && (
             <span className="volume-head__group">{draft.mgsGroup}</span>
           )}

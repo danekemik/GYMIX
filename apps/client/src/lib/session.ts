@@ -1,5 +1,5 @@
 import { localChange, workoutReadOnly } from '../data/sync/store';
-import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { GeneratedWorkout } from '@gymix/generator';
 import {
   devices,
@@ -304,39 +304,27 @@ async function _persistDraft(
   sets: readonly (readonly SetEntry[])[],
   skipped: readonly boolean[] = [],
 ): Promise<void> {
-  await Promise.all(
-    sets.map(async (group, index) => {
-      const sessionExerciseId = byPosition.get(index + 1);
-      if (sessionExerciseId === undefined) return;
-      const isSkipped = skipped[index] === true;
-      const values = group.map((set, setIndex) => ({
-        sessionExerciseId,
-        setNumber: setIndex + 1,
-        weight: parseWeight(set.weight),
-        reps: parseReps(set.reps),
-        // Пропущенное упражнение не засчитывается, но ввод сохраняем для возврата.
-        completedAt: set.done && !isSkipped ? new Date() : null,
-      }));
-      if (values.length > 0) {
-        await db.db
-          .insert(sessionSets)
-          .values(values)
-          .onConflictDoUpdate({
-            target: [sessionSets.sessionExerciseId, sessionSets.setNumber],
-            set: {
-              weight: sql`excluded.weight`,
-              reps: sql`excluded.reps`,
-              completedAt: sql`excluded.completed_at`,
-            },
-          });
-      }
-      const done = group.length > 0 && group.every((s) => s.done);
-      await db.db
-        .update(sessionExercises)
-        .set({ status: isSkipped ? 'skipped' : done ? 'completed' : 'pending' })
-        .where(eq(sessionExercises.id, sessionExerciseId));
-    }),
-  );
+  const entries = sets.flatMap((group, index) => {
+    const id = byPosition.get(index + 1);
+    if (!id) return [];
+    const isSkipped = skipped[index] === true;
+    const done = group.length > 0 && group.every(set => set.done);
+    return [{
+      id, status: isSkipped ? 'skipped' : done ? 'completed' : 'pending',
+      values: group.map((set, setIndex) => ({
+        sessionExerciseId: id, setNumber: setIndex + 1,
+        weight: parseWeight(set.weight), reps: parseReps(set.reps), completedAt: set.done && !isSkipped ? new Date() : null
+      }))
+    }];
+  });
+  const values = entries.flatMap(entry => entry.values);
+  if (values.length) await db.db.insert(sessionSets).values(values).onConflictDoUpdate({
+    target: [sessionSets.sessionExerciseId, sessionSets.setNumber],
+    set: { weight: sql`excluded.weight`, reps: sql`excluded.reps`, completedAt: sql`excluded.completed_at` },
+  });
+  if (entries.length) await db.db.update(sessionExercises).set({
+    status: sql`CASE ${sql.join(entries.map(entry => sql`WHEN ${sessionExercises.id}=${entry.id}::uuid THEN ${entry.status}`), sql` `)} ELSE ${sessionExercises.status} END`,
+  }).where(inArray(sessionExercises.id, entries.map(entry => entry.id)));
 }
 
 /**

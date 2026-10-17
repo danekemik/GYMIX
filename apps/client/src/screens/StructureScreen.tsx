@@ -1,3 +1,4 @@
+import { typeLabel } from '../lib/workoutTypes';
 import { useId } from 'react';
 import { plural, rosterRows, structureFor, type Draft } from '../lib/draft';
 
@@ -30,7 +31,7 @@ export function StructureScreen({ draft, onBack, onManual, onGenerate, onOpenSlo
 
       <div className="screen__body">
         <div className="volume-head volume-head--stack">
-          <span className="context__type">{draft.type}</span>
+          <span className="context__type">{typeLabel(draft.type)}</span>
           <span className="volume-head__meta volume-head__meta--stack">
             <span>{draft.volume}</span>
             <span>{plural(total, ['упражнение', 'упражнения', 'упражнений'])}</span>

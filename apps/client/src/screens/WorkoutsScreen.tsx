@@ -20,6 +20,8 @@ import { typeLabel } from '../lib/workoutTypes';
 
 interface WorkoutsScreenProps {
   onCreate: () => void;
+  onOpenTemplates: () => void;
+  onRepeat: (sessionId: string) => Promise<void>;
   onOpenActivity: () => void;
   onOpenSession: (sessionId: string) => void;
   onResume: (session: ResumedSession) => void;
@@ -27,6 +29,8 @@ interface WorkoutsScreenProps {
 
 export function WorkoutsScreen({
   onCreate,
+  onOpenTemplates,
+  onRepeat,
   onOpenActivity,
   onOpenSession,
   onResume,
@@ -144,26 +148,22 @@ export function WorkoutsScreen({
               Готов двигаться?
             </span>
             <h2 className="hero__title">
-              {draft !== null && draft !== 'loading' ? (
-                <>
-                  Продолжить{' '}
-                  <br />
-                  тренировку
-                </>
-              ) : (
-                <>
-                  Поймай{' '}
-                  <br />
-                  свой ритм
-                </>
-              )}
+              Поймай<br />свой ритм
             </h2>
             <p className="hero__sub">Собери занятие под себя</p>
           </div>
-          <button className="hero__cta" onClick={onCreate}>
+          <button className="hero__cta" onClick={onCreate} disabled={draft === 'loading' || (draft !== null)} title={draft !== null && draft !== 'loading' ? 'Сначала заверши текущую тренировку' : undefined}>
             <span className="hero__cta-label">Выбрать тренировку</span>
             <IconArrowRight className="hero__cta-arrow" />
           </button>
+        </section>
+
+        <section className="quick-start" aria-label="Быстрый старт">
+          <button className="btn btn--ghost" onClick={onOpenTemplates}>Сохранённые тренировки</button>
+          {recent !== 'loading' && recent.length > 0 && <button className="btn btn--ghost" disabled={busy || draft !== null} onClick={() => {
+            setBusy(true); setActionError('');
+            void onRepeat(recent[0]!.id).catch(() => setActionError('Не удалось повторить тренировку. Попробуй ещё раз.')).finally(() => setBusy(false));
+          }}>Повторить последнюю</button>}
         </section>
 
         <section className="recent" aria-label="Последние тренировки">

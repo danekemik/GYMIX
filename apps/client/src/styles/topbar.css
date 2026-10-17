@@ -56,18 +56,19 @@
 .topbar__title {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: clamp(1.875rem, 10vw, 2.25rem);
+  font-size: clamp(1.5rem, 5vw, 1.875rem);
   line-height: 1;
   letter-spacing: -0.02em;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .topbar__title--step {
-  font-size: clamp(1.5rem, 7.2vw, 1.8rem);
+  font-size: clamp(1.125rem, 4.4vw, 1.5rem);
   line-height: 1.05;
   min-width: 0;
   white-space: normal;
-  overflow-wrap: break-word;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 /* Заголовок шага: по центру всей ширины бара (кнопка «назад» слева). */
@@ -87,7 +88,7 @@
 
 /* Приветствие с именем: чуть меньше, чтобы длинные имена помещались. */
 .topbar__title--greeting {
-  font-size: clamp(1.5rem, 7.2vw, 1.8rem);
+  font-size: clamp(1.125rem, 4.4vw, 1.5rem);
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

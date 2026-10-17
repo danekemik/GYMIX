@@ -1,3 +1,4 @@
+import { previousWorkingSets, workoutFromHistory } from '../src/lib/reuseWorkout';
 import { loadRecord, saveRecord } from '../src/lib/record';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
@@ -72,6 +73,12 @@ it('полная тренировка без сети сохраняется в 
   await synchronize(first, transport(user.accessToken));
   const updated = await readEntity(first.db, first.account.userId, `workout:${draft.sessionId}`);
   expect(updated?.kind === 'workout' && updated.exercises[0]!.sets[0]!.weight).toBe('42');
+  const repeated = await workoutFromHistory(first, draft.sessionId);
+  expect(repeated.entries.map(e => e.exercise.name)).toEqual(plan.entries.map(e => e.exercise.name));
+  const suggestions = await previousWorkingSets(first, repeated.entries.map(e => e.exercise.name));
+  expect(suggestions.get(repeated.entries[0]!.exercise.name)?.[0]).toEqual({ weight: '42', reps: '8', done: false });
+  expect((await readEntity(first.db, first.account.userId, `workout:${draft.sessionId}`))?.kind === 'workout').toBe(true);
+
 
 }, 30000);
 

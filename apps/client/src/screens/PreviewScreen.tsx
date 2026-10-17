@@ -1,3 +1,4 @@
+import { typeLabel } from '../lib/workoutTypes';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   replacementCandidates,
@@ -142,7 +143,7 @@ export function PreviewScreen({
 
       <div className="screen__body">
         <div className="volume-head">
-          <span className="context__type">{workout.type}</span>
+          <span className="context__type">{typeLabel(workout.type)}</span>
           <span className="volume-head__meta">
             {workout.volume} · {plural(total, ['упражнение', 'упражнения', 'упражнений'])}
           </span>
@@ -202,39 +203,44 @@ export function PreviewScreen({
                   {entry.isRepeat && <span className="plan__badge">повтор</span>}
                 </div>
                 <div className="plan__controls">
-                  <span className="plan__move">
-                    <button
-                      className="plan__move-btn"
-                      aria-label={`Переместить выше: ${entry.exercise.name}`}
-                      disabled={!up}
-                      onClick={() => move(index, index - 1)}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                        <path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                    <button
-                      className="plan__move-btn"
-                      aria-label={`Переместить ниже: ${entry.exercise.name}`}
-                      disabled={!down}
-                      onClick={() => move(index, index + 1)}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                        <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                  </span>
                   <button className="btn btn--ghost btn--sm" onClick={() => setReplacing(index)}>
                     Заменить
                   </button>
-                  <button
-                    className="btn btn--ghost btn--sm"
-                    aria-pressed={isExcluded}
-                    disabled={saving !== undefined}
-                    onClick={() => void toggleExclude(entry.exercise.name)}
-                  >
-                    {isExcluded ? 'Предлагать снова' : 'Не предлагать'}
-                  </button>
+                  <details className="plan__more">
+                    <summary aria-label={`Другие действия: ${entry.exercise.name}`}>Ещё</summary>
+                    <div className="plan__menu">
+                      <span className="plan__move">
+                        <button
+                          className="plan__move-btn"
+                          aria-label={`Переместить выше: ${entry.exercise.name}`}
+                          disabled={!up}
+                          onClick={() => move(index, index - 1)}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                            <path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                        <button
+                          className="plan__move-btn"
+                          aria-label={`Переместить ниже: ${entry.exercise.name}`}
+                          disabled={!down}
+                          onClick={() => move(index, index + 1)}
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                            <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </button>
+                      </span>
+                      <button
+                        className="btn btn--ghost btn--sm"
+                        aria-pressed={isExcluded}
+                        disabled={saving !== undefined}
+                        onClick={() => void toggleExclude(entry.exercise.name)}
+                      >
+                        {isExcluded ? 'Предлагать снова' : 'Не предлагать'}
+                      </button>
+                    </div>
+                  </details>
                 </div>
               </li>
             );
@@ -242,24 +248,18 @@ export function PreviewScreen({
         </ol>
 
         <aside className="note">
-          Перетаскивай упражнения за ⠿ или используй стрелки — менять можно порядок
-          внутри группы. Состав групп и число слотов фиксированы.
+          Порядок внутри группы можно изменить в меню «Ещё» или перетаскиванием.
         </aside>
 
-        <div className="screen__cta">
+        <div className="screen__cta screen__cta--sticky">
           <button className="btn btn--primary" onClick={onStart}>
             Начать тренировку
           </button>
-          {regenerable && (
-            <button className="btn btn--ghost" onClick={onRegenerate}>
-              Перегенерировать
-            </button>
-          )}
-          {regenerable && onEditSelection !== undefined && (
-            <button className="btn btn--ghost" onClick={onEditSelection}>
-              Редактировать выбор
-            </button>
-          )}
+          {regenerable && <details className="preview-options">
+            <summary>Изменить тренировку</summary>
+            <button className="btn btn--ghost" onClick={onRegenerate}>Подобрать заново</button>
+            {onEditSelection !== undefined && <button className="btn btn--ghost" onClick={onEditSelection}>Выбрать упражнения</button>}
+          </details>}
         </div>
       </div>
 

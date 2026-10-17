@@ -75,24 +75,27 @@ export function SyncStatus() {
   return <aside className="sync-notice" aria-label="Синхронизация" data-state={alert ? 'alert' : pending ? 'pending' : 'idle'}>
     <div className="sync-notice__status">
       <span className="sync-notice__dot" aria-hidden />
-      <p role="status" className="sync-notice__text">{!db ? 'Открываем локальную базу…' : conflicts.length ? 'Есть изменения, требующие решения.' : queue.length ? `Сохранено на устройстве · ждут отправки: ${queue.length}` : message || (busy ? 'Синхронизация…' : synced ? 'Все изменения синхронизированы' : 'Проверяем синхронизацию…')}</p>
+      <p role="status" className="sync-notice__text">{!db ? 'Открываем локальную базу…' : conflicts.length ? 'Есть изменения, требующие решения.' : queue.length ? `Сохранено на устройстве · ждут отправки: ${queue.length}` : message ? (needsLogin ? 'Данные на устройстве · нужен вход' : 'Данные на устройстве · нет связи') : (busy ? 'Синхронизация…' : synced ? 'Сохранено и синхронизировано' : 'Проверяем синхронизацию…')}</p>
     </div>
-    {message && queue.length > 0 && <p className="sync-notice__text sync-notice__text--muted">{message}</p>}
-    {showActions && <div className="sync-notice__actions">
-      <button type="button" className="sync-notice__btn" onClick={() => setRetry(x => x + 1)} disabled={busy}>Синхронизировать</button>
-      {needsLogin && <button type="button" className="sync-notice__btn sync-notice__btn--accent" onClick={() => setLogin(true)}>Войти повторно</button>}
-    </div>}
-    {conflicts.map(entry => <section className="sync-notice__conflict" key={entry.seq}>
-      <p className="sync-notice__text">{entry.reply?.message ?? 'Запись изменена на другом устройстве.'}</p>
-      <p className="sync-notice__text sync-notice__text--muted">{entry.payload?.kind === 'template' ? entry.payload.title : entry.payload?.kind === 'workout' ? `${entry.payload.type} · ${entry.payload.startedAt.slice(0, 10)}` : entry.key.startsWith('weight:') ? `Вес тела · ${entry.key.slice(7)}` : 'Исключённые упражнения'}</p>
-      <div className="sync-notice__actions">
-        <button type="button" className="sync-notice__btn" disabled={busy} onClick={() => void resolve(entry, 'server')}>Использовать версию сервера</button>
-        {entry.reply?.reason !== 'operation_rejected' && <button type="button" className="sync-notice__btn" disabled={busy} onClick={() => void resolve(entry, 'local')}>{entry.reply?.record.payload?.kind === 'workout' && entry.reply.record.payload.status === 'active' && entry.reply.record.payload.owningDeviceId !== db?.account.deviceId ? 'Продолжить здесь и отправить мои изменения' : 'Отправить мой вариант вместо серверного'}</button>}
-      </div>
-      <p className="sync-notice__text sync-notice__text--muted">Локальная копия останется в резервной выгрузке.</p>
-    </section>)}
-    {(conflicts.length > 0 || message) && <div className="sync-notice__actions">
-      <button type="button" className="sync-notice__btn" onClick={() => void download().catch(() => setMessage('Не удалось подготовить выгрузку'))}>Скачать локальную резервную копию</button>
-    </div>}
+    {showActions && <details className="sync-notice__details" open={alert || undefined}>
+      <summary>Подробнее</summary>
+      {message && <p className="sync-notice__text sync-notice__text--muted">{message}</p>}
+      {showActions && <div className="sync-notice__actions">
+        <button type="button" className="sync-notice__btn" onClick={() => setRetry(x => x + 1)} disabled={busy}>Синхронизировать</button>
+        {needsLogin && <button type="button" className="sync-notice__btn sync-notice__btn--accent" onClick={() => setLogin(true)}>Войти повторно</button>}
+      </div>}
+      {conflicts.map(entry => <section className="sync-notice__conflict" key={entry.seq}>
+        <p className="sync-notice__text">{entry.reply?.message ?? 'Запись изменена на другом устройстве.'}</p>
+        <p className="sync-notice__text sync-notice__text--muted">{entry.payload?.kind === 'template' ? entry.payload.title : entry.payload?.kind === 'workout' ? `${entry.payload.type} · ${entry.payload.startedAt.slice(0, 10)}` : entry.key.startsWith('weight:') ? `Вес тела · ${entry.key.slice(7)}` : 'Исключённые упражнения'}</p>
+        <div className="sync-notice__actions">
+          <button type="button" className="sync-notice__btn" disabled={busy} onClick={() => void resolve(entry, 'server')}>Использовать версию сервера</button>
+          {entry.reply?.reason !== 'operation_rejected' && <button type="button" className="sync-notice__btn" disabled={busy} onClick={() => void resolve(entry, 'local')}>{entry.reply?.record.payload?.kind === 'workout' && entry.reply.record.payload.status === 'active' && entry.reply.record.payload.owningDeviceId !== db?.account.deviceId ? 'Продолжить здесь и отправить мои изменения' : 'Отправить мой вариант вместо серверного'}</button>}
+        </div>
+        <p className="sync-notice__text sync-notice__text--muted">Локальная копия останется в резервной выгрузке.</p>
+      </section>)}
+      {(conflicts.length > 0 || message) && <div className="sync-notice__actions">
+        <button type="button" className="sync-notice__btn" onClick={() => void download().catch(() => setMessage('Не удалось подготовить выгрузку'))}>Скачать локальную резервную копию</button>
+      </div>}
+    </details>}
   </aside>;
 }

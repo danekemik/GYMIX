@@ -61,9 +61,9 @@ export async function remember(db: Db, record: SyncRecord): Promise<void> {
 }
 
 export async function workoutReadOnly(db: GymixDb, key: string, source: Db = db.db): Promise<boolean> {
-  const current = await readEntity(source, db.account.userId, key);
-  if (current?.kind === 'workout' && current.status === 'active' && current.owningDeviceId !== db.account.deviceId) return true;
-  const conflicts = (await queueEntries(source)).filter(x => x.key === key && x.state === 'conflict');
+  const [current] = await rows<{ status: string; owner: string; }>(source, sql`SELECT status, owning_device_id AS owner FROM workout_sessions WHERE id=${key.slice(8)}::uuid AND user_id=${db.account.userId}`);
+  if (current?.status === 'active' && current.owner !== db.account.deviceId) return true;
+  const conflicts = await rows<QueueEntry>(source, sql`SELECT reply FROM local_outbox WHERE key=${key} AND state='conflict'`);
   return conflicts.some(x => {
     const remote = x.reply?.record.payload;
     return remote?.kind === 'workout' && (remote.status === 'completed' || remote.owningDeviceId !== db.account.deviceId);
