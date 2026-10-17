@@ -16,7 +16,7 @@ export function WeekActivity() {
   return <section className="week" aria-label="Активность на этой неделе">
     <div className="section-head"><h2 className="section-title">Эта неделя</h2><span className="body-muted">{activity ? plural(activity.count, ['тренировка', 'тренировки', 'тренировок']) : failed ? 'Не удалось загрузить' : 'Загружаем…'}</span></div>
     <ol className="week__days">{['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((day, index) => <li key={day} className={`week__day${index === today ? ' week__day--today' : ''}${activity?.days[index] ? ' week__day--done' : ''}`} aria-label={`${day}: ${activity ? plural(activity.days[index]!, ['тренировка', 'тренировки', 'тренировок']) : 'загрузка'}${index === today ? ', сегодня' : ''}`}>
-      <span>{day}</span><span className="week__mark" aria-hidden="true">{activity?.days[index] ? '✓' : index === today ? '·' : '—'}</span>
+      <span>{day}</span><span className="week__mark" aria-hidden="true">{activity?.days[index] ? '✓' : index === today ? '·' : ''}</span>
     </li>)}</ol>
     {activity?.count === 0 && <p className="week__hint">Каждая завершённая тренировка появится здесь.</p>}
   </section>;

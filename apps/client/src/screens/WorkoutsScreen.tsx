@@ -10,7 +10,7 @@ import type { Draft } from '../lib/draft';
 import { getUserName } from '../lib/account';
 import { plural } from '../lib/draft';
 import { formatDay, formatDurationMs } from '../lib/format';
-import { IconArrowRight, IconChevronRight, IconClock } from '../lib/icons';
+import { IconArrowRight, IconChevronRight } from '../lib/icons';
 import { typeIcon } from '../lib/typeIcon';
 import {
   deleteDraft,
@@ -47,8 +47,9 @@ export function WorkoutsScreen({
   const name = getUserName();
   const historyRead = useLocalRead<HistoryItem[]>('history');
   const draftRead = useLocalRead<DraftSummary | null>('active');
-  const recent = historyRead.data?.slice(0, 3) ?? 'loading';
+  const recent = historyRead.data?.slice(0, 2) ?? 'loading';
   const draft = draftRead.data === undefined ? 'loading' : draftRead.data;
+  const activeDraft = draft !== 'loading' ? draft : null;
   const loadError = Boolean(historyRead.error || draftRead.error);
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -56,6 +57,7 @@ export function WorkoutsScreen({
 
   const continueDraft = async () => {
     if (db === undefined || draft === null || draft === 'loading') return;
+    setActionError('');
     setBusy(true);
     try {
       if (draft.readOnly) await takeOwnership(db, `workout:${draft.sessionId}`);
@@ -73,6 +75,8 @@ export function WorkoutsScreen({
     try {
       await deleteDraft(db, draft.sessionId);
       await draftRead.reload();
+    } catch {
+      setActionError('Не удалось удалить черновик. Попробуй ещё раз.');
     } finally {
       setBusy(false);
       setRemoveDraft(false);
@@ -95,72 +99,51 @@ export function WorkoutsScreen({
           </p>
         )}
 
-        {draft !== null && draft !== 'loading' && (
-          <section className="resume" aria-label="Незавершённая тренировка">
-            <div className="resume__head">
-              <span className="resume__plate" aria-hidden>
-                <IconClock />
-              </span>
-              <div className="resume__body">
-                <p className="resume__title">
-                  {typeLabel(draft.type)} <span className="wk-card__dot">·</span> {draft.volume}
-                </p>
-                <p className="resume__meta">
-                  Начата {formatDay(draft.startedAt)} · {draft.doneSets}/{draft.totalSets} подходов
-                </p>
-              </div>
-            </div>
-            <div className="resume__actions">
-              <button className="btn btn--primary btn--sm" onClick={() => void continueDraft()} disabled={busy}>
-                {draft.readOnly ? 'Продолжить на этом устройстве' : 'Продолжить'}
-              </button>
-              <button
-                className="btn btn--ghost btn--sm resume__danger"
-                onClick={() => setRemoveDraft(true)}
-                disabled={busy || draft.readOnly}
-              >
-                Удалить черновик
-              </button>
-            </div>
-          </section>
-        )}
-
-        <section className="hero" aria-label="Новая тренировка">
+        <section className={`hero${activeDraft ? ' hero--active' : ''}`} aria-label={activeDraft ? 'Текущая тренировка' : 'Новая тренировка'}>
           <span className="hero__circle" aria-hidden="true">
             <img className="hero__icon" src={fitnessIcon} alt="" width={46} height={46} />
           </span>
           <div className="hero__copy">
-            <span className="hero__chip"><span className="hero__chip-dot" aria-hidden="true" />Готов двигаться?</span>
-            <h2 className="hero__title">Поймай<br />свой ритм</h2>
-            <p className="hero__sub">Собери занятие под себя</p>
+            <span className="hero__chip"><span className="hero__chip-dot" aria-hidden="true" />{activeDraft ? 'Текущая тренировка' : 'Готов двигаться?'}</span>
+            <h2 className="hero__title">{activeDraft ? typeLabel(activeDraft.type) : <>Поймай<br />свой ритм</>}</h2>
+            <p className="hero__sub">{activeDraft ? `${activeDraft.volume} · ${formatDay(activeDraft.startedAt)}` : 'Собери занятие под себя'}</p>
           </div>
-          <button className="hero__cta" onClick={onCreate} disabled={busy || draft !== null} aria-describedby={draft !== null ? 'start-availability' : undefined}>
-            <span className="hero__cta-label">Начать тренировку</span><IconArrowRight className="hero__cta-arrow" />
+          {activeDraft && (
+            <div className="hero__progress">
+              <span id="draft-progress">{activeDraft.doneSets} из {activeDraft.totalSets} подходов выполнено</span>
+              <progress aria-labelledby="draft-progress" value={activeDraft.doneSets} max={Math.max(1, activeDraft.totalSets)} />
+            </div>
+          )}
+          <button className="hero__cta" onClick={activeDraft ? () => void continueDraft() : onCreate} disabled={busy || draft === 'loading'} aria-describedby={activeDraft?.readOnly ? 'draft-ownership' : undefined}>
+            <span className="hero__cta-label">{busy ? 'Открываем…' : activeDraft ? activeDraft.readOnly ? 'Продолжить здесь' : 'Продолжить тренировку' : 'Начать тренировку'}</span><IconArrowRight className="hero__cta-arrow" />
           </button>
-          {draft !== null && <p id="start-availability" className="hero__availability">{draft === 'loading' ? 'Проверяем сохранённую тренировку…' : 'Сначала заверши текущее занятие или продолжи его выше.'}</p>}
+          {activeDraft && (activeDraft.readOnly ? (
+            <p className="hero__ownership" id="draft-ownership">Занятие открыто на другом устройстве. Можно продолжить на этом.</p>
+          ) : (
+            <button className="hero__discard" onClick={() => setRemoveDraft(true)} disabled={busy}>Удалить черновик</button>
+          ))}
         </section>
-
-        {draft === null && recent !== 'loading' && recent.length > 0 && (
-          <button className="btn btn--ghost repeat-last" disabled={busy} onClick={() => {
-            setBusy(true); setActionError('');
-            void onRepeat(recent[0]!.id).catch(() => setActionError('Не удалось повторить тренировку. Попробуй ещё раз.')).finally(() => setBusy(false));
-          }}>
-            <span><strong>{busy ? 'Открываем…' : 'Повторить последнюю'}</strong><small>{typeLabel(recent[0]!.type)} · {formatDay(recent[0]!.completedAt)}</small></span><IconChevronRight />
-          </button>
-        )}
-
-        <WeekActivity />
 
         <section className="today-links" aria-label="Другие варианты старта">
+          {draft === null && recent !== 'loading' && recent.length > 0 && (
+            <button className="journal-link" disabled={busy} onClick={() => {
+              setBusy(true); setActionError('');
+              void onRepeat(recent[0]!.id).catch(() => setActionError('Не удалось повторить тренировку. Попробуй ещё раз.')).finally(() => setBusy(false));
+            }}>
+              <span><strong>{busy ? 'Открываем…' : 'Повторить последнюю'}</strong><small>{typeLabel(recent[0]!.type)} · {formatDay(recent[0]!.completedAt)}</small></span><IconChevronRight />
+            </button>
+          )}
           <button className="journal-link" onClick={onOpenTemplates}><span><strong>Мои тренировки</strong><small>Сохранённые варианты для быстрого старта</small></span><IconChevronRight /></button>
-          {quickDraft && <button className="journal-link" disabled={busy || draft !== null} onClick={onQuickBuild}><span><strong>Новый состав по прошлым настройкам</strong><small>{typeLabel(quickDraft.type)} · {quickDraft.volume}{quickDraft.mgsGroup ? ` · ${quickDraft.mgsGroup}` : ''}</small></span><IconChevronRight /></button>}
+          {quickDraft && draft === null && <button className="journal-link" disabled={busy} onClick={onQuickBuild}><span><strong>Новый состав</strong><small>По прошлым настройкам · {typeLabel(quickDraft.type)}</small></span><IconChevronRight /></button>}
         </section>
+
+        <WeekActivity />
 
         <section className="recent" aria-label="Последние тренировки">
           <div className="section-head">
             <h2 className="section-title">Последние тренировки</h2>
             <button className="section-more" onClick={onOpenActivity}>
-              Все
+              История
               <IconChevronRight />
             </button>
           </div>

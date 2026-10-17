@@ -1,3 +1,5 @@
+:root { --tabbar-height: 68px; }
+
 .app {
   height: 100%;
   display: flex;
@@ -15,7 +17,7 @@
 
 /* когда показана плавающая навигация — резерв под высоту пилюли и её отступ */
 .app__main--tabs {
-  padding-bottom: calc(108px + env(safe-area-inset-bottom) + var(--phone-bottom-inset, 0px));
+  padding-bottom: calc(var(--tabbar-height) + var(--space-2xs) + var(--space-m) + env(safe-area-inset-bottom) + var(--phone-bottom-inset, 0px));
 }
 
 /* экран с липким CTA сам держит нижний отступ — резерв не нужен */

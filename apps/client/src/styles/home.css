@@ -1,0 +1,53 @@
+/* Home composition, within the established GYMIX palette and type system. */
+.screen--home .screen__body { gap: var(--space-m); }
+.screen--home .hero {
+  gap: var(--space-m);
+  padding: var(--space-m);
+  background: radial-gradient(ellipse at top right, rgba(168, 245, 58, .045), transparent 65%), var(--surface-hero);
+}
+.screen--home .hero__circle { width: 184px; height: 184px; top: -110px; right: -48px; }
+.screen--home .hero__icon { left: 55px; top: 118px; width: 46px; }
+.screen--home .hero__copy { gap: var(--space-2xs); max-width: 100%; }
+.screen--home .hero__chip { max-width: calc(100% - 120px); font-size: var(--step--2); line-height: 1.5; }
+.screen--home .hero__chip-dot { flex-shrink: 0; }
+.screen--home .hero__title { font-size: var(--step-3); line-height: 1.12; margin-top: var(--space-3xs); max-width: 260px; }
+.screen--home .hero--active .hero__title { max-width: calc(100% - 24px); overflow-wrap: anywhere; }
+.screen--home .hero__sub { font-size: var(--step--1); line-height: 1.5; }
+.screen--home .hero__cta { min-height: 54px; height: auto; padding: 14px var(--space-s); }
+.screen--home .hero__cta-label { white-space: normal; text-align: left; line-height: 1.35; }
+.hero__progress { display: grid; gap: var(--space-2xs); font-size: var(--step--1); color: var(--ink-2); }
+.hero__progress progress { display: block; width: 100%; height: 5px; appearance: none; border: 0; border-radius: 999px; overflow: hidden; background: var(--surface-3); color: var(--accent); }
+.hero__progress progress::-webkit-progress-bar { background: var(--surface-3); border-radius: 999px; }
+.hero__progress progress::-webkit-progress-value { background: var(--accent); border-radius: 999px; }
+.hero__progress progress::-moz-progress-bar { background: var(--accent); border-radius: 999px; }
+.hero__discard { align-self: center; min-height: 44px; margin-block: calc(-1 * var(--space-s)); padding-inline: var(--space-xs); color: var(--ink-2); font-size: var(--step--2); text-decoration: underline; text-underline-offset: 4px; }
+.hero__ownership { color: var(--ink-2); font-size: var(--step--2); line-height: 1.5; margin-top: calc(-1 * var(--space-xs)); }
+.screen--home .today-links { background: var(--surface); border-radius: var(--radius-xl); padding-inline: var(--space-s); }
+.screen--home .journal-link { padding-block: var(--space-xs); gap: var(--space-s); min-height: 72px; }
+.screen--home .journal-link span { min-width: 0; gap: var(--space-3xs); }
+.screen--home .journal-link strong { font-size: var(--step-0); line-height: 1.4; }
+.screen--home .journal-link small { font-size: var(--step--2); line-height: 1.5; }
+.screen--home .week { padding-block: var(--space-2xs); }
+.screen--home .week .section-head { margin-bottom: var(--space-s); flex-wrap: wrap; }
+.screen--home .week__days { gap: var(--space-3xs); }
+.screen--home .week__day { gap: var(--space-2xs); }
+.screen--home .week__mark { width: 32px; height: 32px; max-height: none; aspect-ratio: auto; border: 1px solid transparent; border-radius: 50%; background: var(--surface); color: var(--ink-2); }
+.screen--home .week__day--today .week__mark { border-color: var(--ink-2); color: var(--ink); }
+.screen--home .week__day--done .week__mark { background: var(--accent); color: var(--accent-ink); }
+.screen--home .week__day--today.week__day--done .week__mark { box-shadow: 0 0 0 3px var(--base), 0 0 0 4px var(--accent); border-color: transparent; }
+.screen--home .section-title { font-size: var(--step-0); line-height: 1.4; white-space: normal; }
+.screen--home .recent .section-head { gap: var(--space-xs); }
+.screen--home .section-more { color: var(--ink-2); font-size: var(--step--2); }
+.screen--home .recent-row { gap: var(--space-xs); padding-block: var(--space-s); }
+.screen--home .recent-row__plate { width: 44px; height: 44px; border-radius: var(--radius-m); }
+.screen--home .recent-row__title { font-size: var(--step-0); line-height: 1.4; }
+.screen--home .recent-row__sub { font-size: var(--step--2); color: var(--ink-2); line-height: 1.5; }
+.screen--home .recent-row__value { font-size: var(--step--2); }
+.screen--home .recent-empty { border: 0; background: var(--surface); border-radius: var(--radius-l); color: var(--ink-2); font-size: var(--step--1); }
+
+@media (max-width: 350px) {
+  .screen--home .hero { padding: var(--space-s); }
+  .screen--home .hero__title { font-size: var(--step-2); }
+  .screen--home .recent-row { gap: var(--space-2xs); }
+  .screen--home .recent-row__plate { width: 36px; height: 40px; }
+}
