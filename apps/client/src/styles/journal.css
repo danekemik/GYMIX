@@ -1,7 +1,7 @@
 /* Mobile functionality within the original GYMIX visual language. */
 .topbar__title { font-size: var(--step-1); line-height: 1.25; }
 .topbar__title--step { font-size: var(--step-0); }
-/* Format selection keeps the typography and spacing from 16 October. */
+/* Format selection matches e58d2f9, including its inherited typography. */
 .screen--formats {
   --font-text: var(--font-display);
   --formats-viewport: 100vw;
