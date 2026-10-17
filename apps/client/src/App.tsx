@@ -1,6 +1,9 @@
+import { LibraryScreen } from './screens/LibraryScreen';
+import { readBuilderPreferences, saveBuilderPreferences } from './lib/builderPreferences';
+import { activeDraft } from './lib/session';
 import { workoutFromHistory } from './lib/reuseWorkout';
 import { SyncStatus } from './components/SyncStatus';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { generateWorkout, type GeneratedWorkout } from '@gymix/generator';
 import type { GeneratorMuscleGroup, VolumeLevel, WorkoutType } from '@gymix/structures';
 import { TabBar } from './components/TabBar';
@@ -12,7 +15,6 @@ import type { ResumedSession } from './lib/session';
 import { workoutFromTemplate } from './lib/templates';
 import { ExecuteScreen, type FinishPayload } from './screens/ExecuteScreen';
 import { FinishScreen } from './screens/FinishScreen';
-import { HistoryScreen } from './screens/HistoryScreen';
 import { ManualScreen } from './screens/ManualScreen';
 import { MgsGroupScreen } from './screens/MgsGroupScreen';
 import { PreviewScreen } from './screens/PreviewScreen';
@@ -21,39 +23,21 @@ import { RandomizerScreen } from './screens/RandomizerScreen';
 import { RecordScreen } from './screens/RecordScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { StructureScreen } from './screens/StructureScreen';
-import { TemplatesScreen } from './screens/TemplatesScreen';
 import { TypeScreen } from './screens/TypeScreen';
 import { VolumeScreen } from './screens/VolumeScreen';
 import { WorkoutsScreen } from './screens/WorkoutsScreen';
 
 const TABS = [
-  {
-    id: 'workouts',
-    label: 'Тренировки',
-    icon: <span className="tabbar__glyph tabbar__glyph--dumbbell" />,
-  },
-  {
-    id: 'progress',
-    label: 'Прогресс',
-    icon: <span className="tabbar__glyph tabbar__glyph--rise" />,
-  },
-  {
-    id: 'profile',
-    label: 'Профиль',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-        <circle cx="12" cy="8" r="3.5" />
-        <path d="M5 19c0-3.6 3.1-5.5 7-5.5s7 1.9 7 5.5" strokeLinecap="round" />
-      </svg>
-    ),
-  },
+  { id: 'today', label: 'Сегодня', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3Z" strokeLinejoin="round" /><path d="M9 20v-7h6v7" /></svg> },
+  { id: 'workouts', label: 'Тренировки', icon: <span className="tabbar__glyph tabbar__glyph--dumbbell" /> },
+  { id: 'progress', label: 'Прогресс', icon: <span className="tabbar__glyph tabbar__glyph--rise" /> },
 ];
 
 type Step = 'home' | 'type' | 'mgs' | 'volume' | 'structure' | 'manual' | 'randomizer' | 'preview' | 'execute' | 'finish';
 type Nullable<T> = T | undefined;
 
-/** Подэкраны поверх вкладок: история, запись тренировки, шаблоны. */
-type Sub = { kind: 'history'; } | { kind: 'record'; id: string; } | { kind: 'templates'; };
+/** Подэкраны поверх основных разделов. */
+type Sub = { kind: 'record'; id: string; } | { kind: 'settings'; };
 
 function randomSeed(): number {
   return Math.floor(Math.random() * 0xffffffff);
@@ -61,7 +45,8 @@ function randomSeed(): number {
 
 export function App() {
   const { db } = useDb();
-  const [tab, setTab] = useState('workouts');
+  const mainRef = useRef<HTMLElement>(null);
+  const [tab, setTab] = useState('today');
 
   const [step, setStep] = useState<Step>('home');
   const [stepType, setStepType] = useState<WorkoutType>('Full Body');
@@ -74,7 +59,12 @@ export function App() {
   const [fromTemplate, setFromTemplate] = useState(false);
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [manualSlotKey, setManualSlotKey] = useState<Nullable<string>>(undefined);
+  const [navigationError, setNavigationError] = useState('');
+  const [starting, setStarting] = useState(false);
+  const [libraryView, setLibraryView] = useState<'saved' | 'history'>('saved');
   const [sub, setSub] = useState<Nullable<Sub>>(undefined);
+
+  useEffect(() => { mainRef.current?.scrollTo(0, 0); }, [step, tab, sub?.kind]);
 
   const exitBuilder = () => {
     setStep('home');
@@ -109,8 +99,9 @@ export function App() {
     if (step !== 'home') exitBuilder();
   };
 
-  const openHistory = () => setSub({ kind: 'history' });
-  const openTemplates = () => setSub({ kind: 'templates' });
+  const openHistory = () => { setSub(undefined); setLibraryView('history'); setTab('workouts'); };
+  const openTemplates = () => { setSub(undefined); setLibraryView('saved'); setTab('workouts'); };
+  const openSettings = () => setSub({ kind: 'settings' });
   const openRecord = (id: string) => setSub({ kind: 'record', id });
 
   // Navigation is immediate and never waits for an animated overlay.
@@ -121,11 +112,14 @@ export function App() {
     if (db === undefined) return;
     try {
       const workout = await workoutFromTemplate(db, templateId);
+      setStepType(workout.type);
+      setStepVolume(workout.volume);
+      setStepMgsGroup(isMgs(workout.type) ? workout.entries[0]?.groupUsed : undefined);
       setFromTemplate(true);
       setGenerated(workout);
       setStep('preview');
     } catch {
-      // Безобидный фолбэк: остаёмся на главной при сбое чтения шаблона.
+      setNavigationError('Не удалось открыть сохранённую тренировку. Попробуй ещё раз.');
     }
   };
 
@@ -144,7 +138,7 @@ export function App() {
       setManualSlotKey(undefined);
       setStep('manual');
     } catch {
-      // Безобидный фолбэк: остаёмся на главной при сбое чтения шаблона.
+      setNavigationError('Не удалось открыть сохранённую тренировку. Попробуй ещё раз.');
     }
   };
 
@@ -158,6 +152,35 @@ export function App() {
     setFromTemplate(true);
     setSub(undefined);
     setStep('preview');
+  };
+
+  const quickBuild = () => {
+    if (!db) return;
+    const previous = readBuilderPreferences(db.account.userId);
+    if (!previous) { openFormats(); return; }
+    setStepType(previous.type);
+    setStepVolume(previous.volume);
+    setStepMgsGroup(previous.mgsGroup);
+    setSelections({});
+    setGenerated(undefined);
+    setFromTemplate(false);
+    setSeed(randomSeed());
+    setStep('randomizer');
+  };
+
+  const startWorkout = async () => {
+    if (!db || starting) return;
+    setStarting(true);
+    try {
+      if (await activeDraft(db)) {
+        setNavigationError('У тебя уже есть начатая тренировка. Продолжи или удали её на экране «Сегодня».');
+        return;
+      }
+      if (!fromTemplate) saveBuilderPreferences(db.account.userId, draft);
+      setNavigationError('');
+      setStep('execute');
+    } catch { setNavigationError('Не удалось начать тренировку. Попробуй ещё раз.'); }
+    finally { setStarting(false); }
   };
 
   let body;
@@ -185,8 +208,11 @@ export function App() {
         onVolumeChange={setStepVolume}
         onContinue={() => {
           setSelections({});
-          setStep('structure');
+          setSeed(randomSeed());
+          setGenerated(undefined);
+          setStep('randomizer');
         }}
+        onManual={() => { setSelections({}); setManualSlotKey(undefined); setStep('manual'); }}
         onBack={() => setStep(isMgs(stepType) ? 'mgs' : 'type')}
       />
     );
@@ -251,7 +277,7 @@ export function App() {
           setStep('preview');
         }}
         onRegenerate={() => setSeed(randomSeed())}
-        onBack={() => setStep('structure')}
+        onBack={() => setStep('volume')}
       />
     );
   } else if (step === 'preview' && generated) {
@@ -259,7 +285,8 @@ export function App() {
       <PreviewScreen
         workout={generated}
         draft={draft}
-        onStart={() => setStep('execute')}
+        onStart={() => void startWorkout()}
+        starting={starting}
         regenerable={!fromTemplate}
         onReplace={(index, exercise) => {
           const replaced = generated.entries[index];
@@ -281,6 +308,7 @@ export function App() {
           });
         }}
         onReorder={(entries) => setGenerated({ ...generated, entries })}
+        onEditParameters={() => setStep('volume')}
         onEditSelection={() => {
           const next: Record<string, string> = {};
           for (const entry of generated.entries) next[entry.slotKey] = entry.exercise.name;
@@ -298,7 +326,7 @@ export function App() {
             setGenerated(undefined);
             setStep('home');
           } else {
-            setStep('randomizer');
+            setStep(Object.keys(selections).length ? 'manual' : 'volume');
           }
         }}
       />
@@ -332,25 +360,16 @@ export function App() {
         }}
       />
     );
-  } else if (sub?.kind === 'templates') {
-    body = (
-      <TemplatesScreen
-        onBack={() => setSub(undefined)}
-        onOpenTemplate={(templateId) => void openTemplate(templateId)}
-        onEditTemplate={(templateId) => void openTemplateEdit(templateId)}
-        onCreate={() => {
-          setSub(undefined);
-          setStep('type');
-        }}
-      />
-    );
+  } else if (sub?.kind === 'settings') {
+    body = <SettingsScreen onBack={() => setSub(undefined)} />;
   } else if (sub?.kind === 'record') {
     body = <RecordScreen sessionId={sub.id} onBack={openHistory} />;
-  } else if (sub?.kind === 'history') {
-    body = <HistoryScreen onBack={() => setSub(undefined)} onOpen={openRecord} />;
-  } else if (tab === 'workouts') {
+  } else if (tab === 'today') {
     body = (
       <WorkoutsScreen
+        onSettings={openSettings}
+        onQuickBuild={quickBuild}
+        quickDraft={db ? readBuilderPreferences(db.account.userId) : undefined}
         onCreate={openFormats}
         onOpenTemplates={openTemplates}
         onRepeat={repeatWorkout}
@@ -362,18 +381,17 @@ export function App() {
         }}
       />
     );
-  } else if (tab === 'profile') {
-    body = <SettingsScreen onOpenHistory={openHistory} onOpenTemplates={openTemplates} />;
+  } else if (tab === 'workouts') {
+    body = <LibraryScreen view={libraryView} onViewChange={setLibraryView} onSettings={openSettings} onCreate={openFormats} onOpenSession={openRecord} onOpenTemplate={(id) => void openTemplate(id)} onEditTemplate={(id) => void openTemplateEdit(id)} />;
   } else if (tab === 'progress') {
-    body = <ProgressScreen />;
+    body = <ProgressScreen onSettings={openSettings} />;
   } else {
     body = <SoonScreen tab={tab} />;
   }
 
   return (
     <div className="app">
-      <div className="app__brand" aria-label="GYMIX">GYM<span>IX</span></div>
-      <main className={`app__main${step === 'home' && sub === undefined ? ' app__main--tabs' : ''}`}><SyncStatus />{body}</main>
+      <main ref={mainRef} className={`app__main${step === 'home' && sub === undefined ? ' app__main--tabs' : ''}`}><SyncStatus />{navigationError && <div className="navigation-error" role="alert"><p>{navigationError}</p><button className="text-action" onClick={() => { setNavigationError(''); exitBuilder(); setSub(undefined); setTab('today'); }}>На экран «Сегодня»</button><button className="text-action" onClick={() => setNavigationError('')}>Закрыть</button></div>}{body}</main>
       {step === 'home' && sub === undefined && <TabBar tabs={TABS} active={tab} onChange={openTab} />}
     </div>
   );

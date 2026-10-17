@@ -1,8 +1,8 @@
+import { RestTimer } from '../components/RestTimer';
 import { previousWorkingSets } from '../lib/reuseWorkout';
 import { workoutReadOnly } from '../data/sync/store';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GeneratedWorkout } from '@gymix/generator';
-import { readEntity } from '@gymix/db/sync-data';
 import { useDb } from '../hooks/useDb';
 import { plural } from '../lib/draft';
 import { createDraft, deleteDraft, persistDraft, setDraftRunning, type DraftSession, type ResumedSession } from '../lib/session';
@@ -51,6 +51,8 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
   const [modal, setModal] = useState<Modal>(null);
   const [skipIndex, setSkipIndex] = useState(0);
   const [lastCompleted, setLastCompleted] = useState<{ ex: number; set: number; } | null>(null);
+  const [focused, setFocused] = useState(() => resume ? Math.max(0, resume.sets.findIndex((group, ex) => !resume.skipped[ex] && !group.every(set => set.done))) : 0);
+  const [previous, setPrevious] = useState<Map<string, SetEntry[]>>(new Map());
   const [prefilled, setPrefilled] = useState(false);
   const [toast, setToast] = useState<'ok' | 'error' | null>(null);
   const startedAt = useRef<number>(resume?.startedAt ?? Date.now());
@@ -154,6 +156,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
         setDraft(created);
         const previous = await previousWorkingSets(db, workout.entries.map(entry => entry.exercise.name)).catch(() => new Map());
         if (!alive || !previous.size) return;
+        setPrevious(previous);
         setSets(current => current.map((group, ex) => group.map((set, index) => {
           const suggestion = previous.get(workout.entries[ex]!.exercise.name)?.[index];
           return suggestion && !set.done && set.weight === '' && set.reps === '' ? { ...suggestion } : set;
@@ -164,6 +167,13 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
     return () => {
       alive = false;
     };
+  }, [db, workout, resume]);
+
+  useEffect(() => {
+    if (!resume || !db) return;
+    let alive = true;
+    previousWorkingSets(db, workout.entries.map(entry => entry.exercise.name)).then(value => { if (alive) setPrevious(value); }).catch(() => {});
+    return () => { alive = false; };
   }, [db, workout, resume]);
 
   useEffect(() => {
@@ -201,7 +211,11 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
     for (let step = 1; step <= total; step++) {
       const i = (from + step) % total;
       if (!(skipped[i] === true) && !isDone(sets[i] ?? [])) {
-        cardRefs.current[i]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setFocused(i);
+        window.requestAnimationFrame(() => {
+          cardRefs.current[i]?.scrollIntoView({ behavior: 'auto', block: 'start' });
+          cardRefs.current[i]?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+        });
         return;
       }
     }
@@ -291,12 +305,16 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
         </div>
 
         <div className="exec-body">
-          {prefilled && <p className="exec-prefill">Подставлены прошлые значения. Изменяй их под сегодняшнюю тренировку.</p>}
+          <RestTimer sessionId={draft && draft !== 'created' ? draft.sessionId : undefined} />
+          {prefilled && <p className="exec-prefill">Прошлые значения подставлены — их можно изменить.</p>}
+          <p className="exec-roster-label">Упражнения · {total}</p>
           {workout.entries.map((entry, ex) => {
             const group = sets[ex] ?? [];
             const skippedHere = skipped[ex] === true;
             const done = isDone(group);
             const state = skippedHere ? 'skipped' : done ? 'done' : 'active';
+            const open = focused === ex;
+            const past = previous.get(entry.exercise.name);
             const groupSize = workout.entries.filter((e) => e.groupUsed === entry.groupUsed).length;
             return (
               <article
@@ -306,12 +324,15 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
                 }}
                 className={`exec-card exec-card--${state}`}
               >
-                <div className="exec-card__head">
-                  <span className="exec-card__group">{entry.groupUsed}</span>
-                  <span className="exec-card__name">{entry.exercise.name}</span>
-                  {skippedHere && <span className="exec-card__tag">Пропущено</span>}
-                </div>
+                <h2 className="exec-card__heading"><button className="exec-card__toggle" aria-expanded={open} aria-controls={`exercise-${ex}`} onClick={() => setFocused(open ? -1 : ex)}>
+                  <span className="exec-card__ordinal" aria-hidden="true">{String(ex + 1).padStart(2, '0')}</span>
+                  <span className="exec-card__head">
+                    <span className="exec-card__group">{entry.groupUsed} · {skippedHere ? 'Пропущено' : done ? 'Выполнено' : open ? 'Сейчас' : `${group.filter(set => set.done).length}/${group.length} подходов`}</span>
+                    <span className="exec-card__name">{entry.exercise.name}</span>
+                  </span><span className="exec-card__chevron" aria-hidden="true">{open ? '−' : '+'}</span>
+                </button></h2>
 
+                <div id={`exercise-${ex}`} hidden={!open} className="exec-card__content">
                 {skippedHere ? (
                   <button
                     className="btn btn--ghost btn--sm exec-card__return"
@@ -321,9 +342,10 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
                   </button>
                 ) : (
                   <>
+                    <div className="set-columns" aria-hidden="true"><span>№</span><span>кг</span><span>повт.</span><span>Готово</span></div>
                     <ul className="set-list">
                       {group.map((set, index) => (
-                        <li key={index} className="set-row">
+                        <li key={index} className={`set-row${!set.done && index === group.findIndex(item => !item.done) ? ' set-row--current' : ''}`}>
                           <span className="set-row__num">{index + 1}</span>
                           <label className="set-field">
                             <span className="set-field__label">кг</span>
@@ -331,6 +353,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
                               className="set-input"
                               type="text"
                               inputMode="decimal"
+                              aria-label={`Вес, подход ${index + 1}, ${entry.exercise.name}`}
                               value={set.weight}
                               onChange={(e) => update(ex, index, { weight: e.target.value })}
                             />
@@ -341,6 +364,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
                               className="set-input"
                               type="text"
                               inputMode="numeric"
+                              aria-label={`Повторения, подход ${index + 1}, ${entry.exercise.name}`}
                               value={set.reps}
                               onChange={(e) => update(ex, index, { reps: e.target.value })}
                             />
@@ -358,6 +382,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
                               <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           </button>
+                          {past?.[index] && <span className="set-row__previous">Ранее: {past[index]!.weight || '—'} кг × {past[index]!.reps || '—'} повт.</span>}
                         </li>
                       ))}
                     </ul>
@@ -392,6 +417,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
                     </div>
                   </>
                 )}
+                </div>
               </article>
             );
           })}

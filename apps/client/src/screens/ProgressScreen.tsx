@@ -1,3 +1,5 @@
+import { SettingsButton } from '../components/SettingsButton';
+import { WeekActivity } from '../components/WeekActivity';
 import { useEffect, useMemo, useState } from 'react';
 import { useDb } from '../hooks/useDb';
 import { LineChart } from '../components/LineChart';
@@ -14,7 +16,7 @@ import {
 
 const SIX_MONTHS_MS = 183 * 86_400_000;
 
-export function ProgressScreen() {
+export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
   const { db, revision } = useDb();
   const [series, setSeries] = useState<ExerciseSeries[] | undefined>(undefined);
   const [body, setBody] = useState<BodyWeightPoint[] | undefined>(undefined);
@@ -46,7 +48,7 @@ export function ProgressScreen() {
   }, [db, period, revision]);
 
   useEffect(() => {
-    setSelected((prev) => prev ?? series?.[0]?.name);
+    setSelected((prev) => series?.some(item => item.name === prev) ? prev : series?.[0]?.name);
   }, [series]);
 
   const active: ExerciseSeries | undefined = useMemo(
@@ -85,10 +87,11 @@ export function ProgressScreen() {
   return (
     <div className="screen">
       <header className="topbar">
-        <h1 className="topbar__title">Прогресс</h1>
+        <h1 className="topbar__title">Прогресс</h1><SettingsButton onClick={onSettings} />
       </header>
 
       <div className="screen__body">
+        <WeekActivity />
         <Segmented
           value={period}
           onChange={(v) => setPeriod(v as '6m' | 'all')}
@@ -149,9 +152,14 @@ export function ProgressScreen() {
                 ) : (
                   <>
                     <p className="progress-card__summary" id={summaryId}>
-                      Лучший результат — {formatValue(last!.value)} ({last!.label}, {last!.meta}). Всего{' '}
-                      {plural(active.points.length, ['точка', 'точки', 'точек'])} за период.
+                      Последняя тренировка: {formatValue(last!.value)} · {last!.meta} ({last!.label}). {' '}
+                      {plural(active.points.length, ['тренировка', 'тренировки', 'тренировок'])} за период.
                     </p>
+                    {active.points.length > 1 && <div className="progress-comparison">
+                      <div><span>В начале периода</span><strong>{active.points[0]!.weight} кг × {active.points[0]!.reps}</strong></div>
+                      <div><span>Последний раз</span><strong>{active.points.at(-1)!.weight} кг × {active.points.at(-1)!.reps}</strong></div>
+                      <p>Сравнивай вес вместе с числом повторений. Каждый пункт — лучший подход отдельной тренировки.</p>
+                    </div>}
                     <LineChart
                       points={formatted}
                       formatValue={formatValue}
@@ -169,7 +177,7 @@ export function ProgressScreen() {
 
                     <table className="chart-table">
                       <caption className="chart-table__caption">
-                        Лучший подход в слот: {active.name} ({metric === 'weight' ? 'вес' : 'повторения'})
+                        Лучший подход каждой тренировки: {active.name} ({metric === 'weight' ? 'вес' : 'повторения'})
                       </caption>
                       <thead>
                         <tr>

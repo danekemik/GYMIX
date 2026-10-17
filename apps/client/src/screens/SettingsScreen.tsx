@@ -11,11 +11,10 @@ import {
 } from '../lib/exclusions';
 
 interface SettingsScreenProps {
-  onOpenHistory: () => void;
-  onOpenTemplates: () => void;
+  onBack: () => void;
 }
 
-export function SettingsScreen({ onOpenHistory, onOpenTemplates }: SettingsScreenProps) {
+export function SettingsScreen({ onBack }: SettingsScreenProps) {
   const { db, revision } = useDb();
   const [items, setItems] = useState<ExcludedExercise[] | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -77,27 +76,14 @@ export function SettingsScreen({ onOpenHistory, onOpenTemplates }: SettingsScree
   return (
     <div className="screen">
       <header className="topbar">
-        <h1 className="topbar__title">Настройки</h1>
+        <button className="topbar__back" onClick={onBack} aria-label="Назад">←</button><h1 className="topbar__title topbar__title--step">Настройки</h1>
       </header>
 
       <div className="screen__body">
         <p className="body-muted">{getSession()?.user.email}</p>
         <button className="btn btn--ghost" onClick={() => void signOut()}>Выйти из аккаунта</button>
         <button className="btn btn--ghost" disabled={!db} onClick={() => { if (db) void downloadLocalBackup(db).catch(() => setError('Не удалось создать резервную копию')); }}>Скачать локальную резервную копию</button>
-        <nav className="settings-nav" aria-label="Профиль">
-          <button className="settings-link" onClick={onOpenTemplates}>
-            <span className="settings-link__label">Мои тренировки</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button className="settings-link" onClick={onOpenHistory}>
-            <span className="settings-link__label">История тренировок</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        </nav>
+
 
         <section className="settings">
           <div className="settings__head">

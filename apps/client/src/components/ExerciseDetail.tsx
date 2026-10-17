@@ -36,18 +36,6 @@ export function ExerciseDetail({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="dialog__handle" aria-hidden="true" />
-        <div
-          className={`exercise-detail__photo${
-            art !== undefined ? (art.kind === 'photo' ? ' exercise-detail__photo--photo' : ' exercise-detail__photo--art') : ''
-          }`}
-          aria-hidden="true"
-        >
-          {art !== undefined ? (
-            <img className="exercise-detail__photo-img" src={art.src} alt="" />
-          ) : (
-            <IconDumbbellArt className="exercise-detail__art" />
-          )}
-        </div>
         <header className="dialog__head">
           <div>
             <h2 className="dialog__title">{exercise.name}</h2>
@@ -74,6 +62,19 @@ export function ExerciseDetail({
             <dd>{exercise.equipment.length > 0 ? exercise.equipment.join(', ') : 'Без оборудования'}</dd>
           </div>
         </dl>
+        <div
+          className={`exercise-detail__photo${
+            art !== undefined ? (art.kind === 'photo' ? ' exercise-detail__photo--photo' : ' exercise-detail__photo--art') : ''
+          }`}
+          aria-hidden="true"
+        >
+          {art !== undefined ? (
+            <img className="exercise-detail__photo-img" src={art.src} alt="" />
+          ) : (
+            <IconDumbbellArt className="exercise-detail__art" />
+          )}
+        </div>
+
 
         <div className="dialog__actions">
           {onPick !== undefined && (

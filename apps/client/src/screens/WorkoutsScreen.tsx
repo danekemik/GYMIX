@@ -1,7 +1,9 @@
 import { takeOwnership } from '../data/sync/engine';
 import { useEffect, useState } from 'react';
 import { useDb } from '../hooks/useDb';
-import fitnessIcon from '../assets/fitness.png';
+import { SettingsButton } from '../components/SettingsButton';
+import { WeekActivity } from '../components/WeekActivity';
+import type { Draft } from '../lib/draft';
 import { getUserName } from '../lib/account';
 import { plural } from '../lib/draft';
 import { formatDay, formatDurationMs } from '../lib/format';
@@ -19,6 +21,9 @@ import {
 import { typeLabel } from '../lib/workoutTypes';
 
 interface WorkoutsScreenProps {
+  onSettings: () => void;
+  onQuickBuild: () => void;
+  quickDraft: Draft | undefined;
   onCreate: () => void;
   onOpenTemplates: () => void;
   onRepeat: (sessionId: string) => Promise<void>;
@@ -28,6 +33,9 @@ interface WorkoutsScreenProps {
 }
 
 export function WorkoutsScreen({
+  onSettings,
+  onQuickBuild,
+  quickDraft,
   onCreate,
   onOpenTemplates,
   onRepeat,
@@ -41,6 +49,8 @@ export function WorkoutsScreen({
   const [draft, setDraft] = useState<DraftSummary | null | 'loading'>('loading');
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [loadKey, setLoadKey] = useState(0);
+  const [loadError, setLoadError] = useState(false);
   const [removeDraft, setRemoveDraft] = useState(false);
 
   useEffect(() => {
@@ -48,22 +58,22 @@ export function WorkoutsScreen({
     let alive = true;
     recentSessions(db, 3)
       .then((rows) => alive && setRecent(rows))
-      .catch(() => alive && setRecent([]));
+      .catch(() => { if (alive) setLoadError(true); });
     return () => {
       alive = false;
     };
-  }, [db, revision]);
+  }, [db, revision, loadKey]);
 
   useEffect(() => {
     if (db === undefined) return;
     let alive = true;
     activeDraft(db)
       .then((row) => alive && setDraft(row))
-      .catch(() => alive && setDraft(null));
+      .catch(() => { if (alive) setLoadError(true); });
     return () => {
       alive = false;
     };
-  }, [db, revision]);
+  }, [db, revision, loadKey]);
 
 
 
@@ -95,12 +105,12 @@ export function WorkoutsScreen({
   return (
     <div className="screen screen--home">
       <header className="topbar">
-        <h1 className="topbar__title topbar__title--greeting">
-          {name !== undefined ? `Привет, ${name}` : 'Привет!'}
-        </h1>
+        <div><p className="today-date">{new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' })}</p><h1 className="topbar__title">Сегодня</h1></div>
+        <SettingsButton onClick={onSettings} />
       </header>
 
       <div className="screen__body">
+        {loadError && <div className="note note--error" role="alert">Не удалось загрузить тренировки. <button className="text-action" onClick={() => { setLoadError(false); setLoadKey(value => value + 1); }}>Повторить</button></div>}
         {actionError && <p className="body-error" role="alert">{actionError}</p>}
         {error !== undefined && (
           <p className="body-error" role="alert">
@@ -138,32 +148,29 @@ export function WorkoutsScreen({
           </section>
         )}
 
-        <section className="hero" aria-label="Новая тренировка">
-          <span className="hero__circle" aria-hidden>
-            <img className="hero__icon" src={fitnessIcon} alt="" width={46} height={46} />
-          </span>
-          <div className="hero__copy">
-            <span className="hero__chip">
-              <span className="hero__chip-dot" aria-hidden />
-              Готов двигаться?
-            </span>
-            <h2 className="hero__title">
-              Поймай<br />свой ритм
-            </h2>
-            <p className="hero__sub">Собери занятие под себя</p>
-          </div>
-          <button className="hero__cta" onClick={onCreate} disabled={draft === 'loading' || (draft !== null)} title={draft !== null && draft !== 'loading' ? 'Сначала заверши текущую тренировку' : undefined}>
-            <span className="hero__cta-label">Выбрать тренировку</span>
-            <IconArrowRight className="hero__cta-arrow" />
-          </button>
-        </section>
+        {draft === 'loading' ? <div className="today-start" aria-busy="true"><p className="body-muted">Проверяем сохранённые тренировки…</p></div> : draft === null && (
+          <section className="today-start" aria-label="Начать тренировку">
+            <p className="eyebrow">{name ? `${name}, с возвращением` : 'Быстрый старт'}</p>
+            <h2 className="today-start__title">{recent !== 'loading' && recent.length ? typeLabel(recent[0]!.type) : 'Начни с первой тренировки'}</h2>
+            {recent !== 'loading' && recent.length > 0 ? <>
+              <p className="body-muted">Последний раз: {formatDay(recent[0]!.completedAt)} · {plural(recent[0]!.total, ['упражнение', 'упражнения', 'упражнений'])}</p>
+              <button className="btn btn--primary" disabled={busy} onClick={() => {
+                setBusy(true); setActionError('');
+                void onRepeat(recent[0]!.id).catch(() => setActionError('Не удалось повторить тренировку. Попробуй ещё раз.')).finally(() => setBusy(false));
+              }}>{busy ? 'Открываем…' : 'Повторить последнюю'}<IconArrowRight /></button>
+              <button className="text-action" onClick={onCreate} disabled={busy}>Собрать другую тренировку</button>
+            </> : <>
+              <p className="body-muted">Выбери формат и состав. Вес и повторы запишешь во время занятия.</p>
+              <button className="btn btn--primary" onClick={onCreate}>Собрать тренировку<IconArrowRight /></button>
+            </>}
+          </section>
+        )}
 
-        <section className="quick-start" aria-label="Быстрый старт">
-          <button className="btn btn--ghost" onClick={onOpenTemplates}>Сохранённые тренировки</button>
-          {recent !== 'loading' && recent.length > 0 && <button className="btn btn--ghost" disabled={busy || draft !== null} onClick={() => {
-            setBusy(true); setActionError('');
-            void onRepeat(recent[0]!.id).catch(() => setActionError('Не удалось повторить тренировку. Попробуй ещё раз.')).finally(() => setBusy(false));
-          }}>Повторить последнюю</button>}
+        <WeekActivity />
+
+        <section className="today-links" aria-label="Другие варианты старта">
+          <button className="journal-link" onClick={onOpenTemplates}><span><strong>Мои тренировки</strong><small>Сохранённые варианты для быстрого старта</small></span><IconChevronRight /></button>
+          {quickDraft && <button className="journal-link" disabled={busy || draft !== null} onClick={onQuickBuild}><span><strong>Новый состав по прошлым настройкам</strong><small>{typeLabel(quickDraft.type)} · {quickDraft.volume}{quickDraft.mgsGroup ? ` · ${quickDraft.mgsGroup}` : ''}</small></span><IconChevronRight /></button>}
         </section>
 
         <section className="recent" aria-label="Последние тренировки">
@@ -175,8 +182,8 @@ export function WorkoutsScreen({
             </button>
           </div>
 
-          {recent === 'loading' ? null : recent.length === 0 ? (
-            <div className="recent-empty">Здесь появится история выполненных тренировок</div>
+          {recent === 'loading' ? <p className="body-muted">Загружаем историю…</p> : recent.length === 0 ? (
+            <div className="recent-empty">После занятия здесь будут его результаты: упражнения, подходы и время.</div>
           ) : (
             <div className="recent-list">
               {recent.map((item) => (

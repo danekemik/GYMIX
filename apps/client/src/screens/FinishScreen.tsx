@@ -22,6 +22,7 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
   const completed = sets.filter(
     (group, ex) => skippedFlags?.[ex] !== true && group.length > 0 && group.every((s) => s.done),
   ).length;
+  const doneSets = sets.reduce((sum, group, ex) => sum + (skippedFlags?.[ex] ? 0 : group.filter(set => set.done).length), 0);
   const partial = completed > 0 && completed < total;
   const duration = formatDurationMs(payload.durationMs ?? payload.endedAt - payload.startedAt);
   const date = formatDate(new Date(payload.endedAt));
@@ -71,6 +72,9 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
           </span>
         </div>
 
+        <div className="finish-recap"><div><span>Отмечено подходов</span><strong>{doneSets}</strong></div><div><span>Активное время</span><strong>{duration}</strong></div></div>
+        {payload.saved && <p className="finish-recap__note">Занятие сохранено на устройстве. Его можно повторить с главного экрана.</p>}
+
         {partial && (
           <div className="note">
             Тренировка завершена частично — неполные и пропущенные упражнения
@@ -80,8 +84,7 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
 
         {payload.saved === false && (
           <div className="note note--error" role="alert">
-            Запись не сохранилась в историю. Проверь подключение и повтори
-            позже.
+            Запись не сохранилась в историю. Вернись к тренировке и повтори сохранение.
           </div>
         )}
 
@@ -140,8 +143,7 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
               Сохранить как шаблон
             </h2>
             <p className="dialog__text">
-              Шаблон появится на главном экране и будет доступен для повторного
-              старта.
+              Состав появится в разделе «Тренировки → Сохранённые» для быстрого старта.
             </p>
             <label className="field">
               <span className="field__label">Название</span>

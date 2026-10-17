@@ -2,6 +2,7 @@ import '@fontsource-variable/unbounded';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { PhonePreview } from './components/PhonePreview';
 import { registerOfflineSupport } from './lib/offline';
 
 registerOfflineSupport();
@@ -23,6 +24,7 @@ import './styles/type-list.css';
 import './styles/workouts.css';
 import './styles/device.css';
 import './styles/refinements.css';
+import './styles/journal.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('нет #root');
@@ -61,17 +63,9 @@ function AccountApp({ children }: { children: import('react').ReactNode; }) {
 
 createRoot(root).render(
   <StrictMode>
-    <div className="phone">
-      <div className="device">
-        <StatusBar />
-        <AccountApp><App /></AccountApp>
-      </div>
-      <span className="phone__island" aria-hidden="true" />
-      <span className="phone__home" aria-hidden="true" />
-      <span className="phone__button phone__button--silent" aria-hidden="true" />
-      <span className="phone__button phone__button--vol-up" aria-hidden="true" />
-      <span className="phone__button phone__button--vol-down" aria-hidden="true" />
-      <span className="phone__button phone__button--power" aria-hidden="true" />
-    </div>
+    <PhonePreview>
+      <StatusBar />
+      <AccountApp><App /></AccountApp>
+    </PhonePreview>
   </StrictMode>,
 );

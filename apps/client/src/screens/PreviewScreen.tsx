@@ -13,6 +13,7 @@ import { useDb } from '../hooks/useDb';
 import { excludedExerciseNames, excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
 
 interface PreviewScreenProps {
+  starting?: boolean;
   workout: GeneratedWorkout;
   draft: Draft;
   onStart: () => void;
@@ -24,12 +25,14 @@ interface PreviewScreenProps {
   onReorder: (entries: readonly GeneratedEntry[]) => void;
   /** Вернуться к ручному выбору упражнений (S08 → S06). */
   onEditSelection?: () => void;
+  onEditParameters?: () => void;
   /** Шаблон не перегенерируется — упражнения зафиксированы. */
   regenerable?: boolean;
 }
 
 export function PreviewScreen({
   workout,
+  starting = false,
   draft,
   onStart,
   onRegenerate,
@@ -37,6 +40,7 @@ export function PreviewScreen({
   onReplace,
   onReorder,
   onEditSelection,
+  onEditParameters,
   regenerable = true,
 }: PreviewScreenProps) {
   const { db, revision } = useDb();
@@ -252,11 +256,12 @@ export function PreviewScreen({
         </aside>
 
         <div className="screen__cta screen__cta--sticky">
-          <button className="btn btn--primary" onClick={onStart}>
-            Начать тренировку
+          <button className="btn btn--primary" onClick={onStart} disabled={starting}>
+            {starting ? 'Открываем…' : 'Начать тренировку'}
           </button>
           {regenerable && <details className="preview-options">
             <summary>Изменить тренировку</summary>
+            {onEditParameters && <button className="btn btn--ghost" onClick={onEditParameters}>Формат и объём подбора</button>}
             <button className="btn btn--ghost" onClick={onRegenerate}>Подобрать заново</button>
             {onEditSelection !== undefined && <button className="btn btn--ghost" onClick={onEditSelection}>Выбрать упражнения</button>}
           </details>}

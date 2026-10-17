@@ -71,7 +71,7 @@ export function SyncStatus() {
   const conflicts = queue.filter(x => x.state === 'conflict');
   const alert = needsLogin || conflicts.length > 0;
   const pending = queue.length > 0 || message !== '';
-  const showActions = alert || pending || !synced;
+  const showActions = Boolean(db) && (alert || pending || !synced);
   return <aside className="sync-notice" aria-label="Синхронизация" data-state={alert ? 'alert' : pending ? 'pending' : 'idle'}>
     <div className="sync-notice__status">
       <span className="sync-notice__dot" aria-hidden />

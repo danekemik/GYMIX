@@ -11,6 +11,7 @@ import {
 } from '../lib/templates';
 
 interface TemplatesScreenProps {
+  embedded?: boolean;
   onBack: () => void;
   onOpenTemplate: (templateId: string) => void;
   onEditTemplate: (templateId: string) => void;
@@ -21,6 +22,7 @@ type MenuTarget = TemplateCard | null;
 
 /** «Мои тренировки» — сохранённые шаблоны, вынесены с главного экрана. */
 export function TemplatesScreen({
+  embedded = false,
   onBack,
   onOpenTemplate,
   onEditTemplate,
@@ -32,14 +34,16 @@ export function TemplatesScreen({
   const [renameFor, setRenameFor] = useState<MenuTarget>(null);
   const [renameValue, setRenameValue] = useState('');
   const [removeFor, setRemoveFor] = useState<MenuTarget>(null);
+  const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const reload = useCallback(async () => {
     if (db === undefined) return;
     try {
       setTemplates(await templatesFor(db));
+      setLoadError(false);
     } catch {
-      setTemplates([]);
+      setLoadError(true);
     }
   }, [db, revision]);
 
@@ -85,26 +89,25 @@ export function TemplatesScreen({
   };
 
   return (
-    <div className="screen">
-      <header className="topbar">
+    <div className={embedded ? "library__content" : "screen"}>
+      {!embedded && <header className="topbar">
         <button className="topbar__back" aria-label="Назад" onClick={onBack}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
         <h1 className="topbar__title topbar__title--step">Мои тренировки</h1>
-      </header>
+      </header>}
 
       <div className="screen__body">
         <section className="mine" aria-label="Мои тренировки">
-          {templates === 'loading' ? (
-            <p className="body-muted">Загружаем шаблоны…</p>
+          {loadError ? <div className="note note--error" role="alert">Не удалось загрузить сохранённые тренировки.<button className="text-action" onClick={() => void reload()}>Повторить</button></div> : templates === 'loading' ? (
+            <p className="body-muted">Загружаем тренировки…</p>
           ) : templates.length === 0 ? (
             <div className="empty-train">
-              <p className="empty-train__title">Пока пусто</p>
+              <p className="empty-train__title">Твои привычные тренировки</p>
               <p className="empty-train__text">
-                Сохрани завершённую тренировку как шаблон, чтобы повторить её в
-                один тап.
+                Собери первую тренировку. После занятия сохрани её состав — он будет здесь для быстрого старта.
               </p>
               <button className="btn btn--primary" onClick={onCreate}>
                 Создать тренировку

@@ -9,10 +9,11 @@ interface VolumeScreenProps {
   draft: Draft;
   onVolumeChange: (volume: VolumeLevel) => void;
   onContinue: () => void;
+  onManual: () => void;
   onBack: () => void;
 }
 
-export function VolumeScreen({ draft, onVolumeChange, onContinue, onBack }: VolumeScreenProps) {
+export function VolumeScreen({ draft, onVolumeChange, onContinue, onManual, onBack }: VolumeScreenProps) {
   const [volume, setVolume] = useState<VolumeLevel>(draft.volume);
 
   const select = (value: VolumeLevel) => {
@@ -72,8 +73,9 @@ export function VolumeScreen({ draft, onVolumeChange, onContinue, onBack }: Volu
 
         <div className="screen__cta">
           <Button variant="primary" onClick={onContinue}>
-            Продолжить
+            Подобрать упражнения
           </Button>
+          <button className="btn btn--ghost" onClick={onManual}>Выбрать упражнения вручную</button>
         </div>
       </div>
     </div>

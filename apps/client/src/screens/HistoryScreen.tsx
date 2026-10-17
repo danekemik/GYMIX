@@ -4,11 +4,12 @@ import { formatDay, formatDurationMs } from '../lib/format';
 import { sessionsForHistory, type HistoryItem } from '../lib/session';
 
 interface HistoryScreenProps {
+  embedded?: boolean;
   onOpen: (sessionId: string) => void;
   onBack?: () => void;
 }
 
-export function HistoryScreen({ onOpen, onBack }: HistoryScreenProps) {
+export function HistoryScreen({ onOpen, onBack, embedded = false }: HistoryScreenProps) {
   const { db, revision } = useDb();
   const [items, setItems] = useState<HistoryItem[] | undefined>(undefined);
   const [error, setError] = useState<string | undefined>(undefined);
@@ -25,8 +26,8 @@ export function HistoryScreen({ onOpen, onBack }: HistoryScreenProps) {
   }, [db, revision]);
 
   return (
-    <div className="screen">
-      <header className="topbar">
+    <div className={embedded ? "library__content" : "screen"}>
+      {!embedded && <header className="topbar">
         {onBack !== undefined && (
           <button className="topbar__back" onClick={onBack} aria-label="Назад">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -35,7 +36,7 @@ export function HistoryScreen({ onOpen, onBack }: HistoryScreenProps) {
           </button>
         )}
         <h1 className="topbar__title">История</h1>
-      </header>
+      </header>}
 
       <div className="screen__body">
         {error !== undefined && (
@@ -52,7 +53,7 @@ export function HistoryScreen({ onOpen, onBack }: HistoryScreenProps) {
           <div className="empty">
             <h2 className="empty__title">Пока пусто</h2>
             <p className="empty__text">
-              Заверши первую тренировку — она появится здесь как снимок сессии.
+              Заверши первую тренировку — здесь сохранятся упражнения, подходы и время занятия.
             </p>
           </div>
         )}

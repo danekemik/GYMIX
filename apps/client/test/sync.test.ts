@@ -1,3 +1,4 @@
+import { weeklyActivity } from '../src/lib/weeklyActivity';
 import { previousWorkingSets, workoutFromHistory } from '../src/lib/reuseWorkout';
 import { loadRecord, saveRecord } from '../src/lib/record';
 import { PGlite } from '@electric-sql/pglite';
@@ -48,9 +49,14 @@ it('полная тренировка без сети сохраняется в 
   const first = await local(user);
   const plan = workout();
   const draft = await createDraft(first, plan);
+  expect((await weeklyActivity(first)).count).toBe(0);
   const sets = plan.entries.map(() => Array.from({ length: 3 }, () => ({ weight: '40', reps: '8', done: true })));
   await persistDraft(first, draft.sessionId, draft.byPosition, sets);
   await finishDraft(first, draft, { workout: plan, sets, startedAt: Date.now() - 1000, endedAt: Date.now(), durationMs: 1000 });
+  expect((await weeklyActivity(first)).count).toBe(1);
+  expect((await weeklyActivity({ ...first, account: { ...first.account, userId: crypto.randomUUID() } })).count).toBe(0);
+  const nextMonth = new Date(); nextMonth.setMonth(nextMonth.getMonth() + 1);
+  expect((await weeklyActivity(first, nextMonth)).count).toBe(0);
   expect(await queueEntries(first.db)).toHaveLength(1);
   const restarted = { ...first }; // another engine instance reads the persisted queue
   await synchronize(restarted, transport(user.accessToken));
