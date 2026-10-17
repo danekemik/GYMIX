@@ -27,14 +27,20 @@
 .screen--home .journal-link span { min-width: 0; gap: var(--space-3xs); }
 .screen--home .journal-link strong { font-size: var(--step-0); line-height: 1.4; }
 .screen--home .journal-link small { font-size: var(--step--2); line-height: 1.5; }
-.screen--home .week { padding-block: var(--space-2xs); }
-.screen--home .week .section-head { margin-bottom: var(--space-s); flex-wrap: wrap; }
-.screen--home .week__days { gap: var(--space-3xs); }
-.screen--home .week__day { gap: var(--space-2xs); }
-.screen--home .week__mark { width: 32px; height: 32px; max-height: none; aspect-ratio: auto; border: 1px solid transparent; border-radius: 50%; background: var(--surface); color: var(--ink-2); }
-.screen--home .week__day--today .week__mark { border-color: var(--ink-2); color: var(--ink); }
-.screen--home .week__day--done .week__mark { background: var(--accent); color: var(--accent-ink); }
-.screen--home .week__day--today.week__day--done .week__mark { box-shadow: 0 0 0 3px var(--base), 0 0 0 4px var(--accent); border-color: transparent; }
+.week--timeline { padding-block: var(--space-2xs); }
+.week--timeline .section-head { margin-bottom: 20px; flex-wrap: wrap; }
+.week--timeline .week__days { position: relative; gap: 0; padding-top: 6px; }
+.week--timeline .week__days::before { content: ''; position: absolute; top: 17px; left: calc(100% / 14); right: calc(100% / 14); height: 2px; background: var(--line); }
+.week--timeline .week__day { position: relative; gap: 12px; }
+.week--timeline .week__mark { position: relative; width: 24px; height: 24px; max-height: none; aspect-ratio: auto; border: var(--border); border-radius: 50%; background: var(--surface-2); color: var(--ink-2); }
+.week--timeline .week__mark svg { width: 14px; height: 14px; }
+.week--timeline .week__label { display: grid; gap: var(--space-3xs); text-align: center; font-size: var(--step--2); }
+.week--timeline .week__date { color: var(--ink-2); font-weight: 400; font-variant-numeric: tabular-nums; }
+.week--timeline .week__day--done .week__mark { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.week--timeline .week__day--today .week__mark { box-shadow: 0 0 0 4px var(--base); }
+.week--timeline .week__day--today .week__mark::after { content: ''; position: absolute; inset: -6px; border: 1px solid var(--accent); border-radius: 50%; }
+.week--timeline .week__day--today .week__label { color: var(--ink); font-weight: 600; }
+.week--timeline .week__retry { margin-top: var(--space-xs); }
 .screen--home .section-title { font-size: var(--step-0); line-height: 1.4; white-space: normal; }
 .screen--home .recent .section-head { gap: var(--space-xs); }
 .screen--home .section-more { color: var(--ink-2); font-size: var(--step--2); }

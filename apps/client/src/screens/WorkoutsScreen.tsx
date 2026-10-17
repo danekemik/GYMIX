@@ -137,7 +137,7 @@ export function WorkoutsScreen({
           {quickDraft && draft === null && <button className="journal-link" disabled={busy} onClick={onQuickBuild}><span><strong>Новый состав</strong><small>По прошлым настройкам · {typeLabel(quickDraft.type)}</small></span><IconChevronRight /></button>}
         </section>
 
-        <WeekActivity />
+        <WeekActivity variant="timeline" />
 
         <section className="recent" aria-label="Последние тренировки">
           <div className="section-head">
