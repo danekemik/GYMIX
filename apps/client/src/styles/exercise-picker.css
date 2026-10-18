@@ -1,0 +1,48 @@
+/* Compact picker cards: supporting facts live in the exercise dialog. */
+.manual-card {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: var(--space-2xs) var(--space-s);
+}
+.manual-card__open { grid-column: 1 / -1; gap: var(--space-s); }
+.manual-card__thumb { position: relative; width: 64px; height: 64px; }
+.manual-card__hint {
+  position: absolute; right: 3px; bottom: 3px;
+  display: grid; place-items: center; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--surface); color: var(--ink);
+  font-size: 12px; font-weight: 650; border: var(--border);
+}
+.manual-card__name { line-height: 1.45; overflow-wrap: anywhere; }
+.manual-card__row { grid-column: 2; margin: 0; }
+.manual-card__pick { min-height: 44px; width: 100%; margin: 0; }
+.manual-card__open:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: var(--radius-s); }
+
+/* Scope the sheet geometry so ordinary confirmations keep their own layout. */
+.exercise-overlay { padding: 0; align-items: end; }
+.app__main:has(.exercise-overlay) { overflow-y: hidden; }
+.exercise-overlay .exercise-detail {
+  position: relative; inset: auto;
+  width: 100%; max-width: 100%; max-height: calc(100% - 72px);
+  min-height: 0; overflow: hidden;
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
+  border-bottom: 0;
+  padding-bottom: calc(var(--space-m) + max(env(safe-area-inset-bottom), var(--phone-bottom-inset, 0px)));
+  animation: exercise-sheet-in 180ms var(--ease);
+}
+.exercise-detail .dialog__handle,
+.exercise-detail .dialog__head,
+.exercise-detail .dialog__actions { flex-shrink: 0; }
+.exercise-detail .dialog__head > div { min-width: 0; }
+.exercise-detail .dialog__title { font-size: var(--step-0); line-height: 1.45; overflow-wrap: anywhere; }
+.exercise-detail .dialog__close { width: 44px; height: 44px; margin-top: -6px; margin-right: -8px; border-radius: 50%; background: var(--surface-2); }
+.exercise-detail__body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.exercise-detail__facts { margin-top: 0; gap: var(--space-s); }
+.exercise-detail__fact { display: grid; gap: var(--space-3xs); }
+.exercise-detail__fact dt { text-transform: none; letter-spacing: 0; font-size: var(--step--1); }
+.exercise-detail__fact dd { text-align: left; line-height: 1.5; overflow-wrap: anywhere; }
+.exercise-detail__photo { flex-shrink: 0; }
+.exercise-detail__photo-img { object-fit: contain; }
+.exercise-detail .exercise-detail__photo--photo .exercise-detail__photo-img { object-fit: contain; }
+.exercise-detail .dialog__actions .btn { white-space: normal; line-height: 1.4; }
+@keyframes exercise-sheet-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .exercise-overlay .exercise-detail { animation: none; } }

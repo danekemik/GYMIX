@@ -26,6 +26,7 @@ import './styles/device.css';
 import './styles/refinements.css';
 import './styles/journal.css';
 import './styles/home.css';
+import './styles/exercise-picker.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('нет #root');

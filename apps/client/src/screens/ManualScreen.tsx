@@ -179,6 +179,7 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
                   className="manual-card__open"
                   onClick={() => setDetail(candidate)}
                   aria-label={`Подробнее: ${candidate.name}`}
+                  aria-haspopup="dialog"
                 >
                   <span
                     className={`manual-card__thumb${
@@ -191,32 +192,13 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
                     ) : (
                       <IconDumbbellArt className="manual-card__thumb-art" />
                     )}
+                    <span className="manual-card__hint">i</span>
                   </span>
                   <span className="manual-card__info">
                     <span className="manual-card__name">{candidate.name}</span>
-                    <span className="manual-card__meta">
-                      {candidate.secondaryMuscles.slice(0, 2).map((m) => (
-                        <span className="manual-card__chip" key={m}>
-                          {m}
-                        </span>
-                      ))}
-                      {candidate.equipment.map((e) => (
-                        <span className="manual-card__chip" key={e}>
-                          {e}
-                        </span>
-                      ))}
-                    </span>
                   </span>
                 </button>
                 <div className="manual-card__row">
-                  <details className="plan__more manual-card__more"><summary>Ещё</summary>
-                  <button
-                    className="btn btn--ghost btn--sm manual-card__exclude"
-                    disabled={saving !== undefined}
-                    onClick={() => void toggleExclude(candidate.name)}
-                  >
-                    Исключить из будущих подборов
-                  </button></details>
                   <button
                     className="btn btn--sm manual-card__pick"
                     aria-pressed={isActive}
