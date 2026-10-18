@@ -4,6 +4,7 @@ import type { GymixDb } from '../../lib/db';
 import { localDrizzle } from './drizzle';
 import { executeReadModel } from './read-models';
 import { readChannel, type ReadRequest } from './read-rpc';
+import { executeSessionCommand } from './session-server';
 
 /** Installed only in the elected worker, after migration and seed complete. */
 export function serveReadModels(pglite: PGliteInterface, userId: string) {
@@ -11,7 +12,7 @@ export function serveReadModels(pglite: PGliteInterface, userId: string) {
   const db = localDrizzle(pglite) as GymixDb['db'];
   channel.addEventListener('message', async (event: MessageEvent<ReadRequest>) => {
     const request = event.data;
-    if (!request || !['read', 'initialize'].includes(request.type) || typeof request.id !== 'string' || typeof request.deviceId !== 'string') return;
+    if (!request || !['read', 'initialize', 'command'].includes(request.type) || typeof request.id !== 'string' || typeof request.deviceId !== 'string') return;
     const source = { db, pglite, account: { userId, email: '', deviceId: request.deviceId }, counts: { exercises: 0, muscleGroups: 0 } } as unknown as GymixDb;
     try {
       let data;
@@ -24,6 +25,8 @@ export function serveReadModels(pglite: PGliteInterface, userId: string) {
         });
         const result = await pglite.query('SELECT (SELECT count(*)::int FROM exercises) AS exercises, (SELECT count(*)::int FROM muscle_groups) AS "muscleGroups"');
         data = result.rows[0];
+      } else if (request.type === 'command') {
+        data = await db.transaction(tx => executeSessionCommand({ ...source, db: tx as unknown as GymixDb['db'] }, request.command));
       } else if (request.key.startsWith('record:') || request.key.startsWith('resume:')) {
         // Read a coherent snapshot and avoid a filesystem flush after every
         // SELECT in a multi-table workout, while retaining PGlite's locks.

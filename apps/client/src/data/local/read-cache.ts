@@ -38,6 +38,12 @@ export class ReadCache {
     this.version++;
     for (const entry of this.entries.values()) if (entry.listeners.size) void this.refresh(entry);
   }
+  publish<T>(key: string, data: T, load: () => Promise<T>) {
+    const entry = this.entry(key, load);
+    entry.snapshot = { data, error: undefined };
+    entry.version = this.version;
+    entry.listeners.forEach(notify => notify());
+  }
 }
 
 const caches = new WeakMap<GymixDb, ReadCache>();

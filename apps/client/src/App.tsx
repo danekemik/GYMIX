@@ -11,7 +11,7 @@ import { useDb } from './hooks/useDb';
 import { isMgs } from './lib/workoutTypes';
 import { getCatalog } from './lib/catalog';
 import type { Draft } from './lib/draft';
-import type { ResumedSession } from './lib/session';
+import { createDraft, type DraftSession, type ResumedSession } from './lib/session';
 import { ExecuteScreen, type FinishPayload } from './screens/ExecuteScreen';
 import { FinishScreen } from './screens/FinishScreen';
 import { ManualScreen } from './screens/ManualScreen';
@@ -55,6 +55,7 @@ export function App() {
   const [generated, setGenerated] = useState<Nullable<GeneratedWorkout>>(undefined);
   const [finished, setFinished] = useState<Nullable<FinishPayload>>(undefined);
   const [resume, setResume] = useState<Nullable<ResumedSession>>(undefined);
+  const [preparedSession, setPreparedSession] = useState<DraftSession>();
   const [fromTemplate, setFromTemplate] = useState(false);
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [manualSlotKey, setManualSlotKey] = useState<Nullable<string>>(undefined);
@@ -72,6 +73,7 @@ export function App() {
     setGenerated(undefined);
     setFinished(undefined);
     setResume(undefined);
+    setPreparedSession(undefined);
     setFromTemplate(false);
     setSelections({});
     setManualSlotKey(undefined);
@@ -168,7 +170,7 @@ export function App() {
   };
 
   const startWorkout = async () => {
-    if (!db || starting) return;
+    if (!db || !generated || starting) return;
     setStarting(true);
     try {
       if (await queryReadModel<DraftSummary | null>(db, 'active')) {
@@ -176,6 +178,9 @@ export function App() {
         return;
       }
       if (!fromTemplate) saveBuilderPreferences(db.account.userId, draft);
+      const created = await createDraft(db, generated);
+      setPreparedSession(created);
+      setResume(undefined);
       setNavigationError('');
       setStep('execute');
     } catch { setNavigationError('Не удалось начать тренировку. Попробуй ещё раз.'); }
@@ -330,11 +335,12 @@ export function App() {
         }}
       />
     );
-  } else if (step === 'execute' && (generated ?? resume)) {
+  } else if (step === 'execute' && (generated ?? resume) && (preparedSession ?? resume)) {
     body = (
       <ExecuteScreen
         key={resume !== undefined ? `resume-${resume.sessionId}` : 'new'}
         workout={resume?.workout ?? (generated as GeneratedWorkout)}
+        prepared={resume ?? preparedSession!}
         {...(resume !== undefined ? { resume } : {})}
         onFinish={(payload) => {
           setFinished(payload);

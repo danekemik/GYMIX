@@ -6,16 +6,18 @@ import { bodyWeightSeries, progressSeries } from '../../lib/progress';
 import { listExcluded } from '../../lib/exclusions';
 import { weeklyActivity } from '../../lib/weeklyActivity';
 import type { GymixDb } from '../../lib/db';
+import { workoutReadOnly } from '../sync/store';
 
 /** Named, read-only operations; SQL and its protocol stay in the database worker. */
 export async function executeReadModel(db: GymixDb, key: string, params?: { names?: readonly string[] }) {
-  const match = /^(record|template|repeat|resume):([0-9a-f-]{36})$/i.exec(key);
+  const match = /^(record|template|repeat|resume|ownership):([0-9a-f-]{36})$/i.exec(key);
   if (match) {
     const id = match[2]!;
     const kind = match[1]!.toLowerCase();
     if (kind === 'record') return loadRecord(db, id);
     if (kind === 'template') return workoutFromTemplate(db, id);
     if (kind === 'repeat') return workoutFromHistory(db, id);
+    if (kind === 'ownership') return workoutReadOnly(db, `workout:${id}`);
     return resumeDraft(db, id);
   }
   switch (key) {

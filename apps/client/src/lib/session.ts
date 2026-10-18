@@ -1,4 +1,5 @@
 import { localChange, workoutReadOnly } from '../data/sync/store';
+import { runSessionCommand } from '../data/local/read-rpc';
 import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import type { GeneratedWorkout } from '@gymix/generator';
 import {
@@ -245,9 +246,13 @@ export function createDraft(db: GymixDb, workout: GeneratedWorkout): Promise<Dra
   if (!requests) { requests = new WeakMap(); draftRequests.set(db, requests); }
   let pending = requests.get(workout);
   if (!pending) {
-    pending = localChange(db, result => `workout:${result.sessionId}`, scoped => doCreateDraft(scoped, workout));
+    const remote = runSessionCommand(db, { kind: 'create', workout });
+    pending = remote ? remote.then(value => {
+      if (!value) throw new Error('Не удалось создать тренировку');
+      return value;
+    }) : localChange(db, result => `workout:${result.sessionId}`, scoped => doCreateDraft(scoped, workout));
     requests.set(workout, pending);
-    void pending.catch(() => requests!.delete(workout));
+    void pending.then(() => requests!.delete(workout), () => requests!.delete(workout));
   }
   return pending;
 }
@@ -336,6 +341,7 @@ async function _setDraftRunning(
   db: GymixDb,
   sessionId: string,
   running: boolean,
+  at: number,
 ): Promise<void> {
   const open = await db.db
     .select({ id: sessionIntervals.id })
@@ -344,12 +350,12 @@ async function _setDraftRunning(
     .limit(1);
   if (running) {
     if (open[0] === undefined) {
-      await db.db.insert(sessionIntervals).values({ sessionId, startedAt: new Date() });
+      await db.db.insert(sessionIntervals).values({ sessionId, startedAt: new Date(at) });
     }
   } else if (open[0] !== undefined) {
     await db.db
       .update(sessionIntervals)
-      .set({ endedAt: new Date() })
+      .set({ endedAt: new Date(at) })
       .where(eq(sessionIntervals.id, open[0].id));
   }
 }
@@ -528,10 +534,18 @@ function parseReps(value: string | undefined): number | null {
   return Number.isInteger(reps) && reps > 0 ? reps : null;
 }
 export const saveSession = (db: GymixDb, payload: SessionSnapshot) => localChange(db, id => `workout:${id}`, scoped => _saveSession(scoped, payload));
-export const persistDraft = (db: GymixDb, id: string, byPosition: ReadonlyMap<number, string>, sets: readonly (readonly SetEntry[])[], skipped: readonly boolean[] = []) => localChange(db, `workout:${id}`, scoped => _persistDraft(scoped, id, byPosition, sets, skipped));
-export const setDraftRunning = (db: GymixDb, id: string, running: boolean) => localChange(db, `workout:${id}`, scoped => _setDraftRunning(scoped, id, running));
-export const deleteDraft = (db: GymixDb, id: string) => localChange(db, `workout:${id}`, scoped => _deleteDraft(scoped, id));
+export const persistDraft = async (db: GymixDb, id: string, byPosition: ReadonlyMap<number, string>, sets: readonly (readonly SetEntry[])[], skipped: readonly boolean[] = []): Promise<void> => {
+  await (runSessionCommand(db, { kind: 'persist', draft: { sessionId: id, byPosition }, sets, skipped }) ?? localChange(db, `workout:${id}`, scoped => _persistDraft(scoped, id, byPosition, sets, skipped)));
+};
+export const setDraftRunning = async (db: GymixDb, id: string, running: boolean, at = Date.now()): Promise<void> => {
+  await (runSessionCommand(db, { kind: 'running', sessionId: id, running, at }) ?? localChange(db, `workout:${id}`, scoped => _setDraftRunning(scoped, id, running, at)));
+};
+export const deleteDraft = async (db: GymixDb, id: string): Promise<void> => {
+  await (runSessionCommand(db, { kind: 'delete', sessionId: id }) ?? localChange(db, `workout:${id}`, scoped => _deleteDraft(scoped, id)));
+};
 export async function finishDraft(db: GymixDb, draft: DraftSession, payload: SessionSnapshot): Promise<void> {
+  const remote = runSessionCommand(db, { kind: 'finish', draft, payload });
+  if (remote) { await remote; return; }
   await localChange(db, `workout:${draft.sessionId}`, async scoped => {
     await _persistDraft(scoped, draft.sessionId, draft.byPosition, payload.sets, payload.skippedExercises);
     await scoped.db.update(sessionIntervals).set({ endedAt: new Date(payload.endedAt) })

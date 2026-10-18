@@ -137,6 +137,7 @@ export function PreviewScreen({
 
   return (
     <div className="screen">
+      <fieldset disabled={starting} style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <header className="topbar">
         <button className="topbar__back" onClick={requestBack} aria-label="Назад">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -361,6 +362,7 @@ export function PreviewScreen({
           </section>
         </div>
       )}
+      </fieldset>
     </div>
   );
 }

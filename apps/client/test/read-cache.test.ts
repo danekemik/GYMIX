@@ -52,3 +52,15 @@ it('isolates cached data between database/account instances', async () => {
   expect(b.snapshot.data).toEqual(['account-b']);
   expect(a.snapshot.data).toEqual(['account-a']);
 });
+it('publishes a committed session before returning to an unmounted home screen', async () => {
+  const cache = new ReadCache(); const stale = deferred<string>();
+  const entry = cache.entry('active', () => stale.promise);
+  const pending = cache.refresh(entry);
+  cache.invalidate();
+  const load = vi.fn(async () => 'committed');
+  cache.publish('active', 'committed', load);
+  stale.resolve('old'); await pending;
+  await cache.refresh(cache.entry('active', load));
+  expect(entry.snapshot.data).toBe('committed');
+  expect(load).not.toHaveBeenCalled();
+});

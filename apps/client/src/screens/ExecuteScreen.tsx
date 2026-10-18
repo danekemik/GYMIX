@@ -1,18 +1,19 @@
 import { RestTimer } from '../components/RestTimer';
-import { queryPreviousSets } from '../data/local/read-rpc';
-import { workoutReadOnly } from '../data/sync/store';
+import { queryPreviousSets, queryReadModel } from '../data/local/read-rpc';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GeneratedWorkout } from '@gymix/generator';
 import { useDb } from '../hooks/useDb';
 import { plural } from '../lib/draft';
-import { createDraft, deleteDraft, persistDraft, setDraftRunning, type DraftSession, type ResumedSession } from '../lib/session';
+import { deleteDraft, persistDraft, setDraftRunning, type DraftSession, type ResumedSession } from '../lib/session';
 import { finishDraft } from '../lib/session';
+import { SaveQueue } from '../lib/saveQueue';
 
 import type { SetEntry, SessionSnapshot, FinishPayload } from '../domain/session';
 export type { SetEntry, SessionSnapshot, FinishPayload } from '../domain/session';
 
 interface ExecuteScreenProps {
   workout: GeneratedWorkout;
+  prepared: DraftSession;
   onFinish: (payload: FinishPayload) => void;
   onExit: () => void;
   /** Восстановление активной сессии (S11): ничего не создаём заново. */
@@ -22,7 +23,7 @@ interface ExecuteScreenProps {
 type Modal = 'exit' | 'finish' | 'skip-exercise' | 'skip-group' | null;
 
 const DEFAULT_SETS = 3;
-const AUTOSAVE_DELAY = 0;
+const AUTOSAVE_DELAY = 250;
 const TOAST_HIDE_DELAY = 1600;
 
 /** Общий таймер: mm:ss, при часе и более — h:mm:ss. */
@@ -36,10 +37,12 @@ function formatClock(ms: number): string {
   return hours > 0 ? `${hours}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
-export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScreenProps) {
+export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: ExecuteScreenProps) {
   const { db, revision } = useDb();
   const [readOnly, setReadOnly] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  const [exiting, setExiting] = useState(false);
+  const [pausing, setPausing] = useState(false);
   const [sets, setSets] = useState<SetEntry[][]>(() =>
     resume !== undefined
       ? resume.sets.map((group) => group.map((set) => ({ ...set })))
@@ -56,7 +59,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
   const [prefilled, setPrefilled] = useState(false);
   const [toast, setToast] = useState<'ok' | 'error' | null>(null);
   const startedAt = useRef<number>(resume?.startedAt ?? Date.now());
-  const [draft, setDraft] = useState<DraftSession | 'created' | null>(resume ?? null);
+  const draft = prepared;
   const toastTimer = useRef<number | undefined>(undefined);
 
   // Общий таймер (S10, LOCKED): сумма активных интервалов; паузы не идут
@@ -83,24 +86,28 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
     return () => window.clearInterval(handle);
   }, [running]);
 
+  const timerWrite = useRef<Promise<void> | undefined>(undefined);
   const togglePause = () => {
+    if (!db || pausing) return;
     const now = Date.now();
+    const before = { accumulated: accumulatedRef.current, start: intervalStartRef.current };
     if (running) {
       if (intervalStartRef.current !== null) {
         accumulatedRef.current += now - intervalStartRef.current;
       }
       intervalStartRef.current = null;
       setRunning(false);
-      if (draft !== null && draft !== 'created' && db !== undefined) {
-        void setDraftRunning(db, draft.sessionId, false).catch(() => { });
-      }
     } else {
       intervalStartRef.current = now;
       setRunning(true);
-      if (draft !== null && draft !== 'created' && db !== undefined) {
-        void setDraftRunning(db, draft.sessionId, true).catch(() => { });
-      }
     }
+    setPausing(true);
+    timerWrite.current = setDraftRunning(db, draft.sessionId, !running, now).catch(() => {
+      accumulatedRef.current = before.accumulated;
+      intervalStartRef.current = before.start;
+      setRunning(running);
+      setToast('error');
+    }).finally(() => setPausing(false));
   };
 
   const total = workout.entries.length;
@@ -110,31 +117,27 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
     [sets, skipped],
   );
 
-  const savingRef = useRef<Promise<void> | null>(null);
-  const saveAgain = useRef(false);
   const finishingRef = useRef(false);
-  const latestInput = useRef({ sets, skipped });
-  latestInput.current = { sets, skipped };
+  const input = useMemo(() => ({ sets, skipped }), [sets, skipped]);
+  const latestInput = useRef(input);
+  latestInput.current = input;
+  const saveQueue = useMemo(() => new SaveQueue<typeof input>(value => {
+    if (!db) throw new Error('Локальная база недоступна');
+    return persistDraft(db, draft.sessionId, draft.byPosition, value.sets, value.skipped);
+  }), [db, draft]);
   const persist = async () => {
-    if (draft === null || draft === 'created' || db === undefined || finishing || readOnly) return;
-    if (savingRef.current) { saveAgain.current = true; return savingRef.current.catch(() => undefined); }
-    const save = async () => {
-      do {
-        saveAgain.current = false;
-        const latest = latestInput.current;
-        await persistDraft(db, draft.sessionId, draft.byPosition, latest.sets, latest.skipped);
-      } while (saveAgain.current && !finishingRef.current);
-    };
-    const pending = save();
-    savingRef.current = pending;
+    if (!db || readOnly) return false;
+    saveQueue.update(latestInput.current);
     try {
-      await pending;
+      await saveQueue.flush();
       setToast('ok');
       window.clearTimeout(toastTimer.current);
       toastTimer.current = window.setTimeout(() => setToast(null), TOAST_HIDE_DELAY);
+      return true;
     } catch {
       setToast('error');
-    } finally { if (savingRef.current === pending) savingRef.current = null; }
+      return false;
+    }
   };
   const persistRef = useRef(persist);
   persistRef.current = persist;
@@ -150,10 +153,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
   useEffect(() => {
     if (resume !== undefined || db === undefined) return;
     let alive = true;
-    createDraft(db, workout)
-      .then(async (created) => {
-        if (!alive) return;
-        setDraft(created);
+    void (async () => {
         const previous = await queryPreviousSets(db, workout.entries.map(entry => entry.exercise.name)).catch(() => new Map());
         if (!alive || !previous.size) return;
         setPrevious(previous);
@@ -162,7 +162,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
           return suggestion && !set.done && set.weight === '' && set.reps === '' ? { ...suggestion } : set;
         })));
         setPrefilled(true);
-      })
+      })()
       .catch(() => { if (alive) setToast('error'); });
     return () => {
       alive = false;
@@ -177,12 +177,12 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
   }, [db, workout, resume]);
 
   useEffect(() => {
-    if (draft === null || draft === 'created' || db === undefined) return;
+    if (!db || finishingRef.current || readOnly || exiting) return;
     const handle = setTimeout(() => {
       void persistRef.current();
     }, AUTOSAVE_DELAY);
     return () => clearTimeout(handle);
-  }, [sets, skipped, draft, db, finishing, readOnly]);
+  }, [sets, skipped, draft, db, finishing, readOnly, exiting]);
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
@@ -222,10 +222,24 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
   };
 
   const deleteDraftNow = async () => {
-    if (draft !== null && draft !== 'created' && db !== undefined) {
-      await deleteDraft(db, draft.sessionId).catch(() => { });
-    }
-    onExit();
+    if (!db || exiting) return;
+    setExiting(true); finishingRef.current = true;
+    try {
+      await saveQueue.flush();
+      await timerWrite.current;
+      await deleteDraft(db, draft.sessionId);
+      onExit();
+    } catch { setToast('error'); }
+    finally { setExiting(false); finishingRef.current = false; }
+  };
+
+  const saveAndExit = async () => {
+    if (exiting || finishing) return;
+    setExiting(true);
+    try {
+      await timerWrite.current;
+      if (await persist()) onExit();
+    } finally { setExiting(false); }
   };
 
   const finish = async () => {
@@ -243,11 +257,12 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
       endedAt: Date.now(),
       durationMs: elapsedMs(),
     };
-    if (!db || !draft || draft === 'created' || finishing || readOnly) { setToast('error'); return; }
+    if (!db || finishing || readOnly) { setToast('error'); return; }
     finishingRef.current = true;
     setFinishing(true);
     try {
-      await savingRef.current?.catch(() => undefined);
+      await timerWrite.current;
+      await saveQueue.flush();
       await finishDraft(db, draft, payload);
       onFinish({ ...payload, saved: true });
     } catch { setToast('error'); }
@@ -256,9 +271,9 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
   };
 
   useEffect(() => {
-    if (!db || !draft || draft === 'created') return;
+    if (!db) return;
     let alive = true;
-    void workoutReadOnly(db, `workout:${draft.sessionId}`).then(locked => { if (alive) setReadOnly(locked); }).catch(() => { if (alive) setToast('error'); });
+    void queryReadModel<boolean>(db, `ownership:${draft.sessionId}`).then(locked => { if (alive) setReadOnly(locked); }).catch(() => { if (alive) setToast('error'); });
     return () => { alive = false; };
   }, [db, draft, revision]);
 
@@ -266,7 +281,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
     <div className="screen exec">
       {readOnly && <button className="btn btn--ghost" onClick={onExit}>На главный экран</button>}
       {readOnly && <p role="alert">Тренировка продолжена на другом устройстве или завершена. Ввод сохранён локально. Вернитесь на главный экран.</p>}
-      <fieldset disabled={readOnly || finishing} style={{ display: 'contents', border: 0, margin: 0, padding: 0, minWidth: 0 }}>
+      <fieldset disabled={readOnly || finishing || exiting} style={{ display: 'contents', border: 0, margin: 0, padding: 0, minWidth: 0 }}>
         <header className="topbar exec-top">
           <button className="topbar__back" onClick={() => setModal('exit')} aria-label="Выйти из тренировки">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -279,6 +294,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
           <button
             className={`topbar__icon-btn exec-pause${running ? '' : ' exec-pause--off'}`}
             onClick={togglePause}
+            disabled={pausing}
             aria-pressed={!running}
             aria-label={running ? 'Пауза' : 'Продолжить'}
           >
@@ -305,7 +321,7 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
         </div>
 
         <div className="exec-body">
-          <RestTimer sessionId={draft && draft !== 'created' ? draft.sessionId : undefined} />
+          <RestTimer sessionId={draft.sessionId} />
           {prefilled && <p className="exec-prefill">Прошлые значения подставлены — их можно изменить.</p>}
           <p className="exec-roster-label">Упражнения · {total}</p>
           {workout.entries.map((entry, ex) => {
@@ -508,9 +524,9 @@ export function ExecuteScreen({ workout, onFinish, onExit, resume }: ExecuteScre
                       </button>
                       <button
                         className="btn btn--ghost dialog__danger"
-                        onClick={modal === 'finish' ? () => void deleteDraftNow() : onExit}
+                        onClick={modal === 'finish' ? () => void deleteDraftNow() : () => void saveAndExit()}
                       >
-                        {modal === 'finish' ? 'Удалить тренировку' : 'Сохранить и выйти'}
+                        {exiting ? 'Сохраняем…' : modal === 'finish' ? 'Удалить тренировку' : 'Сохранить и выйти'}
                       </button>
                     </>
                   )}

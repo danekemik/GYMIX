@@ -1,5 +1,6 @@
 import { serveReadModels } from '../src/data/local/read-server';
-import { createReadClient } from '../src/data/local/read-rpc';
+import { attachReadClient, closeReadClient, createReadClient } from '../src/data/local/read-rpc';
+import { cacheFor } from '../src/data/local/read-cache';
 import { weeklyActivity } from '../src/lib/weeklyActivity';
 import { previousWorkingSets, workoutFromHistory } from '../src/lib/reuseWorkout';
 import { loadRecord, saveRecord } from '../src/lib/record';
@@ -18,7 +19,7 @@ import type { SyncReply, SyncSnapshot } from '@gymix/contracts';
 import type { GymixDb } from '../src/lib/db';
 import { initializeSyncStore, localChange, nextChange, queueEntries, rows } from '../src/data/sync/store';
 import { synchronize, resolveConflict, type SyncTransport } from '../src/data/sync/engine';
-import { createDraft, persistDraft, finishDraft } from '../src/lib/session';
+import { createDraft, persistDraft, finishDraft, deleteDraft, setDraftRunning } from '../src/lib/session';
 import { saveTemplate, deleteTemplate } from '../src/lib/templates';
 import { excludeExerciseByName } from '../src/lib/exclusions';
 import { saveBodyWeight } from '../src/lib/progress';
@@ -45,6 +46,38 @@ function transport(token: string): SyncTransport {
   };
 }
 const workout = () => generateWorkout(loadCatalog(), { type: 'Push', volume: 'Компактная', seed: 123 });
+
+it('worker commands commit the session, outbox and home snapshot together', async () => {
+  const user = await registerUser(env.app, env.ctx);
+  const source = await local(user);
+  const stop = serveReadModels(source.pglite, source.account.userId);
+  const client = { ...source };
+  const reader = createReadClient(source.account);
+  attachReadClient(client, reader);
+  try {
+    await reader.initialize();
+    const plan = workout();
+    const draft = await createDraft(client, plan);
+    expect(draft.byPosition).toBeInstanceOf(Map);
+    const cache = cacheFor(client);
+    expect(cache.entry<{ sessionId: string }>('active', async () => ({ sessionId: '' })).snapshot.data?.sessionId).toBe(draft.sessionId);
+    const sets = plan.entries.map(() => Array.from({ length: 3 }, () => ({ weight: '42,5', reps: '8', done: true })));
+    await persistDraft(client, draft.sessionId, draft.byPosition, sets);
+    const at = Date.now();
+    await setDraftRunning(client, draft.sessionId, false, at);
+    const resumed = await reader.query(`resume:${draft.sessionId}`) as { running: boolean; sets: unknown[][] };
+    expect(resumed.running).toBe(false);
+    expect(resumed.sets[0]?.[0]).toEqual({ weight: '42.5', reps: '8', done: true });
+    await finishDraft(client, draft, { workout: plan, sets, startedAt: at - 1000, endedAt: at, durationMs: 1000 });
+    expect(cache.entry('active', async () => null).snapshot.data).toBeNull();
+    expect((await reader.query('history') as { id: string }[])[0]?.id).toBe(draft.sessionId);
+    expect(await queueEntries(source.db)).toHaveLength(1);
+    const next = await createDraft(client, plan);
+    expect(next.sessionId).not.toBe(draft.sessionId);
+    await deleteDraft(client, next.sessionId);
+    expect(await reader.query('active')).toBeNull();
+  } finally { closeReadClient(client); stop(); }
+}, 30000);
 
 it('полная тренировка без сети сохраняется в очереди и появляется на другом устройстве', async () => {
   const user = await registerUser(env.app, env.ctx);
