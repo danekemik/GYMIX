@@ -1,49 +1,28 @@
+import { executeSyncCommand } from './local';
+import { runSyncCommand } from '../local/read-rpc';
+import type { SyncCommand } from '../local/sync-commands';
 import { sql } from 'drizzle-orm';
-import { entityKeys, readEntity, writeEntity } from '@gymix/db/sync-data';
-import { canonical, type SyncRecord, type SyncReply, type SyncSnapshot } from '@gymix/contracts';
+import { readEntity, writeEntity } from '@gymix/db/sync-data';
+import { type SyncReply, type SyncSnapshot } from '@gymix/contracts';
 import type { GymixDb } from '../../lib/db';
 import { accountRequest } from '../auth/api';
-import { getSession } from '../auth/session';
-import { nextChange, notifyStore, queueEntries, remember, rows } from './store';
+import { notifyStore, queueEntries, remember, rows } from './store';
 export type SyncTransport = <T>(path: string, body?: unknown) => Promise<T>;
+
+const localSync = (db: GymixDb, command: SyncCommand) => runSyncCommand(db, command) ?? executeSyncCommand(db, command);
 
 export async function synchronize(db: GymixDb, request: SyncTransport = accountRequest): Promise<void> {
   // The caller serializes rounds across tabs. Prepared payloads are immutable
   // and survive a lost reply: retry uses the same ID, payload and base version.
   for (let sent = 0; sent < 1000; sent++) {
-    const item = await nextChange(db.db);
+    const { item } = await localSync(db, { kind: 'next' });
     if (!item) break;
     const reply = await request<SyncReply>('/sync/change', item.change);
-    await db.db.transaction(async (tx) => {
-      if (!reply.accepted) {
-        await tx.execute(sql`UPDATE local_outbox SET state='conflict', reply=${JSON.stringify(reply)}::jsonb WHERE seq=${item.seq}`);
-        return;
-      }
-      await tx.execute(sql`DELETE FROM local_outbox WHERE seq=${item.seq}`);
-      await remember(tx, reply.record);
-      const pending = await rows(tx, sql`SELECT seq FROM local_outbox WHERE key=${item.change.key} LIMIT 1`);
-      if (!pending.length) await writeEntity(tx, db.account.userId, reply.record.key, reply.record.payload);
-    });
+    await localSync(db, { kind: 'ack', seq: item.seq, key: item.change.key, reply });
     notifyStore('sync');
   }
   const snapshot = await request<SyncSnapshot>('/sync/snapshot');
-  if (snapshot.userId !== db.account.userId) throw new Error('Сервер вернул данные другого аккаунта');
-  let changed = false;
-  await db.db.transaction(async (tx) => {
-    const dirty = new Set((await queueEntries(tx)).map(x => x.key));
-    const meta = await rows<SyncRecord>(tx, sql`SELECT key, version, payload FROM local_sync_meta`);
-    const remote = new Map(snapshot.records.map(x => [x.key, x]));
-    for (const previous of meta) if (!remote.has(previous.key)) remote.set(previous.key, { key: previous.key, payload: null, version: null });
-    // Templates precede workouts so source-template references resolve.
-    for (const record of [...remote.values()].sort((a, b) => Number(!a.key.startsWith('template:')) - Number(!b.key.startsWith('template:')))) {
-      if (dirty.has(record.key)) continue;
-      const previous = meta.find(x => x.key === record.key);
-      if (!previous || previous.version !== record.version) {
-        await writeEntity(tx, db.account.userId, record.key, record.payload);
-        await remember(tx, record); changed = true;
-      }
-    }
-  });
+  const { changed } = await localSync(db, { kind: 'snapshot', snapshot });
   if (changed) notifyStore('sync');
 }
 

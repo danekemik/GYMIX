@@ -7,6 +7,7 @@ import { plural } from '../lib/draft';
 import { deleteDraft, persistDraft, setDraftRunning, type DraftSession, type ResumedSession } from '../lib/session';
 import { finishDraft } from '../lib/session';
 import { SaveQueue } from '../lib/saveQueue';
+import { setInputErrors, validSetInput } from '../domain/setInput';
 
 import type { SetEntry, SessionSnapshot, FinishPayload } from '../domain/session';
 export type { SetEntry, SessionSnapshot, FinishPayload } from '../domain/session';
@@ -54,6 +55,8 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
   const [modal, setModal] = useState<Modal>(null);
   const [skipIndex, setSkipIndex] = useState(0);
   const [lastCompleted, setLastCompleted] = useState<{ ex: number; set: number; } | null>(null);
+  const [attempted, setAttempted] = useState<ReadonlySet<string>>(new Set());
+  const [removedSet, setRemovedSet] = useState<{ ex: number; index: number; value: SetEntry } | null>(null);
   const [focused, setFocused] = useState(() => resume ? Math.max(0, resume.sets.findIndex((group, ex) => !resume.skipped[ex] && !group.every(set => set.done))) : 0);
   const [previous, setPrevious] = useState<Map<string, SetEntry[]>>(new Map());
   const [prefilled, setPrefilled] = useState(false);
@@ -189,13 +192,32 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
   const update = (ex: number, set: number, patch: Partial<SetEntry>) => {
     setSets((prev) =>
       prev.map((group, i) =>
-        i === ex ? group.map((s, j) => (j === set ? { ...s, ...patch } : s)) : group,
+        i === ex ? group.map((s, j) => {
+          if (j !== set) return s;
+          const next = { ...s, ...patch };
+          return next.done && !validSetInput(next) ? { ...next, done: false } : next;
+        }) : group,
       ),
     );
   };
 
   const addSet = (ex: number) => {
     setSets((prev) => prev.map((group, i) => (i === ex ? [...group, makeSet()] : group)));
+  };
+  const removeSet = (ex: number, index: number) => {
+    const value = sets[ex]?.[index];
+    if (!value || index < DEFAULT_SETS) return;
+    setRemovedSet({ ex, index, value });
+    setLastCompleted(null);
+    setAttempted(new Set());
+    setSets(current => current.map((group, i) => i === ex ? group.filter((_, j) => j !== index) : group));
+  };
+  const restoreSet = () => {
+    if (!removedSet) return;
+    const { ex, index, value } = removedSet;
+    setSets(current => current.map((group, i) => i === ex ? [...group.slice(0, index), value, ...group.slice(index)] : group));
+    setRemovedSet(null);
+    setAttempted(new Set());
   };
 
   const skipExercise = (ex: number) =>
@@ -243,6 +265,12 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
   };
 
   const finish = async () => {
+    const invalid = sets.flatMap((group, ex) => skipped[ex] ? [] : group.flatMap((set, index) => set.done && !validSetInput(set) ? [{ ex, index }] : []));
+    if (invalid.length) {
+      setAttempted(new Set(invalid.map(({ ex, index }) => `${ex}:${index}`)));
+      setFocused(invalid[0]!.ex);
+      return;
+    }
     // LOCKED (2026-10-05): при 0 выполненных упражнений «Завершить» показывает
     // предупреждение — пустая сессия не засчитывается, кнопки «всё равно» нет.
     if (completed === 0) {
@@ -359,8 +387,13 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                 ) : (
                   <>
                     <div className="set-columns" aria-hidden="true"><span>№</span><span>кг</span><span>повт.</span><span>Готово</span></div>
+                    <p className="set-input-hint">Без дополнительного веса — оставь «кг» пустым.</p>
                     <ul className="set-list">
-                      {group.map((set, index) => (
+                      {group.map((set, index) => {
+                        const errors = setInputErrors(set);
+                        const showErrors = attempted.has(`${ex}:${index}`);
+                        const errorId = `set-error-${ex}-${index}`;
+                        return (
                         <li key={index} className={`set-row${!set.done && index === group.findIndex(item => !item.done) ? ' set-row--current' : ''}`}>
                           <span className="set-row__num">{index + 1}</span>
                           <label className="set-field">
@@ -371,6 +404,8 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                               inputMode="decimal"
                               aria-label={`Вес, подход ${index + 1}, ${entry.exercise.name}`}
                               value={set.weight}
+                              aria-invalid={showErrors && Boolean(errors.weight)}
+                              aria-describedby={showErrors && errors.weight ? errorId : undefined}
                               onChange={(e) => update(ex, index, { weight: e.target.value })}
                             />
                           </label>
@@ -382,6 +417,8 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                               inputMode="numeric"
                               aria-label={`Повторения, подход ${index + 1}, ${entry.exercise.name}`}
                               value={set.reps}
+                              aria-invalid={showErrors && Boolean(errors.reps)}
+                              aria-describedby={showErrors && errors.reps ? errorId : undefined}
                               onChange={(e) => update(ex, index, { reps: e.target.value })}
                             />
                           </label>
@@ -389,7 +426,13 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                             className={`set-check ${set.done ? 'set-check--on' : ''}`}
                             aria-pressed={set.done}
                             aria-label={`Подход ${index + 1} выполнен`}
-                            onClick={() => {
+                            onClick={event => {
+                              if (!set.done && !validSetInput(set)) {
+                                setAttempted(previous => new Set([...previous, `${ex}:${index}`]));
+                                const row = event.currentTarget.closest('li');
+                                requestAnimationFrame(() => row?.querySelector<HTMLInputElement>('input[aria-invalid="true"]')?.focus());
+                                return;
+                              }
                               update(ex, index, { done: !set.done });
                               setLastCompleted(set.done ? null : { ex, set: index });
                             }}
@@ -398,9 +441,11 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                               <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                           </button>
+                          {showErrors && (errors.weight || errors.reps) && <span className="set-row__error" id={errorId} role="alert">{[errors.weight, errors.reps].filter(Boolean).join(' ')}</span>}
                           {past?.[index] && <span className="set-row__previous">Ранее: {past[index]!.weight || '—'} кг × {past[index]!.reps || '—'} повт.</span>}
+                          {index >= DEFAULT_SETS && <button type="button" className="set-row__remove" onClick={() => removeSet(ex, index)} aria-label={`Убрать подход ${index + 1}: ${entry.exercise.name}`}>Убрать подход {index + 1}</button>}
                         </li>
-                      ))}
+                      ); })}
                     </ul>
 
                     <div className="exec-card__actions">
@@ -440,6 +485,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
         </div>
 
         <div className="exec-footer">
+          {removedSet && <div className="exec-undo" role="status">Подход {removedSet.index + 1} убран <button type="button" onClick={restoreSet}>Вернуть</button></div>}
           {lastCompleted && <div className="exec-undo" role="status">Подход {lastCompleted.set + 1} отмечен
             <button type="button" onClick={() => {
               update(lastCompleted.ex, lastCompleted.set, { done: false }); setLastCompleted(null);

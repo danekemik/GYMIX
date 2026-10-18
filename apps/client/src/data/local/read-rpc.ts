@@ -4,10 +4,11 @@ import type { GymixDb, LocalAccount } from '../../lib/db';
 import type { SessionCommand, SessionCommandReply } from './session-commands';
 import { cacheFor } from './read-cache';
 import { notifyStore } from '../sync/store';
+import type { SyncCommand, SyncCommandReply } from './sync-commands';
 
 export const readChannel = (userId: string) => `gymix:reads:${userId}`;
 export type ReadModel = 'history' | 'active' | 'templates' | 'exclusions' | 'week' | 'progress:6m' | 'progress:all' | 'previous' | `record:${string}` | `template:${string}` | `repeat:${string}` | `resume:${string}` | `ownership:${string}`;
-export type ReadRequest = { type: 'read'; id: string; key: ReadModel; params?: { names?: readonly string[] }; deviceId: string; } | { type: 'initialize'; id: string; deviceId: string; email: string; } | { type: 'command'; id: string; deviceId: string; command: SessionCommand };
+export type ReadRequest = { type: 'read'; id: string; key: ReadModel; params?: { names?: readonly string[] }; deviceId: string; } | { type: 'initialize'; id: string; deviceId: string; email: string; } | { type: 'command'; id: string; deviceId: string; command: SessionCommand } | { type: 'sync'; id: string; deviceId: string; command: SyncCommand };
 interface ReadReply { type: 'result'; id: string; data?: unknown; error?: string; }
 
 const clients = new WeakMap<GymixDb, ReturnType<typeof createReadClient>>();
@@ -20,7 +21,7 @@ export function createReadClient(account: LocalAccount) {
       for (const [id, item] of pending) {
         // Replaying an unacknowledged write could duplicate a committed action.
         // Reads are safe to resend; after leader loss a write requires recovery.
-        if (item.request.type === 'command') {
+        if (item.request.type === 'command' || item.request.type === 'sync') {
           pending.delete(id); clearTimeout(item.timer);
           item.reject(new Error('База перезапущена. Проверь сохранённую тренировку перед повтором.'));
         } else channel.postMessage(item.request);
@@ -35,7 +36,7 @@ export function createReadClient(account: LocalAccount) {
     else item.resolve(event.data.data);
   };
   channel.addEventListener('message', receive);
-  const send = (input: { type: 'read'; key: ReadModel; params?: { names?: readonly string[] } } | { type: 'initialize'; email: string } | { type: 'command'; command: SessionCommand }): Promise<unknown> => {
+  const send = (input: { type: 'read'; key: ReadModel; params?: { names?: readonly string[] } } | { type: 'initialize'; email: string } | { type: 'command'; command: SessionCommand } | { type: 'sync'; command: SyncCommand }): Promise<unknown> => {
       return new Promise((resolve, reject) => {
         const id = crypto.randomUUID();
         const request: ReadRequest = { ...input, id, deviceId: account.deviceId };
@@ -48,6 +49,7 @@ export function createReadClient(account: LocalAccount) {
     initialize: () => send({ type: 'initialize', email: account.email }) as Promise<{ exercises: number; muscleGroups: number }>,
     query: (key: ReadModel, params?: { names?: readonly string[] }) => send({ type: 'read', key, ...(params ? { params } : {}) }),
     command: (command: SessionCommand) => send({ type: 'command', command }) as Promise<SessionCommandReply>,
+    sync: (command: SyncCommand) => send({ type: 'sync', command }) as Promise<SyncCommandReply>,
     close() {
       for (const item of pending.values()) { clearTimeout(item.timer); item.reject(new Error('Аккаунт закрыт')); }
       pending.clear(); channel.close();
@@ -78,4 +80,7 @@ export function runSessionCommand(db: GymixDb, command: SessionCommand): Promise
     if (reply.week) cache.publish(`week:${new Date().toDateString()}`, reply.week, () => queryReadModel(db, 'week'));
     return reply.value;
   });
+}
+export function runSyncCommand(db: GymixDb, command: SyncCommand): Promise<SyncCommandReply> | undefined {
+  return clients.get(db)?.sync(command);
 }

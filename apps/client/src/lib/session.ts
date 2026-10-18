@@ -1,6 +1,7 @@
 import { localChange, workoutReadOnly } from '../data/sync/store';
 import { runSessionCommand } from '../data/local/read-rpc';
-import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { repsValue, validSetInput, weightValue } from '../domain/setInput';
 import type { GeneratedWorkout } from '@gymix/generator';
 import {
   devices,
@@ -309,6 +310,9 @@ async function _persistDraft(
   sets: readonly (readonly SetEntry[])[],
   skipped: readonly boolean[] = [],
 ): Promise<void> {
+  sets.forEach((group, index) => {
+    if (!skipped[index] && group.some(set => set.done && !validSetInput(set))) throw new Error('Проверь вес и повторения отмеченных подходов.');
+  });
   const entries = sets.flatMap((group, index) => {
     const id = byPosition.get(index + 1);
     if (!id) return [];
@@ -323,6 +327,9 @@ async function _persistDraft(
     }];
   });
   const values = entries.flatMap(entry => entry.values);
+  if (entries.length) await db.db.delete(sessionSets).where(or(...entries.map(entry => and(
+    eq(sessionSets.sessionExerciseId, entry.id), gt(sessionSets.setNumber, entry.values.length),
+  ))));
   if (values.length) await db.db.insert(sessionSets).values(values).onConflictDoUpdate({
     target: [sessionSets.sessionExerciseId, sessionSets.setNumber],
     set: { weight: sql`excluded.weight`, reps: sql`excluded.reps`, completedAt: sql`excluded.completed_at` },
@@ -522,16 +529,11 @@ export async function ensureLocalOwner(db: GymixDb): Promise<{ userId: string; d
 
 /** Запятые из ввода приводим к десятичной точке, мусор отбрасываем. */
 function parseWeight(value: string | undefined): string | null {
-  if (value === undefined || value === '') return null;
-  const clean = value.trim().replace(',', '.');
-  if (!/^\d+(\.\d{1,2})?$/.test(clean)) return null;
-  return clean;
+  return value === undefined ? null : weightValue(value);
 }
 
 function parseReps(value: string | undefined): number | null {
-  if (value === undefined || value === '') return null;
-  const reps = Number.parseInt(value, 10);
-  return Number.isInteger(reps) && reps > 0 ? reps : null;
+  return value === undefined ? null : repsValue(value);
 }
 export const saveSession = (db: GymixDb, payload: SessionSnapshot) => localChange(db, id => `workout:${id}`, scoped => _saveSession(scoped, payload));
 export const persistDraft = async (db: GymixDb, id: string, byPosition: ReadonlyMap<number, string>, sets: readonly (readonly SetEntry[])[], skipped: readonly boolean[] = []): Promise<void> => {

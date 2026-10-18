@@ -63,6 +63,13 @@ it('worker commands commit the session, outbox and home snapshot together', asyn
     expect(cache.entry<{ sessionId: string }>('active', async () => ({ sessionId: '' })).snapshot.data?.sessionId).toBe(draft.sessionId);
     const sets = plan.entries.map(() => Array.from({ length: 3 }, () => ({ weight: '42,5', reps: '8', done: true })));
     await persistDraft(client, draft.sessionId, draft.byPosition, sets);
+    const extra = sets.map((group, index) => index === 0 ? [...group, { weight: '35', reps: '10', done: false }] : group);
+    await persistDraft(client, draft.sessionId, draft.byPosition, extra);
+    await persistDraft(client, draft.sessionId, draft.byPosition, sets);
+    const trimmed = await reader.query(`resume:${draft.sessionId}`) as { sets: unknown[][] };
+    expect(trimmed.sets[0]).toHaveLength(3);
+    const invalid = sets.map((group, index) => index === 0 ? [{ weight: '-5', reps: '8abc', done: true }, ...group.slice(1)] : group);
+    await expect(persistDraft(client, draft.sessionId, draft.byPosition, invalid)).rejects.toThrow('Проверь вес');
     const at = Date.now();
     await setDraftRunning(client, draft.sessionId, false, at);
     const resumed = await reader.query(`resume:${draft.sessionId}`) as { running: boolean; sets: unknown[][] };
@@ -72,6 +79,8 @@ it('worker commands commit the session, outbox and home snapshot together', asyn
     expect(cache.entry('active', async () => null).snapshot.data).toBeNull();
     expect((await reader.query('history') as { id: string }[])[0]?.id).toBe(draft.sessionId);
     expect(await queueEntries(source.db)).toHaveLength(1);
+    await synchronize(client, transport(user.accessToken));
+    expect(await queueEntries(source.db)).toHaveLength(0);
     const next = await createDraft(client, plan);
     expect(next.sessionId).not.toBe(draft.sessionId);
     await deleteDraft(client, next.sessionId);
