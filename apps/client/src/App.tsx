@@ -27,6 +27,7 @@ import { VolumeScreen } from './screens/VolumeScreen';
 import { WorkoutsScreen } from './screens/WorkoutsScreen';
 import { BUILDER_STEPS, clearBuilderState, readBuilderState, saveBuilderState, type BuilderState, type BuilderStep } from './lib/builderState';
 import { structureFor } from './lib/draft';
+import { useDialogFocus } from './hooks/useDialogFocus';
 
 const TABS = [
   { id: 'today', label: 'Сегодня', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3Z" strokeLinejoin="round" /><path d="M9 20v-7h6v7" /></svg> },
@@ -67,6 +68,8 @@ export function App() {
   const [storageFailed, setStorageFailed] = useState(false);
   const [pendingChange, setPendingChange] = useState<{ run: () => void; text: string } | null>(null);
   const [newBuilder, setNewBuilder] = useState<{ run: () => void } | null>(null);
+  const builderDialog = useRef<HTMLElement>(null);
+  useDialogFocus(builderDialog, Boolean(pendingChange || newBuilder), () => { setPendingChange(null); setNewBuilder(null); });
   const [navigationError, setNavigationError] = useState('');
   const [starting, setStarting] = useState(false);
   const [libraryView, setLibraryView] = useState<'saved' | 'history'>('saved');
@@ -482,11 +485,11 @@ export function App() {
     <div className="app">
       <main ref={mainRef} className={`app__main${step === 'home' && sub === undefined ? ' app__main--tabs' : ''}`}><SyncStatus />{storageFailed && BUILDER_STEPS.includes(step as BuilderStep) && <p className="note note--error" role="alert">Не удалось сохранить сборку на устройстве. Не обновляй страницу до запуска тренировки.</p>}{navigationError && <div className="navigation-error" role="alert"><p>{navigationError}</p><button className="text-action" onClick={() => { setNavigationError(''); exitBuilder(); setSub(undefined); setTab('today'); }}>На экран «Сегодня»</button><button className="text-action" onClick={() => setNavigationError('')}>Закрыть</button></div>}{body}</main>
       {step === 'home' && sub === undefined && <TabBar tabs={TABS} active={tab} onChange={openTab} />}
-      {pendingChange && <div className="overlay"><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="change-composition-title">
+      {pendingChange && <div className="overlay"><section ref={builderDialog} className="dialog" role="dialog" aria-modal="true" aria-labelledby="change-composition-title">
         <h2 className="dialog__title" id="change-composition-title">Изменить состав?</h2><p className="dialog__text">{pendingChange.text}</p>
         <div className="dialog__actions"><button className="btn btn--primary" onClick={() => { pendingChange.run(); setPendingChange(null); }}>Изменить</button><button className="btn btn--ghost" onClick={() => setPendingChange(null)} autoFocus>Оставить состав</button></div>
       </section></div>}
-      {newBuilder && <div className="overlay"><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="continue-builder-title">
+      {newBuilder && <div className="overlay"><section ref={builderDialog} className="dialog" role="dialog" aria-modal="true" aria-labelledby="continue-builder-title">
         <h2 className="dialog__title" id="continue-builder-title">Есть незаконченная сборка</h2><p className="dialog__text">Можно продолжить выбор или заменить его новой сборкой.</p>
         <div className="dialog__actions"><button className="btn btn--primary" onClick={continueBuilder}>Продолжить сборку</button><button className="btn btn--ghost" onClick={() => { newBuilder.run(); setNewBuilder(null); }}>Начать новую</button><button className="btn btn--ghost" onClick={() => setNewBuilder(null)}>Отмена</button></div>
       </section></div>}

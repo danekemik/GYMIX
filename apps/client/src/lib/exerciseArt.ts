@@ -152,6 +152,9 @@ export interface ExerciseArt {
 
 /** Иллюстрация упражнения или `undefined`, если её ещё нет. */
 export function exerciseArt(name: string): ExerciseArt | undefined {
+  // The bundled Smith incline asset depicts a floor push-up. Keep a neutral
+  // placeholder until an illustration matching this exercise is supplied.
+  if (name === 'Жим в Смите на наклонной скамье') return undefined;
   const slug = NAME_TO_SLUG[name] ?? NAME_TO_PHOTO[name];
   if (slug === undefined) return undefined;
   const src = bySlug.get(slug);

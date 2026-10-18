@@ -78,6 +78,9 @@ export function runSessionCommand(db: GymixDb, command: SessionCommand): Promise
     cache.publish('active', reply.active, () => queryReadModel(db, 'active'));
     if (reply.history) cache.publish('history', reply.history, () => queryReadModel(db, 'history'));
     if (reply.week) cache.publish(`week:${new Date().toDateString()}`, reply.week, () => queryReadModel(db, 'week'));
+    if (reply.templates) cache.publish('templates', reply.templates, () => queryReadModel(db, 'templates'));
+    if (reply.exclusions) cache.publish('exclusions', reply.exclusions, () => queryReadModel(db, 'exclusions'));
+    if (reply.record) cache.publish(`record:${reply.record.id}`, reply.record, () => queryReadModel(db, `record:${reply.record!.id}`));
     return reply.value;
   });
 }

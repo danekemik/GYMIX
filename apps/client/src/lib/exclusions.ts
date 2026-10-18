@@ -1,4 +1,5 @@
 import { localChange } from '../data/sync/store';
+import { runSessionCommand } from '../data/local/read-rpc';
 import { and, asc, eq } from 'drizzle-orm';
 import { exercises, userExcludedExercises } from '@gymix/db/schema';
 import type { MuscleGroup } from '@gymix/structures';
@@ -89,6 +90,6 @@ async function _includeAllExcluded(db: GymixDb): Promise<void> {
   const owner = await ensureLocalOwner(db);
   await db.db.delete(userExcludedExercises).where(eq(userExcludedExercises.userId, owner.userId));
 }
-export const excludeExerciseByName = (db: GymixDb, name: string) => localChange(db, 'exclusions:all', scoped => _excludeExerciseByName(scoped, name));
-export const includeExerciseByName = (db: GymixDb, name: string) => localChange(db, 'exclusions:all', scoped => _includeExerciseByName(scoped, name));
+export const excludeExerciseByName = async (db: GymixDb, name: string): Promise<void> => { await (runSessionCommand(db, { kind: 'exclude', name, excluded: true }) ?? localChange(db, 'exclusions:all', scoped => _excludeExerciseByName(scoped, name))); };
+export const includeExerciseByName = async (db: GymixDb, name: string): Promise<void> => { await (runSessionCommand(db, { kind: 'exclude', name, excluded: false }) ?? localChange(db, 'exclusions:all', scoped => _includeExerciseByName(scoped, name))); };
 export const includeAllExcluded = (db: GymixDb) => localChange(db, 'exclusions:all', scoped => _includeAllExcluded(scoped));

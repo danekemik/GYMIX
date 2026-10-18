@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 import { plural } from '../lib/draft';
 import { formatDate, formatDurationMs } from '../lib/format';
 import { saveTemplate } from '../lib/templates';
 import { useDb } from '../hooks/useDb';
 import type { FinishPayload } from './ExecuteScreen';
+import { typeLabel } from '../lib/workoutTypes';
 
 interface FinishScreenProps {
   payload: FinishPayload;
@@ -27,7 +29,9 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
   const duration = formatDurationMs(payload.durationMs ?? payload.endedAt - payload.startedAt);
   const date = formatDate(new Date(payload.endedAt));
   const [dialog, setDialog] = useState<Dialog>('idle');
-  const [name, setName] = useState<string>(workout.type);
+  const [name, setName] = useState<string>(typeLabel(workout.type));
+  const modal = useRef<HTMLDivElement>(null);
+  useDialogFocus(modal, dialog !== 'idle', () => { if (dialog !== 'saving') setDialog('idle'); }, dialog);
 
   const save = async () => {
     const title = name.trim();
@@ -113,7 +117,7 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
                         key={index}
                         className={`finish-set ${setDone ? 'finish-set--done' : ''}`}
                       >
-                        {setDone ? `${set.weight || '—'}×${set.reps || '—'}` : '—'}
+                        {setDone ? set.weight ? `${set.weight}×${set.reps}` : `${set.reps} повт.` : '—'}
                       </span>
                     );
                   })}
@@ -138,7 +142,7 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
 
       {dialog === 'naming' && (
         <div className="overlay">
-          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="save-title">
+          <div ref={modal} className="dialog" role="dialog" aria-modal="true" aria-labelledby="save-title">
             <h2 id="save-title" className="dialog__title">
               Сохранить как шаблон
             </h2>
@@ -160,7 +164,7 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
               />
             </label>
             <div className="dialog__actions">
-              <button className="btn btn--primary" onClick={() => void save()}>
+              <button className="btn btn--primary" onClick={() => void save()} disabled={!name.trim()}>
                 Сохранить
               </button>
               <button className="btn btn--ghost" onClick={() => setDialog('idle')}>
@@ -173,7 +177,7 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
 
       {dialog === 'saving' && (
         <div className="overlay">
-          <div className="dialog" role="dialog" aria-modal="true">
+          <div ref={modal} className="dialog" role="dialog" aria-modal="true" aria-label="Сохраняем шаблон">
             <h2 className="dialog__title">Сохраняем шаблон…</h2>
           </div>
         </div>
@@ -181,12 +185,12 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
 
       {dialog === 'error' && (
         <div className="overlay">
-          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="save-error">
+          <div ref={modal} className="dialog" role="dialog" aria-modal="true" aria-labelledby="save-error">
             <h2 id="save-error" className="dialog__title">
               Не удалось сохранить
             </h2>
             <p className="dialog__text">
-              Проверь подключение и попробуй ещё раз.
+              Не удалось записать шаблон на устройстве. Название сохранено — попробуй ещё раз.
             </p>
             <div className="dialog__actions">
               <button className="btn btn--primary" onClick={() => setDialog('naming')} autoFocus>
@@ -202,12 +206,12 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
 
       {dialog === 'saved' && (
         <div className="overlay">
-          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="save-done">
+          <div ref={modal} className="dialog" role="dialog" aria-modal="true" aria-labelledby="save-done">
             <h2 id="save-done" className="dialog__title">
               Шаблон сохранён
             </h2>
             <p className="dialog__text">
-              «{name.trim()}» теперь в разделе «Мои тренировки».
+              «{name.trim()}» теперь в разделе «Тренировки → Сохранённые».
             </p>
             <div className="dialog__actions">
               <button className="btn btn--primary" onClick={onOpenTemplates} autoFocus>

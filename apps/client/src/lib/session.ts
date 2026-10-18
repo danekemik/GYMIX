@@ -249,7 +249,7 @@ export function createDraft(db: GymixDb, workout: GeneratedWorkout): Promise<Dra
   if (!pending) {
     const remote = runSessionCommand(db, { kind: 'create', workout });
     pending = remote ? remote.then(value => {
-      if (!value) throw new Error('Не удалось создать тренировку');
+      if (!value || typeof value === 'string') throw new Error('Не удалось создать тренировку');
       return value;
     }) : localChange(db, result => `workout:${result.sessionId}`, scoped => doCreateDraft(scoped, workout));
     requests.set(workout, pending);

@@ -128,6 +128,24 @@ summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .manual-group__label { min-width: 0; }
 .manual-group__count { flex-shrink: 0; white-space: nowrap; }
 .manual-feedback { margin: 0; line-height: 1.5; }
+.exec-progress__label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-3xs) var(--space-xs); }
+.record-context { display: grid; gap: var(--space-2xs); }
+.record-context .context__type { color: var(--ink); }
+.record-exercise { border-radius: var(--radius-m); }
+.record-exercise__head { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: start; gap: var(--space-2xs); }
+.record-exercise__name { grid-column: 2; }
+.record-exercise__status { grid-column: 2; text-transform: none; letter-spacing: 0; }
+.record-exercise__details > summary > span:last-child { grid-column: 3; grid-row: 1 / span 2; align-self: center; }
+.record-exercise__details > summary { min-height: 44px; cursor: pointer; list-style: none; }
+.record-exercise__details > summary::-webkit-details-marker { display: none; }
+.record-exercise__details[open] > summary { margin-bottom: var(--space-s); }
+.record-exercise__empty { margin: var(--space-xs) 0 0; }
+.record-sets__caption { text-align: left; caption-side: bottom; padding-top: var(--space-xs); font-size: var(--step--2); color: var(--ink-2); }
+.record-sets thead th { white-space: nowrap; }
+.exec-detail-button { display: block; min-height: 44px; margin-bottom: var(--space-2xs); font-size: var(--step--2); }
+.plan__exercise-button { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2xs); width: 100%; min-height: 44px; text-align: left; }
+.plan__exercise-button > span { min-width: 0; }
+.plan__exercise-button > svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--ink-2); }
 
 .progress-card { padding: var(--space-s); border: var(--border); border-radius: var(--radius-l); background: var(--surface); }
 .progress-card__title { font: 650 var(--step-1)/1.3 var(--font-text); text-transform: none; letter-spacing: 0; }

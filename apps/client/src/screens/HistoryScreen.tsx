@@ -1,3 +1,4 @@
+import { typeLabel } from '../lib/workoutTypes';
 import { useLocalRead } from '../hooks/useLocalRead';
 import { formatDay, formatDurationMs } from '../lib/format';
 import { type HistoryItem } from '../lib/session';
@@ -51,10 +52,10 @@ export function HistoryScreen({ onOpen, onBack, embedded = false }: HistoryScree
                 <button
                   className="history-row"
                   onClick={() => onOpen(item.id)}
-                  aria-label={`Тренировка ${item.type}, ${formatDay(item.completedAt)}`}
+                  aria-label={`Тренировка ${typeLabel(item.type)}, ${formatDay(item.completedAt)}`}
                 >
                   <div className="history-row__head">
-                    <span className="history-row__type">{item.type}</span>
+                    <span className="history-row__type">{typeLabel(item.type)}</span>
                     <span className="history-row__score">
                       {item.done}
                       <span className="history-row__score-total">/{item.total}</span>

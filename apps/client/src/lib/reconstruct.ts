@@ -34,14 +34,40 @@ export function buildWorkoutFromEntries(
   const target = rows.find(row => row.groupUsed)?.groupUsed ?? GENERATOR_MUSCLE_GROUPS.find(group => exercises.length > 0 && exercises.every(exercise => exercise.muscles.includes(group))) ?? defaultGroup(exercises[0] ?? fallbackExercise(''));
   const slots = type === 'Muscle Group Split' ? mgsSlots(target, volume) : findStructure({ type, volume }).slots;
   const slotByKey = new Map(slots.map(slot => [slot.slotKey, slot]));
-  const used = new Set<string>();
+  const assigned = new Map<number, Slot>();
+  const owners = new Map<string, number>();
+  const fixed = new Set<number>();
+  const fits = (index: number, slot: Slot) => matchesSlot(exercises[index]!, [...slot.allowedGroupIds, ...slot.alternativeGroupIds], slot.requiredSlotTag);
+  rows.forEach((row, index) => {
+    const slot = slotByKey.get(row.slotKey);
+    if (slot && !owners.has(slot.slotKey) && fits(index, slot)) {
+      assigned.set(index, slot); owners.set(slot.slotKey, index); fixed.add(index);
+    }
+  });
+  // Historical rows only have positions. A greedy match can consume a broad
+  // slot needed by a later exercise, leaving an otherwise valid plan broken.
+  const place = (index: number, visited: Set<string>): boolean => {
+    for (const slot of slots) {
+      if (visited.has(slot.slotKey) || !fits(index, slot)) continue;
+      visited.add(slot.slotKey);
+      const owner = owners.get(slot.slotKey);
+      if (owner === undefined || (!fixed.has(owner) && place(owner, visited))) {
+        assigned.set(index, slot); owners.set(slot.slotKey, index); return true;
+      }
+    }
+    return false;
+  };
+  rows.forEach((_, index) => { if (!assigned.has(index)) place(index, new Set()); });
+  rows.forEach((_, index) => {
+    if (assigned.has(index)) return;
+    const slot = slots.find(candidate => !owners.has(candidate.slotKey));
+    if (slot) { assigned.set(index, slot); owners.set(slot.slotKey, index); }
+  });
   const names = new Set<string>();
 
-  const entries = rows.map((row) => {
+  const entries = rows.map((row, index) => {
     const exercise = byName.get(row.exerciseName) ?? fallbackExercise(row.exerciseName);
-    const exact = slotByKey.get(row.slotKey);
-    const slot = exact && !used.has(exact.slotKey) ? exact : slots.find(candidate => !used.has(candidate.slotKey) && matchesSlot(exercise, [...candidate.allowedGroupIds, ...candidate.alternativeGroupIds], candidate.requiredSlotTag));
-    if (slot) used.add(slot.slotKey);
+    const slot = assigned.get(index);
     const isRepeat = names.has(exercise.name);
     names.add(exercise.name);
     return {

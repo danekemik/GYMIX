@@ -8,6 +8,9 @@ import { deleteDraft, persistDraft, setDraftRunning, type DraftSession, type Res
 import { finishDraft } from '../lib/session';
 import { SaveQueue } from '../lib/saveQueue';
 import { setInputErrors, validSetInput } from '../domain/setInput';
+import { ExerciseDetail } from '../components/ExerciseDetail';
+import type { CatalogExercise } from '@gymix/catalog/parse';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 
 import type { SetEntry, SessionSnapshot, FinishPayload } from '../domain/session';
 export type { SetEntry, SessionSnapshot, FinishPayload } from '../domain/session';
@@ -21,7 +24,7 @@ interface ExecuteScreenProps {
   resume?: ResumedSession;
 }
 
-type Modal = 'exit' | 'finish' | 'skip-exercise' | 'skip-group' | null;
+type Modal = 'exit' | 'finish' | 'partial-finish' | 'skip-exercise' | 'skip-group' | null;
 
 const DEFAULT_SETS = 3;
 const AUTOSAVE_DELAY = 250;
@@ -57,6 +60,9 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
   const [lastCompleted, setLastCompleted] = useState<{ ex: number; set: number; } | null>(null);
   const [attempted, setAttempted] = useState<ReadonlySet<string>>(new Set());
   const [removedSet, setRemovedSet] = useState<{ ex: number; index: number; value: SetEntry } | null>(null);
+  const [detail, setDetail] = useState<CatalogExercise | null>(null);
+  const dialog = useRef<HTMLDivElement>(null);
+  useDialogFocus(dialog, modal !== null, () => { if (!finishing && !exiting) setModal(null); });
   const [focused, setFocused] = useState(() => resume ? Math.max(0, resume.sets.findIndex((group, ex) => !resume.skipped[ex] && !group.every(set => set.done))) : 0);
   const [previous, setPrevious] = useState<Map<string, SetEntry[]>>(new Map());
   const [prefilled, setPrefilled] = useState(false);
@@ -119,6 +125,8 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
     () => sets.filter((group, ex) => !skipped[ex] && isDone(group)).length,
     [sets, skipped],
   );
+  const doneSets = sets.reduce((sum, group, ex) => sum + (skipped[ex] ? 0 : group.filter(set => set.done).length), 0);
+  const totalSets = sets.reduce((sum, group) => sum + group.length, 0);
 
   const finishingRef = useRef(false);
   const input = useMemo(() => ({ sets, skipped }), [sets, skipped]);
@@ -144,14 +152,6 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
   };
   const persistRef = useRef(persist);
   persistRef.current = persist;
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setModal(null);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
 
   useEffect(() => {
     if (resume !== undefined || db === undefined) return;
@@ -217,6 +217,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
     const { ex, index, value } = removedSet;
     setSets(current => current.map((group, i) => i === ex ? [...group.slice(0, index), value, ...group.slice(index)] : group));
     setRemovedSet(null);
+    setLastCompleted(null);
     setAttempted(new Set());
   };
 
@@ -264,7 +265,8 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
     } finally { setExiting(false); }
   };
 
-  const finish = async () => {
+  const finish = async (confirmedPartial = false) => {
+    if (finishingRef.current) return;
     const invalid = sets.flatMap((group, ex) => skipped[ex] ? [] : group.flatMap((set, index) => set.done && !validSetInput(set) ? [{ ex, index }] : []));
     if (invalid.length) {
       setAttempted(new Set(invalid.map(({ ex, index }) => `${ex}:${index}`)));
@@ -277,6 +279,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
       setModal('finish');
       return;
     }
+    if (completed < total && !confirmedPartial) { setModal('partial-finish'); return; }
     const payload: SessionSnapshot = {
       workout,
       sets,
@@ -341,7 +344,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
 
         <div className="exec-progress">
           <span className="exec-progress__label">
-            Выполнено {completed} из {total}
+            <span>Упражнения: {completed} из {total}</span><span>{doneSets} из {totalSets} подходов</span>
           </span>
           <span className="progress__track" aria-hidden>
             <span className="progress__bar" style={{ width: `${(completed / total) * 100}%` }} />
@@ -386,6 +389,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                   </button>
                 ) : (
                   <>
+                    <button className="text-action exec-detail-button" onClick={() => setDetail(entry.exercise)}>Подробнее об упражнении</button>
                     <div className="set-columns" aria-hidden="true"><span>№</span><span>кг</span><span>повт.</span><span>Готово</span></div>
                     <p className="set-input-hint">Без дополнительного веса — оставь «кг» пустым.</p>
                     <ul className="set-list">
@@ -442,7 +446,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                             </svg>
                           </button>
                           {showErrors && (errors.weight || errors.reps) && <span className="set-row__error" id={errorId} role="alert">{[errors.weight, errors.reps].filter(Boolean).join(' ')}</span>}
-                          {past?.[index] && <span className="set-row__previous">Ранее: {past[index]!.weight || '—'} кг × {past[index]!.reps || '—'} повт.</span>}
+                          {past?.[index] && <span className="set-row__previous">Ранее: {past[index]!.weight ? `${past[index]!.weight} кг × ` : ''}{past[index]!.reps || '—'} повт.</span>}
                           {index >= DEFAULT_SETS && <button type="button" className="set-row__remove" onClick={() => removeSet(ex, index)} aria-label={`Убрать подход ${index + 1}: ${entry.exercise.name}`}>Убрать подход {index + 1}</button>}
                         </li>
                       ); })}
@@ -494,7 +498,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
           <span className="exec-footer__hint">
             {plural(completed, ['упражнение', 'упражнения', 'упражнений'])} готово
           </span>
-          <button className="btn btn--primary exec-footer__cta" onClick={finish}>
+          <button className="btn btn--primary exec-footer__cta" onClick={() => void finish()}>
             {finishing ? 'Сохраняем…' : 'Завершить'}
           </button>
         </div>
@@ -525,6 +529,8 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
           const title =
             modal === 'finish'
               ? 'Тренировка не будет засчитана'
+              : modal === 'partial-finish'
+                ? 'Завершить частично?'
               : modal === 'skip-exercise'
                 ? 'Пропустить упражнение?'
                 : modal === 'skip-group'
@@ -532,7 +538,9 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                   : 'Выйти из тренировки?';
           const text =
             modal === 'finish'
-              ? 'Ни одно упражнение не выполнено. Пустая сессия не попадёт в историю.'
+              ? `Ни одно упражнение не завершено целиком. ${doneSets > 0 ? `Отмеченные подходы: ${doneSets} из ${totalSets}. ` : ''}Для записи в историю заверши хотя бы одно упражнение. Прогресс можно сохранить при выходе и продолжить позже.`
+              : modal === 'partial-finish'
+                ? `Завершено ${completed} из ${total} упражнений, отмечено ${doneSets} из ${totalSets} подходов. В статистику попадут только полностью выполненные упражнения. Остальные результаты сохранятся в истории без учёта в статистике.`
               : modal === 'skip-exercise'
                 ? `«${targetName}» не засчитается в итоге. Вернуть его можно в любой момент.`
                 : modal === 'skip-group'
@@ -540,13 +548,17 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                   : 'Прогресс сохранится — продолжить можно будет с главного экрана.';
           return (
             <div className="overlay">
-              <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
+              <div ref={dialog} className="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
                 <h2 id="dialog-title" className="dialog__title">
                   {title}
                 </h2>
                 <p className="dialog__text">{text}</p>
+                {toast === 'error' && <p className="body-error" role="alert">Не удалось сохранить. Ввод остался на экране — попробуй ещё раз.</p>}
                 <div className="dialog__actions">
-                  {isSkip ? (
+                  {modal === 'partial-finish' ? <>
+                    <button className="btn btn--primary" onClick={() => void finish(true)}>{finishing ? 'Сохраняем…' : 'Сохранить результат'}</button>
+                    <button className="btn btn--ghost" onClick={() => setModal(null)} autoFocus>Продолжить тренировку</button>
+                  </> : isSkip ? (
                     <>
                       <button
                         className="btn btn--primary"
@@ -582,6 +594,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
           );
         })()}
       </fieldset>
+      {detail && <ExerciseDetail exercise={detail} pickLabel="" excluded={false} onClose={() => setDetail(null)} />}
     </div>
   );
 }

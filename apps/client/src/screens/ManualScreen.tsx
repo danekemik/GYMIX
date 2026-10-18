@@ -111,7 +111,8 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
 
   if (slot === undefined) return null;
 
-  const slotAlt = slot.alternativeGroupIds.length > 0 ? ` или ${slot.alternativeGroupIds.join(' или ')}` : '';
+  const alternatives = slot.alternativeGroupIds.filter(group => !slot.allowedGroupIds.includes(group));
+  const slotAlt = alternatives.length > 0 ? ` или ${alternatives.join(' или ')}` : '';
 
   return (
     <div className="screen" ref={root}>
@@ -260,6 +261,7 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
       {detail !== null && (
         <ExerciseDetail
           exercise={detail}
+          error={actionError}
           pickLabel={detail.name === selectedName ? 'Выбрано' : 'Выбрать'}
           picked={detail.name === selectedName}
           excluded={excluded.has(detail.name)}

@@ -1,6 +1,8 @@
 import type { CatalogExercise } from '@gymix/catalog/parse';
 import { exerciseArt } from '../lib/exerciseArt';
 import { IconDumbbellArt } from '../lib/icons';
+import { useRef } from 'react';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 
 interface ExerciseDetailProps {
   exercise: CatalogExercise;
@@ -10,7 +12,8 @@ interface ExerciseDetailProps {
   excluded: boolean;
   saving?: boolean;
   onPick?: () => void;
-  onToggleExclude: () => void;
+  onToggleExclude?: () => void;
+  error?: string | undefined;
   onClose: () => void;
 }
 
@@ -24,12 +27,16 @@ export function ExerciseDetail({
   onPick,
   onToggleExclude,
   onClose,
+  error,
 }: ExerciseDetailProps) {
   const art = exerciseArt(exercise.name);
+  const dialog = useRef<HTMLElement>(null);
+  useDialogFocus(dialog, true, onClose);
   return (
     <div className="overlay" onClick={onClose}>
       <section
         className="dialog dialog--sheet exercise-detail"
+        ref={dialog}
         role="dialog"
         aria-modal="true"
         aria-label={`Упражнение «${exercise.name}»`}
@@ -76,20 +83,21 @@ export function ExerciseDetail({
         </div>
 
 
+        {error && <p className="body-error" role="alert">{error}</p>}
         <div className="dialog__actions">
           {onPick !== undefined && (
             <button className="btn btn--primary" aria-pressed={picked} onClick={onPick}>
               {pickLabel}
             </button>
           )}
-          <button
+          {onToggleExclude && <button
             className="btn btn--ghost"
             aria-pressed={excluded}
             disabled={saving}
             onClick={onToggleExclude}
           >
-            {excluded ? 'Предлагать снова' : 'Не предлагать'}
-          </button>
+            {excluded ? 'Вернуть в подбор' : 'Исключить из будущих подборов'}
+          </button>}
         </div>
       </section>
     </div>

@@ -3,6 +3,8 @@ import { generateWorkout, slotFor } from '@gymix/generator';
 import { getCatalog } from '../src/lib/catalog';
 import { readBuilderState, saveBuilderState, clearBuilderState, type BuilderState } from '../src/lib/builderState';
 import { buildWorkoutFromEntries } from '../src/lib/reconstruct';
+import { VOLUME_LEVELS, WORKOUT_TYPES } from '@gymix/structures';
+import { matchesSlot } from '@gymix/catalog/parse';
 
 let storage: Map<string, string>;
 beforeEach(() => {
@@ -55,4 +57,19 @@ it('restores canonical slot identities for a reordered historical workout', () =
   const repeated = buildWorkoutFromEntries(plan.type, plan.volume, [...plan.entries].reverse().map((entry, index) => ({ slotKey: `s${index + 1}`, exerciseName: entry.exercise.name })));
   expect(repeated.entries.map(entry => entry.exercise.name)).toEqual([...plan.entries].reverse().map(entry => entry.exercise.name));
   for (const entry of repeated.entries) expect(() => slotFor(entry.slotKey, repeated.type, repeated.volume)).not.toThrow();
+  const older = buildWorkoutFromEntries(plan.type, plan.volume, plan.entries.map((entry, index) => ({ slotKey: `s${index + 1}`, exerciseName: index === 0 ? 'Упражнение из старого каталога' : entry.exercise.name })));
+  expect(older.entries[0]?.exercise.name).toBe('Упражнение из старого каталога');
+  for (const entry of older.entries) expect(() => slotFor(entry.slotKey, older.type, older.volume)).not.toThrow();
+});
+it('keeps valid replacement slots when reconstructing every format and volume', () => {
+  for (const type of WORKOUT_TYPES) for (const volume of VOLUME_LEVELS) {
+    const targetGroup = type === 'Muscle Group Split' ? 'Грудь' : undefined;
+    const plan = generateWorkout(getCatalog(), { type, volume, seed: 71, ...(targetGroup ? { targetGroup } : {}) });
+    const restored = buildWorkoutFromEntries(type, volume, [...plan.entries].reverse().map((entry, index) => ({ slotKey: `s${index + 1}`, exerciseName: entry.exercise.name })));
+    expect(new Set(restored.entries.map(entry => entry.slotKey)).size).toBe(plan.entries.length);
+    for (const entry of restored.entries) {
+      const slot = slotFor(entry.slotKey, type, volume, targetGroup);
+      expect(matchesSlot(entry.exercise, [...slot.allowedGroupIds, ...slot.alternativeGroupIds], slot.requiredSlotTag)).toBe(true);
+    }
+  }
 });

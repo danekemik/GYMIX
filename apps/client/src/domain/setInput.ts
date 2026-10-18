@@ -11,8 +11,10 @@ export function repsValue(value: string): number | null {
   return /^\d+$/.test(clean) && Number.isInteger(number) && number > 0 && number <= 2_147_483_647 ? number : null;
 }
 export function setInputErrors(set: Pick<SetEntry, 'weight' | 'reps'>) {
+  const clean = set.weight.trim().replace(',', '.');
+  const weightError = Number(clean) > 9999.99 ? 'Вес не должен превышать 9999,99 кг.' : /^\d+\.\d{3,}$/.test(clean) ? 'Укажи вес с точностью до двух знаков после запятой.' : 'Укажи вес числом от нуля, например 42,5.';
   return {
-    weight: set.weight.trim() !== '' && weightValue(set.weight) === null ? 'Вес: число от 0 до 9999,99, до двух знаков после запятой.' : undefined,
+    weight: clean !== '' && weightValue(set.weight) === null ? weightError : undefined,
     reps: repsValue(set.reps) === null ? 'Укажи целое число повторений больше нуля.' : undefined,
   };
 }

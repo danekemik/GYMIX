@@ -76,7 +76,7 @@ export function rosterRows(slots: readonly Slot[]): RosterRow[] {
 
   for (const slot of slots) {
     const label = slot.allowedGroupIds[0] ?? 'Слот';
-    const alt = slot.alternativeGroupIds.join(' или ');
+    const alt = slot.alternativeGroupIds.filter(group => !slot.allowedGroupIds.includes(group)).join(' или ');
     const key = alt ? `${label}±${alt}` : label;
     let entry = byKey.get(key);
     if (entry === undefined) {

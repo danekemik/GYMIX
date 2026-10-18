@@ -1,4 +1,5 @@
 import { localChange } from '../data/sync/store';
+import { runSessionCommand } from '../data/local/read-rpc';
 import { asc, desc, eq, sql } from 'drizzle-orm';
 import type { GeneratedWorkout } from '@gymix/generator';
 import {
@@ -224,7 +225,13 @@ async function loadTemplate(db: GymixDb, templateId: string): Promise<LoadedTemp
     })),
   };
 }
-export const saveTemplate = (db: GymixDb, input: TemplateInput) => localChange(db, id => `template:${id}`, scoped => _saveTemplate(scoped, input));
+export const saveTemplate = async (db: GymixDb, input: TemplateInput): Promise<string> => {
+  const remote = runSessionCommand(db, { kind: 'save-template', input });
+  if (!remote) return localChange(db, id => `template:${id}`, scoped => _saveTemplate(scoped, input));
+  const id = await remote;
+  if (typeof id !== 'string') throw new Error('Не удалось сохранить шаблон');
+  return id;
+};
 export const renameTemplate = (db: GymixDb, id: string, title: string, previousTitle?: string) => localChange(db, `template:${id}`, scoped => _renameTemplate(scoped, id, title, previousTitle));
 export const copyTemplate = (db: GymixDb, id: string) => localChange(db, copyId => `template:${copyId}`, scoped => _copyTemplate(scoped, id));
 export const deleteTemplate = (db: GymixDb, id: string) => localChange(db, `template:${id}`, scoped => _deleteTemplate(scoped, id));

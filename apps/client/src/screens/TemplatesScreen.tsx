@@ -1,3 +1,5 @@
+import { typeLabel } from '../lib/workoutTypes';
+import { plural } from '../lib/draft';
 import { useLocalRead } from '../hooks/useLocalRead';
 import { useState } from 'react';
 import { useDb } from '../hooks/useDb';
@@ -114,11 +116,11 @@ export function TemplatesScreen({
                     <span className="wk-card__body">
                       <span className="wk-card__title">{template.title}</span>
                       <span className="wk-card__meta">
-                        {template.type} <span className="wk-card__dot">·</span>{' '}
+                        {typeLabel(template.type)} <span className="wk-card__dot">·</span>{' '}
                         {template.volume}
                       </span>
                       <span className="wk-card__tags">
-                        <span className="wk-card__tag">{template.exerciseCount} упражнений</span>
+                        <span className="wk-card__tag">{plural(template.exerciseCount, ['упражнение', 'упражнения', 'упражнений'])}</span>
                         <span className="wk-card__date">{formatDay(template.createdAt)}</span>
                       </span>
                     </span>

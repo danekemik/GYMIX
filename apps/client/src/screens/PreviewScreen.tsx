@@ -1,6 +1,7 @@
 import { queryExcludedNames } from '../data/local/read-rpc';
 import { typeLabel } from '../lib/workoutTypes';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 import {
   replacementCandidates,
   slotFor,
@@ -12,6 +13,7 @@ import { plural, type Draft } from '../lib/draft';
 import { getCatalog } from '../lib/catalog';
 import { useDb } from '../hooks/useDb';
 import { excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
+import { ExerciseDetail } from '../components/ExerciseDetail';
 
 interface PreviewScreenProps {
   starting?: boolean;
@@ -50,6 +52,7 @@ export function PreviewScreen({
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
   const [saving, setSaving] = useState<string | undefined>(undefined);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [detail, setDetail] = useState<CatalogExercise | null>(null);
   const [actionError, setActionError] = useState('');
   const [undoExclude, setUndoExclude] = useState<string>();
 
@@ -89,6 +92,8 @@ export function PreviewScreen({
     setReplacing(null);
     setQuery('');
   };
+  const replacementDialog = useRef<HTMLElement>(null);
+  useDialogFocus(replacementDialog, replacing !== null, closeSheet);
 
   const toggleExclude = async (name: string, allowUndo = true) => {
     if (db === undefined || saving !== undefined) return;
@@ -195,7 +200,7 @@ export function PreviewScreen({
                   </span>
                   <span className="plan__index">{index + 1}</span>
                   <span className="plan__body">
-                    <span className="plan__exercise">{entry.exercise.name}</span>
+                    <button className="plan__exercise plan__exercise-button" onClick={() => setDetail(entry.exercise)} aria-label={`Подробнее: ${entry.exercise.name}`}><span>{entry.exercise.name}</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="10" cy="10" r="7.5" /><path d="M10 9v5M10 5.5v1" /></svg></button>
                     <span className="plan__group">
                       {entry.groupUsed}
                       {isExcluded ? ' · не предлагать' : ''}
@@ -271,6 +276,7 @@ export function PreviewScreen({
         <div className="overlay" onClick={closeSheet}>
           <section
             className="dialog dialog--sheet"
+            ref={replacementDialog}
             role="dialog"
             aria-modal="true"
             aria-label={`Замена упражнения «${current.exercise.name}»`}
@@ -290,6 +296,7 @@ export function PreviewScreen({
             </header>
 
             <div className="replace__search field">
+              {actionError && <p className="body-error" role="alert">{actionError}</p>}
               <label className="field__label" htmlFor="replace-query">
                 Поиск
               </label>
@@ -338,6 +345,7 @@ export function PreviewScreen({
           </section>
         </div>
       )}
+      {detail && <ExerciseDetail exercise={detail} pickLabel="" excluded={false} onClose={() => setDetail(null)} />}
       </fieldset>
     </div>
   );

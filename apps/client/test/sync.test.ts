@@ -21,8 +21,8 @@ import { initializeSyncStore, localChange, nextChange, queueEntries, rows } from
 import { synchronize, resolveConflict, type SyncTransport } from '../src/data/sync/engine';
 import { createDraft, persistDraft, finishDraft, deleteDraft, setDraftRunning } from '../src/lib/session';
 import { saveTemplate, deleteTemplate } from '../src/lib/templates';
-import { excludeExerciseByName } from '../src/lib/exclusions';
-import { saveBodyWeight } from '../src/lib/progress';
+import { excludeExerciseByName, includeExerciseByName } from '../src/lib/exclusions';
+import { progressSeries, saveBodyWeight } from '../src/lib/progress';
 import { api, createTestEnv, registerUser, loginOnDevice, type TestEnv, type RegisteredUser } from '../../server/test/helpers';
 let env: TestEnv;
 const closes: Array<() => Promise<void>> = [];
@@ -61,7 +61,7 @@ it('worker commands commit the session, outbox and home snapshot together', asyn
     expect(draft.byPosition).toBeInstanceOf(Map);
     const cache = cacheFor(client);
     expect(cache.entry<{ sessionId: string }>('active', async () => ({ sessionId: '' })).snapshot.data?.sessionId).toBe(draft.sessionId);
-    const sets = plan.entries.map(() => Array.from({ length: 3 }, () => ({ weight: '42,5', reps: '8', done: true })));
+    const sets = plan.entries.map((_, ex) => Array.from({ length: 3 }, (_, index) => ({ weight: '42,5', reps: '8', done: ex === 0 || (ex === 1 && index === 0) })));
     await persistDraft(client, draft.sessionId, draft.byPosition, sets);
     const extra = sets.map((group, index) => index === 0 ? [...group, { weight: '35', reps: '10', done: false }] : group);
     await persistDraft(client, draft.sessionId, draft.byPosition, extra);
@@ -76,11 +76,24 @@ it('worker commands commit the session, outbox and home snapshot together', asyn
     expect(resumed.running).toBe(false);
     expect(resumed.sets[0]?.[0]).toEqual({ weight: '42.5', reps: '8', done: true });
     await finishDraft(client, draft, { workout: plan, sets, startedAt: at - 1000, endedAt: at, durationMs: 1000 });
+    const partial = await loadRecord(source, draft.sessionId);
+    expect(partial.exercises[1]?.partial).toBe(true);
+    expect(partial.exercises[1]?.sets.filter(set => set.done)).toHaveLength(1);
+    expect((await progressSeries(source)).map(series => series.name)).toEqual([plan.entries[0]!.exercise.name]);
+    await saveRecord(client, draft.sessionId, { baseRevision: partial.revision, startedAt: partial.startedAt, completedAt: partial.completedAt,
+      exercises: partial.exercises.map(exercise => ({ id: exercise.id, status: exercise.status, sets: exercise.sets })) });
+    expect((await loadRecord(source, draft.sessionId)).exercises[1]?.partial).toBe(true);
     expect(cache.entry('active', async () => null).snapshot.data).toBeNull();
     expect((await reader.query('history') as { id: string }[])[0]?.id).toBe(draft.sessionId);
     expect(await queueEntries(source.db)).toHaveLength(1);
     await synchronize(client, transport(user.accessToken));
     expect(await queueEntries(source.db)).toHaveLength(0);
+    const templateId = await saveTemplate(client, { title: 'План', type: plan.type, volume: plan.volume, entries: plan.entries.map(entry => ({ slotKey: entry.slotKey, exerciseName: entry.exercise.name })) });
+    expect((await reader.query('templates') as { id: string }[]).some(template => template.id === templateId)).toBe(true);
+    await excludeExerciseByName(client, plan.entries[0]!.exercise.name);
+    expect((await reader.query('exclusions') as { name: string }[]).some(exercise => exercise.name === plan.entries[0]!.exercise.name)).toBe(true);
+    await includeExerciseByName(client, plan.entries[0]!.exercise.name);
+    expect(await reader.query('exclusions')).toEqual([]);
     const next = await createDraft(client, plan);
     expect(next.sessionId).not.toBe(draft.sessionId);
     await deleteDraft(client, next.sessionId);

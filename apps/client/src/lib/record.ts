@@ -1,4 +1,5 @@
 import { localChange } from '../data/sync/store';
+import { runSessionCommand } from '../data/local/read-rpc';
 import { eq, inArray, sql } from 'drizzle-orm';
 import {
   sessionExercises,
@@ -15,13 +16,15 @@ export interface RecordSet {
   readonly setNumber: number;
   readonly weight: string | null;
   readonly reps: number | null;
+  readonly done: boolean;
 }
 
 export interface RecordExercise {
   readonly id: string;
   readonly name: string;
-  readonly status: 'completed' | 'skipped';
+  readonly status: 'completed' | 'skipped' | 'pending';
   readonly sets: readonly RecordSet[];
+  readonly partial: boolean;
 }
 
 export interface RecordSnapshot {
@@ -82,6 +85,7 @@ export async function loadRecord(db: GymixDb, sessionId: string): Promise<Record
       setNumber: sessionSets.setNumber,
       weight: sessionSets.weight,
       reps: sessionSets.reps,
+      completedAt: sessionSets.completedAt,
     })
     .from(sessionSets)
     .where(inArray(sessionSets.sessionExerciseId, exerciseIds)) : [];
@@ -110,10 +114,11 @@ export async function loadRecord(db: GymixDb, sessionId: string): Promise<Record
     exercises: exercises.map((e) => ({
       id: e.id,
       name: e.name,
-      status: e.status === 'completed' ? 'completed' : 'skipped',
+      status: e.status === 'active' ? 'pending' : e.status,
+      partial: (e.status === 'pending' || e.status === 'active') && setRows.some(set => set.sessionExerciseId === e.id && set.completedAt !== null),
       sets: setRows
         .filter((s) => s.sessionExerciseId === e.id)
-        .map((s) => ({ id: s.id, setNumber: s.setNumber, weight: formatWeight(s.weight), reps: s.reps }))
+        .map((s) => ({ id: s.id, setNumber: s.setNumber, weight: formatWeight(s.weight), reps: s.reps, done: s.completedAt !== null }))
         .sort((a, b) => a.setNumber - b.setNumber),
     })),
   };
@@ -121,7 +126,7 @@ export async function loadRecord(db: GymixDb, sessionId: string): Promise<Record
 
 export interface RecordPatchExercise {
   readonly id: string;
-  readonly status: 'completed' | 'skipped';
+  readonly status: 'completed' | 'skipped' | 'pending';
   readonly sets: readonly { id: string; weight: string | null; reps: number | null; }[];
 }
 
@@ -186,4 +191,6 @@ async function _saveRecord(db: GymixDb, sessionId: string, patch: RecordPatch): 
     }
   });
 }
-export const saveRecord = (db: GymixDb, id: string, patch: RecordPatch) => localChange(db, `workout:${id}`, scoped => _saveRecord(scoped, id, patch));
+export const saveRecord = async (db: GymixDb, id: string, patch: RecordPatch): Promise<void> => {
+  await (runSessionCommand(db, { kind: 'save-record', sessionId: id, patch }) ?? localChange(db, `workout:${id}`, scoped => _saveRecord(scoped, id, patch)));
+};
