@@ -1,8 +1,10 @@
 import type { CatalogExercise } from '@gymix/catalog/parse';
+import { matchesSlot } from '@gymix/catalog/parse';
 import type { GeneratedWorkout } from '@gymix/generator';
 import {
   GENERATOR_MUSCLE_GROUPS,
   findStructure,
+  mgsSlots,
   type GeneratorMuscleGroup,
   type VolumeLevel,
   type WorkoutType,
@@ -19,6 +21,7 @@ import { getCatalog } from './catalog';
 export interface StoredEntry {
   readonly slotKey: string;
   readonly exerciseName: string;
+  readonly groupUsed?: GeneratorMuscleGroup;
 }
 
 export function buildWorkoutFromEntries(
@@ -26,20 +29,26 @@ export function buildWorkoutFromEntries(
   volume: VolumeLevel,
   rows: readonly StoredEntry[],
 ): GeneratedWorkout {
-  const slotByKey =
-    type === 'Muscle Group Split'
-      ? null
-      : new Map(findStructure({ type, volume }).slots.map((slot) => [slot.slotKey, slot]));
   const byName = new Map(getCatalog().exercises.map((e) => [e.name, e]));
+  const exercises = rows.map(row => byName.get(row.exerciseName) ?? fallbackExercise(row.exerciseName));
+  const target = rows.find(row => row.groupUsed)?.groupUsed ?? GENERATOR_MUSCLE_GROUPS.find(group => exercises.length > 0 && exercises.every(exercise => exercise.muscles.includes(group))) ?? defaultGroup(exercises[0] ?? fallbackExercise(''));
+  const slots = type === 'Muscle Group Split' ? mgsSlots(target, volume) : findStructure({ type, volume }).slots;
+  const slotByKey = new Map(slots.map(slot => [slot.slotKey, slot]));
+  const used = new Set<string>();
+  const names = new Set<string>();
 
   const entries = rows.map((row) => {
     const exercise = byName.get(row.exerciseName) ?? fallbackExercise(row.exerciseName);
-    const slot = slotByKey?.get(row.slotKey) ?? undefined;
+    const exact = slotByKey.get(row.slotKey);
+    const slot = exact && !used.has(exact.slotKey) ? exact : slots.find(candidate => !used.has(candidate.slotKey) && matchesSlot(exercise, [...candidate.allowedGroupIds, ...candidate.alternativeGroupIds], candidate.requiredSlotTag));
+    if (slot) used.add(slot.slotKey);
+    const isRepeat = names.has(exercise.name);
+    names.add(exercise.name);
     return {
       slotKey: slot?.slotKey ?? row.slotKey,
       exercise,
       groupUsed: slot !== undefined ? groupUsedFor(exercise, slot) : defaultGroup(exercise),
-      isRepeat: false,
+      isRepeat,
     };
   });
 

@@ -26,7 +26,7 @@ export function StructureScreen({ draft, onBack, onManual, onGenerate, onOpenSlo
             <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h1 className="topbar__title topbar__title--step">Структура</h1>
+        <h1 className="topbar__title topbar__title--step">Состав тренировки</h1>
       </header>
 
       <div className="screen__body">
@@ -40,7 +40,7 @@ export function StructureScreen({ draft, onBack, onManual, onGenerate, onOpenSlo
 
         <div className="progress">
           <span className="progress__label" id={progressLabelId}>
-            Заполнено {filled} из {plural(total, ['слота', 'слотов', 'слотов'])}
+            Выбрано {filled} из {total} упражнений
           </span>
           <span
             className="progress__track"
@@ -104,7 +104,7 @@ export function StructureScreen({ draft, onBack, onManual, onGenerate, onOpenSlo
             Выбрать упражнения
           </button>
           <button className="btn btn--ghost" onClick={onGenerate}>
-            Сгенерировать тренировку
+            {filled === total ? 'Посмотреть тренировку' : 'Подобрать оставшиеся'}
           </button>
         </div>
       </div>

@@ -7,12 +7,13 @@ import {
 } from '@gymix/structures';
 import { MGS_CATEGORY_LABELS } from '../lib/workoutTypes';
 interface MgsGroupScreenProps {
+  selectedGroup?: GeneratorMuscleGroup | undefined;
   onGroupSelect: (group: GeneratorMuscleGroup) => void;
   onBack: () => void;
 }
 
-export function MgsGroupScreen({ onGroupSelect, onBack }: MgsGroupScreenProps) {
-  const [category, setCategory] = useState<MgsCategory>('Chest');
+export function MgsGroupScreen({ selectedGroup, onGroupSelect, onBack }: MgsGroupScreenProps) {
+  const [category, setCategory] = useState<MgsCategory>(() => MGS_CATEGORIES.find(value => selectedGroup && (MGS_CATEGORY_GROUPS[value] as readonly GeneratorMuscleGroup[]).includes(selectedGroup)) ?? 'Chest');
 
   const groups = MGS_CATEGORY_GROUPS[category];
 
@@ -29,8 +30,7 @@ export function MgsGroupScreen({ onGroupSelect, onBack }: MgsGroupScreenProps) {
 
       <div className="screen__body">
         <p className="context-hint">
-          Muscle Group Split — отдельная группа на всю тренировку. Сначала выберите
-          категорию, затем группу.
+          Выбери группу на всю тренировку. Для ног и рук можно уточнить нужные мышцы.
         </p>
 
         <div className="mgs-cats" role="tablist" aria-label="Категория">
@@ -40,7 +40,11 @@ export function MgsGroupScreen({ onGroupSelect, onBack }: MgsGroupScreenProps) {
               role="tab"
               aria-selected={value === category}
               className={`mgs-cat ${value === category ? 'mgs-cat--on' : ''}`}
-              onClick={() => setCategory(value)}
+              onClick={() => {
+                const options = MGS_CATEGORY_GROUPS[value];
+                if (options.length === 1) onGroupSelect(options[0]!);
+                else setCategory(value);
+              }}
             >
               {MGS_CATEGORY_LABELS[value]}
             </button>
@@ -52,6 +56,7 @@ export function MgsGroupScreen({ onGroupSelect, onBack }: MgsGroupScreenProps) {
             <button
               key={group}
               className="mgs-group"
+              aria-pressed={selectedGroup === group}
               onClick={() => onGroupSelect(group)}
             >
               <span className="mgs-group__name">{group}</span>

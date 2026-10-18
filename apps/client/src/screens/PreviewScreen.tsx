@@ -1,6 +1,6 @@
 import { queryExcludedNames } from '../data/local/read-rpc';
 import { typeLabel } from '../lib/workoutTypes';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   replacementCandidates,
   slotFor,
@@ -50,12 +50,8 @@ export function PreviewScreen({
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
   const [saving, setSaving] = useState<string | undefined>(undefined);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [confirmExit, setConfirmExit] = useState(false);
-
-  const snapshot = (entries: readonly GeneratedEntry[]) =>
-    entries.map((e) => `${e.slotKey}:${e.exercise.name}`).join('|');
-  const initialRef = useRef(snapshot(workout.entries));
-  const changed = snapshot(workout.entries) !== initialRef.current;
+  const [actionError, setActionError] = useState('');
+  const [undoExclude, setUndoExclude] = useState<string>();
 
   useEffect(() => {
     if (db === undefined) return;
@@ -94,14 +90,9 @@ export function PreviewScreen({
     setQuery('');
   };
 
-  const requestBack = () => {
-    if (changed) setConfirmExit(true);
-    else onBack();
-  };
-
-  const toggleExclude = async (name: string) => {
+  const toggleExclude = async (name: string, allowUndo = true) => {
     if (db === undefined || saving !== undefined) return;
-    setSaving(name);
+    setSaving(name); setActionError('');
     try {
       if (excluded.has(name)) {
         await includeExerciseByName(db, name);
@@ -114,6 +105,9 @@ export function PreviewScreen({
         next.add(name);
         setExcluded(next);
       }
+      setUndoExclude(allowUndo ? name : undefined);
+    } catch {
+      setActionError('Не удалось изменить исключение. Попробуй ещё раз.');
     } finally {
       setSaving(undefined);
     }
@@ -139,12 +133,12 @@ export function PreviewScreen({
     <div className="screen">
       <fieldset disabled={starting} style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <header className="topbar">
-        <button className="topbar__back" onClick={requestBack} aria-label="Назад">
+        <button className="topbar__back" onClick={onBack} aria-label="Назад">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h1 className="topbar__title topbar__title--step">Предпросмотр</h1>
+        <h1 className="topbar__title topbar__title--step">Состав тренировки</h1>
       </header>
 
       <div className="screen__body">
@@ -154,6 +148,10 @@ export function PreviewScreen({
             {workout.volume} · {plural(total, ['упражнение', 'упражнения', 'упражнений'])}
           </span>
         </div>
+
+        {actionError && <p className="body-error" role="alert">{actionError}</p>}
+        {undoExclude && <p className="note" role="status">«{undoExclude}»: {excluded.has(undoExclude) ? 'исключено из будущих подборов' : 'снова доступно для подбора'}. <button className="text-action" disabled={saving !== undefined} onClick={() => void toggleExclude(undoExclude, false)}>Отменить</button></p>}
+        {onEditSelection && <button className="text-action preview-edit" onClick={onEditSelection}>Изменить состав</button>}
 
         <ol className="plan" aria-label="Упражнения по порядку">
           {workout.entries.map((entry, index) => {
@@ -215,7 +213,7 @@ export function PreviewScreen({
                   <details className="plan__more">
                     <summary aria-label={`Другие действия: ${entry.exercise.name}`}>Ещё</summary>
                     <div className="plan__menu">
-                      <span className="plan__move">
+                      {(up || down) && <span className="plan__move">
                         <button
                           className="plan__move-btn"
                           aria-label={`Переместить выше: ${entry.exercise.name}`}
@@ -236,14 +234,14 @@ export function PreviewScreen({
                             <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </button>
-                      </span>
+                      </span>}
                       <button
                         className="btn btn--ghost btn--sm"
                         aria-pressed={isExcluded}
                         disabled={saving !== undefined}
                         onClick={() => void toggleExclude(entry.exercise.name)}
                       >
-                        {isExcluded ? 'Предлагать снова' : 'Не предлагать'}
+                        {isExcluded ? 'Вернуть в подбор' : 'Исключить из будущих подборов'}
                       </button>
                     </div>
                   </details>
@@ -253,9 +251,9 @@ export function PreviewScreen({
           })}
         </ol>
 
-        <aside className="note">
-          Порядок внутри группы можно изменить в меню «Ещё» или перетаскиванием.
-        </aside>
+        {workout.entries.some((entry, index) => canMove(index, index + 1)) && <aside className="note">
+          В меню «Ещё» можно менять порядок внутри одной группы. Между группами порядок фиксирован.
+        </aside>}
 
         <div className="screen__cta screen__cta--sticky">
           <button className="btn btn--primary" onClick={onStart} disabled={starting}>
@@ -265,31 +263,9 @@ export function PreviewScreen({
             <summary>Изменить тренировку</summary>
             {onEditParameters && <button className="btn btn--ghost" onClick={onEditParameters}>Формат и объём подбора</button>}
             <button className="btn btn--ghost" onClick={onRegenerate}>Подобрать заново</button>
-            {onEditSelection !== undefined && <button className="btn btn--ghost" onClick={onEditSelection}>Выбрать упражнения</button>}
           </details>}
         </div>
       </div>
-
-      {confirmExit && (
-        <div className="overlay">
-          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="exit-preview-title">
-            <h2 id="exit-preview-title" className="dialog__title">
-              Выйти без сохранения?
-            </h2>
-            <p className="dialog__text">
-              Изменения порядка и замен не сохранятся. Упражнения можно выбрать заново.
-            </p>
-            <div className="dialog__actions">
-              <button className="btn btn--ghost" onClick={() => setConfirmExit(false)}>
-                Отмена
-              </button>
-              <button className="btn btn--primary" onClick={onBack}>
-                Выйти
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {replacing !== null && current !== undefined && (
         <div className="overlay" onClick={closeSheet}>
@@ -348,13 +324,13 @@ export function PreviewScreen({
                     </span>
                   </button>
                   {!excluded.has(candidate.name) && (
-                    <button
+                    <details className="plan__more"><summary aria-label={`Другие действия: ${candidate.name}`}>Ещё</summary><button
                       className="replace__exclude"
                       disabled={saving !== undefined}
                       onClick={() => void toggleExclude(candidate.name)}
                     >
-                      Не предлагать
-                    </button>
+                      Исключить из будущих подборов
+                    </button></details>
                   )}
                 </li>
               ))}

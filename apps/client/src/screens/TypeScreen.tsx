@@ -6,14 +6,15 @@ import { useDb } from '../hooks/useDb';
 import { workoutTypeCards } from '../lib/workoutTypes';
 
 interface TypeScreenProps {
+  initialType?: WorkoutType;
   onSelect: (type: WorkoutType) => void;
   onClose: () => void;
 }
 
-export function TypeScreen({ onSelect, onClose }: TypeScreenProps) {
+export function TypeScreen({ initialType = 'Full Body', onSelect, onClose }: TypeScreenProps) {
   const { error } = useDb();
   const cards = useMemo(() => workoutTypeCards(), []);
-  const [selected, setSelected] = useState<WorkoutType>('Full Body');
+  const [selected, setSelected] = useState<WorkoutType>(initialType);
 
   return (
     <div className="screen screen--formats">

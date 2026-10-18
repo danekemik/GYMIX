@@ -25,6 +25,8 @@ import { StructureScreen } from './screens/StructureScreen';
 import { TypeScreen } from './screens/TypeScreen';
 import { VolumeScreen } from './screens/VolumeScreen';
 import { WorkoutsScreen } from './screens/WorkoutsScreen';
+import { BUILDER_STEPS, clearBuilderState, readBuilderState, saveBuilderState, type BuilderState, type BuilderStep } from './lib/builderState';
+import { structureFor } from './lib/draft';
 
 const TABS = [
   { id: 'today', label: 'Сегодня', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m3 10 9-7 9 7v10H3Z" strokeLinejoin="round" /><path d="M9 20v-7h6v7" /></svg> },
@@ -59,6 +61,12 @@ export function App() {
   const [fromTemplate, setFromTemplate] = useState(false);
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [manualSlotKey, setManualSlotKey] = useState<Nullable<string>>(undefined);
+  const [manualReturn, setManualReturn] = useState<'volume' | 'structure' | 'preview'>('volume');
+  const [entryOrder, setEntryOrder] = useState<readonly string[]>([]);
+  const [savedBuilder, setSavedBuilder] = useState<BuilderState>();
+  const [storageFailed, setStorageFailed] = useState(false);
+  const [pendingChange, setPendingChange] = useState<{ run: () => void; text: string } | null>(null);
+  const [newBuilder, setNewBuilder] = useState<{ run: () => void } | null>(null);
   const [navigationError, setNavigationError] = useState('');
   const [starting, setStarting] = useState(false);
   const [libraryView, setLibraryView] = useState<'saved' | 'history'>('saved');
@@ -77,14 +85,19 @@ export function App() {
     setFromTemplate(false);
     setSelections({});
     setManualSlotKey(undefined);
+    setEntryOrder([]);
   };
 
   const startBuilder = (type: WorkoutType) => {
-    setStepType(type);
-    setStepMgsGroup(undefined);
-    setStepVolume('Стандартная');
-    setSelections({});
-    setStep(isMgs(type) ? 'mgs' : 'volume');
+    const run = () => {
+      if (type !== stepType) {
+        setStepType(type); setStepMgsGroup(undefined); setStepVolume('Стандартная');
+        setSelections({}); setGenerated(undefined); setFromTemplate(false); setManualSlotKey(undefined); setEntryOrder([]);
+      }
+      setStep(isMgs(type) ? 'mgs' : 'volume');
+    };
+    if (type !== stepType && (generated || Object.keys(selections).length)) setPendingChange({ run, text: 'Другой формат изменит состав. Выбранные упражнения и замены будут сброшены.' });
+    else run();
   };
 
   const draft: Draft = {
@@ -92,6 +105,49 @@ export function App() {
     volume: stepVolume,
     ...(stepMgsGroup ? { mgsGroup: stepMgsGroup } : {}),
     ...(Object.keys(selections).length > 0 ? { selections } : {}),
+  };
+  useEffect(() => {
+    if (db) setSavedBuilder(readBuilderState(db.account.userId));
+  }, [db]);
+  useEffect(() => {
+    if (!db || !BUILDER_STEPS.includes(step as BuilderStep)) return;
+    const value: BuilderState = { step: step as BuilderStep, draft, seed, generated, manualSlotKey, manualReturn, fromTemplate, entryOrder };
+    setSavedBuilder(value);
+    setStorageFailed(!saveBuilderState(db.account.userId, value));
+    // Draft fields are explicit dependencies; the object itself is recreated during render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db, step, stepType, stepVolume, stepMgsGroup, selections, seed, generated, manualSlotKey, manualReturn, fromTemplate, entryOrder]);
+
+  const continueBuilder = () => {
+    if (!savedBuilder) return;
+    const value = savedBuilder;
+    setStepType(value.draft.type); setStepVolume(value.draft.volume); setStepMgsGroup(value.draft.mgsGroup);
+    setSelections({ ...value.draft.selections }); setGenerated(value.generated); setSeed(value.seed);
+    setManualSlotKey(value.manualSlotKey); setManualReturn(value.manualReturn); setFromTemplate(value.fromTemplate);
+    setEntryOrder(value.entryOrder ?? []);
+    setSub(undefined); setTab('today'); setNewBuilder(null); setStep(value.step);
+  };
+  const changeParameter = (run: () => void) => {
+    if (generated || Object.keys(selections).length) setPendingChange({ run, text: 'Изменится число или группа упражнений. Текущий состав и замены будут сброшены.' });
+    else run();
+  };
+  const showManualPreview = () => {
+    try {
+      const plan = generateWorkout(getCatalog(), {
+        type: stepType, volume: stepVolume, ...(stepMgsGroup ? { targetGroup: stepMgsGroup } : {}),
+        lockedSelections: selections, seed,
+      });
+      const positions = new Map(entryOrder.map((key, index) => [key, index]));
+      setGenerated({ ...plan, entries: [...plan.entries].sort((a, b) => (positions.get(a.slotKey) ?? 999) - (positions.get(b.slotKey) ?? 999)) });
+      setStep('preview');
+    } catch { setNavigationError('Не удалось собрать состав. Проверь выбранные упражнения.'); setStep('structure'); }
+  };
+  const editComposition = () => {
+    if (generated) {
+      setSelections(Object.fromEntries(generated.entries.map(entry => [entry.slotKey, entry.exercise.name])));
+      setEntryOrder(generated.entries.map(entry => entry.slotKey));
+    }
+    setManualSlotKey(undefined); setManualReturn('preview'); setStep('manual');
   };
 
   const openTab = (id: string) => {
@@ -106,10 +162,18 @@ export function App() {
   const openRecord = (id: string) => setSub({ kind: 'record', id });
 
   // Navigation is immediate and never waits for an animated overlay.
-  const openFormats = () => setStep('type');
+  const openFormats = () => {
+    const run = () => {
+      setStepType('Full Body'); setStepMgsGroup(undefined); setStepVolume('Стандартная');
+      setSelections({}); setGenerated(undefined); setFromTemplate(false); setManualSlotKey(undefined); setEntryOrder([]);
+      setNavigationError(''); setStep('type');
+    };
+    if (savedBuilder) setNewBuilder({ run }); else run();
+  };
   const closeFormats = () => setStep('home');
 
-  const openTemplate = async (templateId: string) => {
+  const openTemplate = async (templateId: string, replaceExisting = false) => {
+    if (savedBuilder && step === 'home' && !replaceExisting) { setNewBuilder({ run: () => { void openTemplate(templateId, true); } }); return; }
     if (db === undefined) return;
     try {
       const workout = await queryReadModel<GeneratedWorkout>(db, `template:${templateId}`);
@@ -117,6 +181,8 @@ export function App() {
       setStepVolume(workout.volume);
       setStepMgsGroup(isMgs(workout.type) ? workout.entries[0]?.groupUsed : undefined);
       setFromTemplate(true);
+      setSelections({});
+      setEntryOrder([]); setManualSlotKey(undefined);
       setGenerated(workout);
       setStep('preview');
     } catch {
@@ -124,7 +190,8 @@ export function App() {
     }
   };
 
-  const openTemplateEdit = async (templateId: string) => {
+  const openTemplateEdit = async (templateId: string, replaceExisting = false) => {
+    if (savedBuilder && step === 'home' && !replaceExisting) { setNewBuilder({ run: () => { void openTemplateEdit(templateId, true); } }); return; }
     if (db === undefined) return;
     try {
       const workout = await queryReadModel<GeneratedWorkout>(db, `template:${templateId}`);
@@ -134,28 +201,34 @@ export function App() {
       setStepVolume(workout.volume);
       setStepMgsGroup(isMgs(workout.type) ? workout.entries[0]?.groupUsed : undefined);
       setSelections(next);
+      setEntryOrder(workout.entries.map(entry => entry.slotKey));
       setFromTemplate(false);
       setGenerated(undefined);
       setManualSlotKey(undefined);
+      setManualReturn('structure');
       setStep('manual');
     } catch {
       setNavigationError('Не удалось открыть сохранённую тренировку. Попробуй ещё раз.');
     }
   };
 
-  const repeatWorkout = async (sessionId: string) => {
+  const repeatWorkout = async (sessionId: string, replaceExisting = false) => {
+    if (savedBuilder && step === 'home' && !replaceExisting) { setNewBuilder({ run: () => { void repeatWorkout(sessionId, true).catch(() => setNavigationError('Не удалось повторить тренировку. Попробуй ещё раз.')); } }); return; }
     if (!db) throw new Error('Локальная база ещё открывается');
     const workout = await queryReadModel<GeneratedWorkout>(db, `repeat:${sessionId}`);
     setGenerated(workout);
     setResume(undefined);
     setStepType(workout.type);
     setStepVolume(workout.volume);
+    setStepMgsGroup(isMgs(workout.type) ? workout.entries[0]?.groupUsed : undefined);
+    setSelections({});
+    setEntryOrder([]); setManualSlotKey(undefined);
     setFromTemplate(true);
     setSub(undefined);
     setStep('preview');
   };
 
-  const quickBuild = () => {
+  const quickBuildNow = () => {
     if (!db) return;
     const previous = readBuilderPreferences(db.account.userId);
     if (!previous) { openFormats(); return; }
@@ -163,10 +236,14 @@ export function App() {
     setStepVolume(previous.volume);
     setStepMgsGroup(previous.mgsGroup);
     setSelections({});
+    setEntryOrder([]); setManualSlotKey(undefined);
     setGenerated(undefined);
     setFromTemplate(false);
     setSeed(randomSeed());
     setStep('randomizer');
+  };
+  const quickBuild = () => {
+    if (savedBuilder) setNewBuilder({ run: quickBuildNow }); else quickBuildNow();
   };
 
   const startWorkout = async () => {
@@ -181,6 +258,7 @@ export function App() {
       const created = await createDraft(db, generated);
       setPreparedSession(created);
       setResume(undefined);
+      clearBuilderState(db.account.userId); setSavedBuilder(undefined); setStorageFailed(false);
       setNavigationError('');
       setStep('execute');
     } catch { setNavigationError('Не удалось начать тренировку. Попробуй ещё раз.'); }
@@ -191,6 +269,8 @@ export function App() {
   if (step === 'type') {
     body = (
       <TypeScreen
+        key={pendingChange ? 'confirm-format' : stepType}
+        initialType={stepType}
         onSelect={startBuilder}
         onClose={closeFormats}
       />
@@ -198,10 +278,14 @@ export function App() {
   } else if (step === 'mgs') {
     body = (
       <MgsGroupScreen
-        onBack={exitBuilder}
+        selectedGroup={stepMgsGroup}
+        onBack={() => setStep('type')}
         onGroupSelect={(group) => {
-          setStepMgsGroup(group);
-          setStep('volume');
+          const run = () => {
+            if (group !== stepMgsGroup) { setSelections({}); setGenerated(undefined); setManualSlotKey(undefined); setEntryOrder([]); }
+            setStepMgsGroup(group); setStep('volume');
+          };
+          if (stepMgsGroup && group !== stepMgsGroup) changeParameter(run); else run();
         }}
       />
     );
@@ -209,14 +293,25 @@ export function App() {
     body = (
       <VolumeScreen
         draft={draft}
-        onVolumeChange={setStepVolume}
+        onVolumeChange={volume => {
+          if (volume === stepVolume) return;
+          changeParameter(() => { setStepVolume(volume); setSelections({}); setGenerated(undefined); setManualSlotKey(undefined); setEntryOrder([]); });
+        }}
+        hasComposition={Boolean(generated)}
+        hasSelection={Object.keys(selections).length > 0}
         onContinue={() => {
-          setSelections({});
+          if (generated) { setStep('preview'); return; }
           setSeed(randomSeed());
           setGenerated(undefined);
           setStep('randomizer');
         }}
-        onManual={() => { setSelections({}); setManualSlotKey(undefined); setStep('manual'); }}
+        onManual={() => {
+          if (generated) {
+            setSelections(Object.fromEntries(generated.entries.map(entry => [entry.slotKey, entry.exercise.name])));
+            setEntryOrder(generated.entries.map(entry => entry.slotKey));
+          }
+          setManualReturn('volume'); setManualSlotKey(undefined); setStep('manual');
+        }}
         onBack={() => setStep(isMgs(stepType) ? 'mgs' : 'type')}
       />
     );
@@ -226,17 +321,18 @@ export function App() {
         draft={draft}
         onBack={() => setStep('volume')}
         onManual={() => {
+          setManualReturn('structure');
           setManualSlotKey(undefined);
           setStep('manual');
         }}
         onOpenSlot={(slotKey) => {
+          setManualReturn('structure');
           setManualSlotKey(slotKey);
           setStep('manual');
         }}
         onGenerate={() => {
-          setSeed(randomSeed());
-          setGenerated(undefined);
-          setStep('randomizer');
+          if (Object.keys(selections).length === structureFor(draft).slots.length) showManualPreview();
+          else { setSeed(randomSeed()); setGenerated(undefined); setStep('randomizer'); }
         }}
       />
     );
@@ -245,30 +341,20 @@ export function App() {
       <ManualScreen
         draft={draft}
         {...(manualSlotKey !== undefined ? { startSlotKey: manualSlotKey } : {})}
+        onSlotChange={setManualSlotKey}
         onSelect={(slotKey, name) => {
           const next = { ...selections };
           if (name === '') delete next[slotKey];
           else next[slotKey] = name;
           setSelections(next);
+          setGenerated(undefined);
         }}
-        onBack={() => setStep('structure')}
+        onBack={() => {
+          if (manualReturn === 'preview' && Object.keys(selections).length === structureFor(draft).slots.length) showManualPreview();
+          else setStep(manualReturn === 'volume' ? 'volume' : 'structure');
+        }}
         onToStructure={() => setStep('structure')}
-        onDone={() => {
-          try {
-            setGenerated(
-              generateWorkout(getCatalog(), {
-                type: stepType,
-                volume: stepVolume,
-                ...(stepMgsGroup ? { targetGroup: stepMgsGroup } : {}),
-                lockedSelections: draft.selections ?? {},
-                seed,
-              }),
-            );
-            setStep('preview');
-          } catch {
-            setStep('structure');
-          }
-        }}
+        onDone={showManualPreview}
       />
     );
   } else if (step === 'randomizer') {
@@ -313,16 +399,11 @@ export function App() {
         }}
         onReorder={(entries) => setGenerated({ ...generated, entries })}
         onEditParameters={() => setStep('volume')}
-        onEditSelection={() => {
-          const next: Record<string, string> = {};
-          for (const entry of generated.entries) next[entry.slotKey] = entry.exercise.name;
-          setSelections(next);
-          setManualSlotKey(undefined);
-          setStep('manual');
-        }}
+        onEditSelection={editComposition}
         onRegenerate={() => {
-          setSeed(randomSeed());
-          setStep('randomizer');
+          setPendingChange({ text: 'Текущий состав и замены будут заменены новым подбором.', run: () => {
+            setSelections({}); setGenerated(undefined); setEntryOrder([]); setSeed(randomSeed()); setStep('randomizer');
+          } });
         }}
         onBack={() => {
           if (fromTemplate) {
@@ -330,7 +411,8 @@ export function App() {
             setGenerated(undefined);
             setStep('home');
           } else {
-            setStep(Object.keys(selections).length ? 'manual' : 'volume');
+            if (Object.keys(selections).length) editComposition();
+            else setStep('volume');
           }
         }}
       />
@@ -376,6 +458,8 @@ export function App() {
         onQuickBuild={quickBuild}
         quickDraft={db ? readBuilderPreferences(db.account.userId) : undefined}
         onCreate={openFormats}
+        builderDraft={savedBuilder?.draft}
+        onContinueBuilder={continueBuilder}
         onOpenTemplates={openTemplates}
         onRepeat={repeatWorkout}
         onOpenActivity={openHistory}
@@ -396,8 +480,16 @@ export function App() {
 
   return (
     <div className="app">
-      <main ref={mainRef} className={`app__main${step === 'home' && sub === undefined ? ' app__main--tabs' : ''}`}><SyncStatus />{navigationError && <div className="navigation-error" role="alert"><p>{navigationError}</p><button className="text-action" onClick={() => { setNavigationError(''); exitBuilder(); setSub(undefined); setTab('today'); }}>На экран «Сегодня»</button><button className="text-action" onClick={() => setNavigationError('')}>Закрыть</button></div>}{body}</main>
+      <main ref={mainRef} className={`app__main${step === 'home' && sub === undefined ? ' app__main--tabs' : ''}`}><SyncStatus />{storageFailed && BUILDER_STEPS.includes(step as BuilderStep) && <p className="note note--error" role="alert">Не удалось сохранить сборку на устройстве. Не обновляй страницу до запуска тренировки.</p>}{navigationError && <div className="navigation-error" role="alert"><p>{navigationError}</p><button className="text-action" onClick={() => { setNavigationError(''); exitBuilder(); setSub(undefined); setTab('today'); }}>На экран «Сегодня»</button><button className="text-action" onClick={() => setNavigationError('')}>Закрыть</button></div>}{body}</main>
       {step === 'home' && sub === undefined && <TabBar tabs={TABS} active={tab} onChange={openTab} />}
+      {pendingChange && <div className="overlay"><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="change-composition-title">
+        <h2 className="dialog__title" id="change-composition-title">Изменить состав?</h2><p className="dialog__text">{pendingChange.text}</p>
+        <div className="dialog__actions"><button className="btn btn--primary" onClick={() => { pendingChange.run(); setPendingChange(null); }}>Изменить</button><button className="btn btn--ghost" onClick={() => setPendingChange(null)} autoFocus>Оставить состав</button></div>
+      </section></div>}
+      {newBuilder && <div className="overlay"><section className="dialog" role="dialog" aria-modal="true" aria-labelledby="continue-builder-title">
+        <h2 className="dialog__title" id="continue-builder-title">Есть незаконченная сборка</h2><p className="dialog__text">Можно продолжить выбор или заменить его новой сборкой.</p>
+        <div className="dialog__actions"><button className="btn btn--primary" onClick={continueBuilder}>Продолжить сборку</button><button className="btn btn--ghost" onClick={() => { newBuilder.run(); setNewBuilder(null); }}>Начать новую</button><button className="btn btn--ghost" onClick={() => setNewBuilder(null)}>Отмена</button></div>
+      </section></div>}
     </div>
   );
 }

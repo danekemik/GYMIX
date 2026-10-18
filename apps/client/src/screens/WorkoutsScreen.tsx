@@ -30,6 +30,8 @@ interface WorkoutsScreenProps {
   onOpenActivity: () => void;
   onOpenSession: (sessionId: string) => void;
   onResume: (session: ResumedSession) => void;
+  builderDraft?: Draft | undefined;
+  onContinueBuilder: () => void;
 }
 
 export function WorkoutsScreen({
@@ -42,6 +44,8 @@ export function WorkoutsScreen({
   onOpenActivity,
   onOpenSession,
   onResume,
+  builderDraft,
+  onContinueBuilder,
 }: WorkoutsScreenProps) {
   const { db, error } = useDb();
   const name = getUserName();
@@ -125,6 +129,7 @@ export function WorkoutsScreen({
         </section>
 
         <section className="today-links" aria-label="Другие варианты старта">
+          {builderDraft && draft === null && <button className="journal-link" onClick={onContinueBuilder}><span><strong>Продолжить сборку</strong><small>{typeLabel(builderDraft.type)} · {builderDraft.volume}</small></span><IconChevronRight /></button>}
           {draft === null && recent !== 'loading' && recent.length > 0 && (
             <button className="journal-link" disabled={busy} onClick={() => {
               setBusy(true); setActionError('');

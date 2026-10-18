@@ -1,8 +1,9 @@
 import { queryExcludedNames } from '../data/local/read-rpc';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { typeLabel } from '../lib/workoutTypes';
 import { slotCandidates } from '@gymix/generator';
 import type { CatalogExercise } from '@gymix/catalog/parse';
-import { plural, structureFor, type Draft } from '../lib/draft';
+import { structureFor, type Draft } from '../lib/draft';
 import { getCatalog } from '../lib/catalog';
 import { useDb } from '../hooks/useDb';
 import { excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
@@ -13,13 +14,14 @@ import { IconDumbbellArt } from '../lib/icons';
 interface ManualScreenProps {
   draft: Draft;
   startSlotKey?: string;
+  onSlotChange: (slotKey: string) => void;
   onSelect: (slotKey: string, name: string) => void;
   onBack: () => void;
   onDone: () => void;
   onToStructure: () => void;
 }
 
-export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, onToStructure }: ManualScreenProps) {
+export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBack, onDone, onToStructure }: ManualScreenProps) {
   const { db, revision } = useDb();
   const slots = useMemo(() => structureFor(draft).slots, [draft]);
   const [index, setIndex] = useState(() => {
@@ -31,6 +33,10 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
   const [saving, setSaving] = useState<string | undefined>(undefined);
   const [detail, setDetail] = useState<CatalogExercise | null>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const [lastPicked, setLastPicked] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [undoExclude, setUndoExclude] = useState<string>();
 
   useEffect(() => {
     if (db === undefined) return;
@@ -47,6 +53,13 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
   const filled = Object.values(draft.selections ?? {}).filter((n) => n.length > 0).length;
   const total = slots.length;
   const selectedName = slot === undefined ? undefined : draft.selections?.[slot.slotKey];
+  useEffect(() => {
+    setQuery('');
+    root.current?.closest('main')?.scrollTo(0, 0);
+    if (slot) onSlotChange(slot.slotKey);
+    // Only a different position changes the search and scroll context.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slot?.slotKey]);
 
   const candidates = useMemo(() => {
     if (db === undefined || slot === undefined) return [];
@@ -56,7 +69,7 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (q === '') return candidates;
-    return candidates.filter((c) => c.name.toLowerCase().includes(q));
+    return candidates.filter((c) => `${c.name} ${c.equipment.join(' ')}`.toLowerCase().includes(q));
   }, [candidates, query]);
 
   const isLast = index === total - 1;
@@ -64,6 +77,7 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
   const choose = (name: string) => {
     if (slot === undefined) return;
     onSelect(slot.slotKey, name);
+    setLastPicked(name);
     if (!isLast) setIndex(index + 1);
   };
 
@@ -72,9 +86,9 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
     onSelect(slot.slotKey, '');
   };
 
-  const toggleExclude = async (name: string) => {
+  const toggleExclude = async (name: string, allowUndo = true) => {
     if (db === undefined || saving !== undefined) return;
-    setSaving(name);
+    setSaving(name); setActionError('');
     try {
       if (excluded.has(name)) {
         await includeExerciseByName(db, name);
@@ -87,6 +101,9 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
         next.add(name);
         setExcluded(next);
       }
+      setUndoExclude(allowUndo ? name : undefined);
+    } catch {
+      setActionError('Не удалось изменить исключение. Попробуй ещё раз.');
     } finally {
       setSaving(undefined);
     }
@@ -97,9 +114,9 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
   const slotAlt = slot.alternativeGroupIds.length > 0 ? ` или ${slot.alternativeGroupIds.join(' или ')}` : '';
 
   return (
-    <div className="screen">
+    <div className="screen" ref={root}>
       <header className="topbar">
-        <button className="topbar__back" onClick={onBack} aria-label="Назад">
+        <button className="topbar__back" onClick={() => index > 0 ? setIndex(index - 1) : onBack()} aria-label="Назад">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -109,12 +126,15 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
 
       <div className="screen__body">
         <div className="volume-head">
-          <span className="context__type">{draft.type}</span>
+          <span className="context__type">{typeLabel(draft.type)}</span>
           <span className="volume-head__meta">
-            Заполнено {filled} из {plural(total, ['слота', 'слотов', 'слотов'])}
+            Выбрано {filled} из {total}
           </span>
         </div>
+        {lastPicked && <p className="body-muted manual-feedback" role="status">Добавлено: {lastPicked}</p>}
 
+        {actionError && <p className="body-error" role="alert">{actionError}</p>}
+        {undoExclude && <p className="note" role="status">«{undoExclude}»: {excluded.has(undoExclude) ? 'исключено из будущих подборов' : 'снова доступно для подбора'}. <button className="text-action" disabled={saving !== undefined} onClick={() => void toggleExclude(undoExclude, false)}>Отменить</button></p>}
         <div className="manual-group">
           <span className="manual-group__label">
             {slot.allowedGroupIds[0]}
@@ -145,7 +165,8 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
             <li className="manual-empty">
               {excluded.size > 0 && candidates.length === 0
                 ? 'Все упражнения группы отмечены «Не предлагать». Загляни в Настройки, чтобы вернуть их.'
-                : 'Подходящих упражнений не нашлось.'}
+                : query ? `По запросу «${query}» ничего не найдено.` : 'Подходящих упражнений не нашлось.'}
+              {query && <button className="text-action" onClick={() => setQuery('')}>Сбросить поиск</button>}
             </li>
           )}
           {filtered.map((candidate) => {
@@ -186,15 +207,15 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
                     </span>
                   </span>
                 </button>
-                <span className="manual-card__row">
+                <div className="manual-card__row">
+                  <details className="plan__more manual-card__more"><summary>Ещё</summary>
                   <button
                     className="btn btn--ghost btn--sm manual-card__exclude"
                     disabled={saving !== undefined}
-                    aria-label="Не предлагать это упражнение"
                     onClick={() => void toggleExclude(candidate.name)}
                   >
-                    Не предлагать
-                  </button>
+                    Исключить из будущих подборов
+                  </button></details>
                   <button
                     className="btn btn--sm manual-card__pick"
                     aria-pressed={isActive}
@@ -202,7 +223,7 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
                   >
                     {isActive ? 'Выбрано' : 'Выбрать'}
                   </button>
-                </span>
+                </div>
               </li>
             );
           })}
@@ -219,21 +240,20 @@ export function ManualScreen({ draft, startSlotKey, onSelect, onBack, onDone, on
         )}
 
         <div className="screen__cta screen__cta--sticky">
-          {isLast ? (
-            filled === total ? (
+          {filled === total ? (
               <button className="btn btn--primary" onClick={onDone}>
-                К предпросмотру
+                Готово — посмотреть состав
+              </button>
+            ) : isLast ? (
+              <button className="btn btn--primary" onClick={onToStructure}>
+                Заполнить оставшиеся
               </button>
             ) : (
-              <button className="btn btn--primary" onClick={onToStructure}>
-                В структуру
-              </button>
-            )
-          ) : (
             <button className="btn btn--primary" onClick={() => setIndex(index + 1)}>
-              Далее
+              {selectedName ? 'Далее' : 'Пропустить пока'}
             </button>
           )}
+          <button className="btn btn--ghost" onClick={onToStructure}>Обзор состава</button>
         </div>
       </div>
 

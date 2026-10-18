@@ -1,5 +1,4 @@
 import { typeLabel } from '../lib/workoutTypes';
-import { useState } from 'react';
 import { VOLUME_LEVELS, type VolumeLevel } from '@gymix/structures';
 import { Button } from '../components/Button';
 import { exerciseCount, plural, type Draft } from '../lib/draft';
@@ -11,13 +10,14 @@ interface VolumeScreenProps {
   onContinue: () => void;
   onManual: () => void;
   onBack: () => void;
+  hasComposition?: boolean;
+  hasSelection?: boolean;
 }
 
-export function VolumeScreen({ draft, onVolumeChange, onContinue, onManual, onBack }: VolumeScreenProps) {
-  const [volume, setVolume] = useState<VolumeLevel>(draft.volume);
+export function VolumeScreen({ draft, onVolumeChange, onContinue, onManual, onBack, hasComposition, hasSelection }: VolumeScreenProps) {
+  const volume = draft.volume;
 
   const select = (value: VolumeLevel) => {
-    setVolume(value);
     onVolumeChange(value);
   };
 
@@ -65,6 +65,7 @@ export function VolumeScreen({ draft, onVolumeChange, onContinue, onManual, onBa
                   <span className="volume-card__count">
                     {plural(count, ['упражнение', 'упражнения', 'упражнений'])}
                   </span>
+                  <span className="volume-card__sets">{plural(count * 3, ['подход', 'подхода', 'подходов'])}</span>
                 </span>
               </button>
             );
@@ -73,7 +74,7 @@ export function VolumeScreen({ draft, onVolumeChange, onContinue, onManual, onBa
 
         <div className="screen__cta">
           <Button variant="primary" onClick={onContinue}>
-            Подобрать упражнения
+            {hasComposition ? 'К составу тренировки' : hasSelection ? 'Дополнить подбором' : 'Подобрать упражнения'}
           </Button>
           <button className="btn btn--ghost" onClick={onManual}>Выбрать упражнения вручную</button>
         </div>

@@ -33,7 +33,8 @@ export function RandomizerScreen({ draft, seed, onContinue, onRegenerate, onBack
       const result = generateWorkout(getCatalog(), {
         type: draft.type, volume: draft.volume,
         ...(draft.mgsGroup ? { targetGroup: draft.mgsGroup } : {}),
-        excludedExerciseNames: names,
+        // Exclusion affects future choices, not exercises already kept in this composition.
+        excludedExerciseNames: names.filter(name => !Object.values(draft.selections ?? {}).includes(name)),
         ...(draft.selections ? { lockedSelections: draft.selections } : {}),
         seed,
       });
