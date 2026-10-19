@@ -174,3 +174,29 @@ export function IconDumbbellArt({ className }: IconProps) {
     </svg>
   );
 }
+export function IconPlus({ className }: IconProps) {
+  return (
+    <Base className={className}>
+      <path d="M12 5v14M5 12h14" />
+    </Base>
+  );
+}
+
+export function IconCheck({ className }: IconProps) {
+  return (
+    <Base className={className}>
+      <path d="m5 12.5 4.5 4.5L19 7.5" />
+    </Base>
+  );
+}
+
+export function IconTrash({ className }: IconProps) {
+  return (
+    <Base className={className}>
+      <path d="M3 6h18" />
+      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+    </Base>
+  );
+}

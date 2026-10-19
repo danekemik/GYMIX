@@ -1,20 +1,38 @@
-/* Compact picker cards: supporting facts live in the exercise dialog. */
-.manual-card {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  gap: var(--space-2xs) var(--space-s);
+/* Compact picker cards: one scannable row per exercise, facts live in the dialog. */
+.manual-card--option {
+  padding: var(--space-2xs) var(--space-2xs) var(--space-2xs) var(--space-xs);
+  gap: var(--space-xs);
 }
-.manual-card__open { grid-column: 1 / -1; gap: var(--space-s); }
-.manual-card__thumb { position: relative; width: 64px; height: 64px; }
+.manual-card--option.manual-card--active { background: var(--accent-soft); }
+.manual-card--active .manual-card__equip { color: var(--accent-soft-ink); }
+.manual-card__thumb { position: relative; }
 .manual-card__hint {
-  position: absolute; right: 3px; bottom: 3px;
-  display: grid; place-items: center; width: 18px; height: 18px;
-  border-radius: 50%; background: var(--surface); color: var(--ink);
-  font-size: 12px; font-weight: 650; border: var(--border);
+  position: absolute; right: 2px; bottom: 2px;
+  display: grid; place-items: center; width: 16px; height: 16px;
+  border-radius: 50%; background: var(--surface); color: var(--ink-2);
+  font-size: 10px; font-weight: 650; border: var(--border);
 }
-.manual-card__name { line-height: 1.45; overflow-wrap: anywhere; }
-.manual-card__row { grid-column: 2; margin: 0; }
-.manual-card__pick { min-height: 44px; width: 100%; margin: 0; }
+.manual-grid--picker .manual-card__pick {
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.manual-grid--picker .manual-card__pick:hover { border-color: var(--ink-3); color: var(--ink); }
+.manual-grid--picker .manual-card__pick[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.manual-grid--picker .manual-card__pick[aria-pressed='true']:focus-visible {
+  outline: 3px solid var(--accent-ink);
+  outline-offset: -3px;
+}
+.manual-card__pick-icon { width: 20px; height: 20px; }
 .manual-card__open:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: var(--radius-s); }
 
 /* Scope the sheet geometry so ordinary confirmations keep their own layout. */

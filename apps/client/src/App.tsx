@@ -25,7 +25,6 @@ import { StructureScreen } from './screens/StructureScreen';
 import { TypeScreen } from './screens/TypeScreen';
 import { VolumeScreen } from './screens/VolumeScreen';
 import { WorkoutsScreen } from './screens/WorkoutsScreen';
-import { BUILDER_STEPS, clearBuilderState, readBuilderState, saveBuilderState, type BuilderState, type BuilderStep } from './lib/builderState';
 import { structureFor } from './lib/draft';
 import { useDialogFocus } from './hooks/useDialogFocus';
 
@@ -64,12 +63,9 @@ export function App() {
   const [manualSlotKey, setManualSlotKey] = useState<Nullable<string>>(undefined);
   const [manualReturn, setManualReturn] = useState<'volume' | 'structure' | 'preview'>('volume');
   const [entryOrder, setEntryOrder] = useState<readonly string[]>([]);
-  const [savedBuilder, setSavedBuilder] = useState<BuilderState>();
-  const [storageFailed, setStorageFailed] = useState(false);
   const [pendingChange, setPendingChange] = useState<{ run: () => void; text: string } | null>(null);
-  const [newBuilder, setNewBuilder] = useState<{ run: () => void } | null>(null);
-  const builderDialog = useRef<HTMLElement>(null);
-  useDialogFocus(builderDialog, Boolean(pendingChange || newBuilder), () => { setPendingChange(null); setNewBuilder(null); });
+  const changeDialog = useRef<HTMLElement>(null);
+  useDialogFocus(changeDialog, Boolean(pendingChange), () => setPendingChange(null));
   const [navigationError, setNavigationError] = useState('');
   const [starting, setStarting] = useState(false);
   const [libraryView, setLibraryView] = useState<'saved' | 'history'>('saved');
@@ -109,27 +105,6 @@ export function App() {
     ...(stepMgsGroup ? { mgsGroup: stepMgsGroup } : {}),
     ...(Object.keys(selections).length > 0 ? { selections } : {}),
   };
-  useEffect(() => {
-    if (db) setSavedBuilder(readBuilderState(db.account.userId));
-  }, [db]);
-  useEffect(() => {
-    if (!db || !BUILDER_STEPS.includes(step as BuilderStep)) return;
-    const value: BuilderState = { step: step as BuilderStep, draft, seed, generated, manualSlotKey, manualReturn, fromTemplate, entryOrder };
-    setSavedBuilder(value);
-    setStorageFailed(!saveBuilderState(db.account.userId, value));
-    // Draft fields are explicit dependencies; the object itself is recreated during render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, step, stepType, stepVolume, stepMgsGroup, selections, seed, generated, manualSlotKey, manualReturn, fromTemplate, entryOrder]);
-
-  const continueBuilder = () => {
-    if (!savedBuilder) return;
-    const value = savedBuilder;
-    setStepType(value.draft.type); setStepVolume(value.draft.volume); setStepMgsGroup(value.draft.mgsGroup);
-    setSelections({ ...value.draft.selections }); setGenerated(value.generated); setSeed(value.seed);
-    setManualSlotKey(value.manualSlotKey); setManualReturn(value.manualReturn); setFromTemplate(value.fromTemplate);
-    setEntryOrder(value.entryOrder ?? []);
-    setSub(undefined); setTab('today'); setNewBuilder(null); setStep(value.step);
-  };
   const changeParameter = (run: () => void) => {
     if (generated || Object.keys(selections).length) setPendingChange({ run, text: 'Изменится число или группа упражнений. Текущий состав и замены будут сброшены.' });
     else run();
@@ -166,17 +141,13 @@ export function App() {
 
   // Navigation is immediate and never waits for an animated overlay.
   const openFormats = () => {
-    const run = () => {
-      setStepType('Full Body'); setStepMgsGroup(undefined); setStepVolume('Стандартная');
-      setSelections({}); setGenerated(undefined); setFromTemplate(false); setManualSlotKey(undefined); setEntryOrder([]);
-      setNavigationError(''); setStep('type');
-    };
-    if (savedBuilder) setNewBuilder({ run }); else run();
+    setStepType('Full Body'); setStepMgsGroup(undefined); setStepVolume('Стандартная');
+    setSelections({}); setGenerated(undefined); setFromTemplate(false); setManualSlotKey(undefined); setEntryOrder([]);
+    setNavigationError(''); setStep('type');
   };
   const closeFormats = () => setStep('home');
 
-  const openTemplate = async (templateId: string, replaceExisting = false) => {
-    if (savedBuilder && step === 'home' && !replaceExisting) { setNewBuilder({ run: () => { void openTemplate(templateId, true); } }); return; }
+  const openTemplate = async (templateId: string) => {
     if (db === undefined) return;
     try {
       const workout = await queryReadModel<GeneratedWorkout>(db, `template:${templateId}`);
@@ -193,8 +164,7 @@ export function App() {
     }
   };
 
-  const openTemplateEdit = async (templateId: string, replaceExisting = false) => {
-    if (savedBuilder && step === 'home' && !replaceExisting) { setNewBuilder({ run: () => { void openTemplateEdit(templateId, true); } }); return; }
+  const openTemplateEdit = async (templateId: string) => {
     if (db === undefined) return;
     try {
       const workout = await queryReadModel<GeneratedWorkout>(db, `template:${templateId}`);
@@ -215,8 +185,7 @@ export function App() {
     }
   };
 
-  const repeatWorkout = async (sessionId: string, replaceExisting = false) => {
-    if (savedBuilder && step === 'home' && !replaceExisting) { setNewBuilder({ run: () => { void repeatWorkout(sessionId, true).catch(() => setNavigationError('Не удалось повторить тренировку. Попробуй ещё раз.')); } }); return; }
+  const repeatWorkout = async (sessionId: string) => {
     if (!db) throw new Error('Локальная база ещё открывается');
     const workout = await queryReadModel<GeneratedWorkout>(db, `repeat:${sessionId}`);
     setGenerated(workout);
@@ -245,9 +214,6 @@ export function App() {
     setSeed(randomSeed());
     setStep('randomizer');
   };
-  const quickBuild = () => {
-    if (savedBuilder) setNewBuilder({ run: quickBuildNow }); else quickBuildNow();
-  };
 
   const startWorkout = async () => {
     if (!db || !generated || starting) return;
@@ -261,7 +227,6 @@ export function App() {
       const created = await createDraft(db, generated);
       setPreparedSession(created);
       setResume(undefined);
-      clearBuilderState(db.account.userId); setSavedBuilder(undefined); setStorageFailed(false);
       setNavigationError('');
       setStep('execute');
     } catch { setNavigationError('Не удалось начать тренировку. Попробуй ещё раз.'); }
@@ -458,11 +423,9 @@ export function App() {
     body = (
       <WorkoutsScreen
         onSettings={openSettings}
-        onQuickBuild={quickBuild}
+        onQuickBuild={quickBuildNow}
         quickDraft={db ? readBuilderPreferences(db.account.userId) : undefined}
         onCreate={openFormats}
-        builderDraft={savedBuilder?.draft}
-        onContinueBuilder={continueBuilder}
         onOpenTemplates={openTemplates}
         onRepeat={repeatWorkout}
         onOpenActivity={openHistory}
@@ -483,15 +446,11 @@ export function App() {
 
   return (
     <div className="app">
-      <main ref={mainRef} className={`app__main${step === 'home' && sub === undefined ? ' app__main--tabs' : ''}`}><SyncStatus />{storageFailed && BUILDER_STEPS.includes(step as BuilderStep) && <p className="note note--error" role="alert">Не удалось сохранить сборку на устройстве. Не обновляй страницу до запуска тренировки.</p>}{navigationError && <div className="navigation-error" role="alert"><p>{navigationError}</p><button className="text-action" onClick={() => { setNavigationError(''); exitBuilder(); setSub(undefined); setTab('today'); }}>На экран «Сегодня»</button><button className="text-action" onClick={() => setNavigationError('')}>Закрыть</button></div>}{body}</main>
+      <main ref={mainRef} className={`app__main${step === 'home' && sub === undefined ? ' app__main--tabs' : ''}`}><SyncStatus />{navigationError && <div className="navigation-error" role="alert"><p>{navigationError}</p><button className="text-action" onClick={() => { setNavigationError(''); exitBuilder(); setSub(undefined); setTab('today'); }}>На экран «Сегодня»</button><button className="text-action" onClick={() => setNavigationError('')}>Закрыть</button></div>}{body}</main>
       {step === 'home' && sub === undefined && <TabBar tabs={TABS} active={tab} onChange={openTab} />}
-      {pendingChange && <div className="overlay"><section ref={builderDialog} className="dialog" role="dialog" aria-modal="true" aria-labelledby="change-composition-title">
+      {pendingChange && <div className="overlay"><section ref={changeDialog} className="dialog" role="dialog" aria-modal="true" aria-labelledby="change-composition-title">
         <h2 className="dialog__title" id="change-composition-title">Изменить состав?</h2><p className="dialog__text">{pendingChange.text}</p>
         <div className="dialog__actions"><button className="btn btn--primary" onClick={() => { pendingChange.run(); setPendingChange(null); }}>Изменить</button><button className="btn btn--ghost" onClick={() => setPendingChange(null)} autoFocus>Оставить состав</button></div>
-      </section></div>}
-      {newBuilder && <div className="overlay"><section ref={builderDialog} className="dialog" role="dialog" aria-modal="true" aria-labelledby="continue-builder-title">
-        <h2 className="dialog__title" id="continue-builder-title">Есть незаконченная сборка</h2><p className="dialog__text">Можно продолжить выбор или заменить его новой сборкой.</p>
-        <div className="dialog__actions"><button className="btn btn--primary" onClick={continueBuilder}>Продолжить сборку</button><button className="btn btn--ghost" onClick={() => { newBuilder.run(); setNewBuilder(null); }}>Начать новую</button><button className="btn btn--ghost" onClick={() => setNewBuilder(null)}>Отмена</button></div>
       </section></div>}
     </div>
   );

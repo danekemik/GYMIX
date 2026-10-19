@@ -9,7 +9,7 @@ import { useDb } from '../hooks/useDb';
 import { excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
 import { ExerciseDetail } from '../components/ExerciseDetail';
 import { exerciseArt } from '../lib/exerciseArt';
-import { IconDumbbellArt } from '../lib/icons';
+import { IconCheck, IconDumbbellArt, IconPlus } from '../lib/icons';
 
 interface ManualScreenProps {
   draft: Draft;
@@ -24,11 +24,8 @@ interface ManualScreenProps {
 export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBack, onDone, onToStructure }: ManualScreenProps) {
   const { db, revision } = useDb();
   const slots = useMemo(() => structureFor(draft).slots, [draft]);
-  const [index, setIndex] = useState(() => {
-    if (startSlotKey === undefined) return 0;
-    const found = slots.findIndex((s) => s.slotKey === startSlotKey);
-    return found < 0 ? 0 : found;
-  });
+  const [view, setView] = useState<'groups' | 'picker'>(startSlotKey !== undefined ? 'picker' : 'groups');
+  const [pickerSlotKey, setPickerSlotKey] = useState<string | undefined>(startSlotKey);
   const [query, setQuery] = useState('');
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
   const [saving, setSaving] = useState<string | undefined>(undefined);
@@ -49,17 +46,18 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
     };
   }, [db, revision]);
 
-  const slot = slots[index];
+  const slot = useMemo(() => slots.find((s) => s.slotKey === pickerSlotKey), [slots, pickerSlotKey]);
   const filled = Object.values(draft.selections ?? {}).filter((n) => n.length > 0).length;
   const total = slots.length;
   const selectedName = slot === undefined ? undefined : draft.selections?.[slot.slotKey];
+
   useEffect(() => {
+    if (view !== 'picker') return;
     setQuery('');
     root.current?.closest('main')?.scrollTo(0, 0);
     if (slot) onSlotChange(slot.slotKey);
-    // Only a different position changes the search and scroll context.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slot?.slotKey]);
+  }, [slot?.slotKey, view]);
 
   const candidates = useMemo(() => {
     if (db === undefined || slot === undefined) return [];
@@ -72,13 +70,11 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
     return candidates.filter((c) => `${c.name} ${c.equipment.join(' ')}`.toLowerCase().includes(q));
   }, [candidates, query]);
 
-  const isLast = index === total - 1;
-
   const choose = (name: string) => {
     if (slot === undefined) return;
     onSelect(slot.slotKey, name);
     setLastPicked(name);
-    if (!isLast) setIndex(index + 1);
+    setView('groups');
   };
 
   const clearChoice = () => {
@@ -109,15 +105,108 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
     }
   };
 
+  const openPicker = (slotKey: string) => {
+    setPickerSlotKey(slotKey);
+    setView('picker');
+  };
+
+  if (view === 'groups') {
+    return (
+      <div className="screen" ref={root}>
+        <header className="topbar">
+          <button className="topbar__back" onClick={onBack} aria-label="Назад">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <h1 className="topbar__title topbar__title--step">Выбор упражнений</h1>
+        </header>
+
+        <div className="screen__body">
+          <div className="progress">
+            <span className="progress__label">Выбрано {filled} из {total}</span>
+            <div className="progress__track">
+              <span className="progress__bar" style={{ width: `${total > 0 ? (filled / total) * 100 : 0}%` }} />
+            </div>
+          </div>
+
+          {lastPicked && <p className="body-muted manual-feedback" role="status">Добавлено: {lastPicked}</p>}
+          {actionError && <p className="body-error" role="alert">{actionError}</p>}
+          {undoExclude && <p className="note" role="status">«{undoExclude}»: {excluded.has(undoExclude) ? 'исключено из будущих подборов' : 'снова доступно для подбора'}. <button className="text-action" disabled={saving !== undefined} onClick={() => void toggleExclude(undoExclude, false)}>Отменить</button></p>}
+
+          <ul className="manual-grid" aria-label="Слоты">
+            {slots.map((s) => {
+              const name = draft.selections?.[s.slotKey];
+              const filledSlot = Boolean(name && name.length > 0);
+              const alternatives = s.alternativeGroupIds.filter((g) => !s.allowedGroupIds.includes(g));
+              const alt = alternatives.length > 0 ? ` или ${alternatives.join(' или ')}` : '';
+              const groupName = `${s.allowedGroupIds[0]}${alt}`;
+              if (filledSlot) {
+                const art = exerciseArt(name!);
+                return (
+                  <li key={s.slotKey} className="manual-card manual-card--active">
+                    <button className="manual-card__open" onClick={() => openPicker(s.slotKey)} aria-label={`Изменить: ${name}`}>
+                      <span
+                        className={`manual-card__thumb${art !== undefined ? (art.kind === 'photo' ? ' manual-card__thumb--photo' : ' manual-card__thumb--art') : ''}`}
+                        aria-hidden="true"
+                      >
+                        {art !== undefined ? (
+                          <img className="manual-card__thumb-img" src={art.src} alt="" loading="lazy" />
+                        ) : (
+                          <IconDumbbellArt className="manual-card__thumb-art" />
+                        )}
+                      </span>
+                      <span className="manual-card__info">
+                        <span className="manual-card__name">{name}</span>
+                        <span className="manual-card__meta">
+                          <span className="manual-card__chip">{groupName}</span>
+                        </span>
+                      </span>
+                    </button>
+                    <div className="manual-card__row">
+                      <button className="btn btn--sm manual-card__pick" onClick={() => openPicker(s.slotKey)}>Изменить</button>
+                    </div>
+                  </li>
+                );
+              }
+              return (
+                <li key={s.slotKey} className="manual-card">
+                  <div className="manual-card__info">
+                    <span className="manual-card__name">{groupName}</span>
+                    <span className="manual-group__count">не выбрано</span>
+                  </div>
+                  <div className="manual-card__row">
+                    <button className="btn btn--primary btn--sm manual-card__pick" onClick={() => openPicker(s.slotKey)}>Выбрать</button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="screen__cta screen__cta--sticky">
+            {filled === total ? (
+              <button className="btn btn--primary" onClick={onDone}>Готово — посмотреть состав</button>
+            ) : (
+              <>
+                <button className="btn btn--primary" onClick={onToStructure}>Заполнить оставшиеся</button>
+                <button className="btn btn--ghost" onClick={onToStructure}>Обзор состава</button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (slot === undefined) return null;
 
-  const alternatives = slot.alternativeGroupIds.filter(group => !slot.allowedGroupIds.includes(group));
+  const alternatives = slot.alternativeGroupIds.filter((group) => !slot.allowedGroupIds.includes(group));
   const slotAlt = alternatives.length > 0 ? ` или ${alternatives.join(' или ')}` : '';
 
   return (
     <div className="screen" ref={root}>
       <header className="topbar">
-        <button className="topbar__back" onClick={() => index > 0 ? setIndex(index - 1) : onBack()} aria-label="Назад">
+        <button className="topbar__back" onClick={() => setView('groups')} aria-label="Назад">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -126,25 +215,19 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
       </header>
 
       <div className="screen__body">
-        <div className="volume-head">
-          <span className="context__type">{typeLabel(draft.type)}</span>
-          <span className="volume-head__meta">
-            Выбрано {filled} из {total}
-          </span>
-        </div>
-        {lastPicked && <p className="body-muted manual-feedback" role="status">Добавлено: {lastPicked}</p>}
-
-        {actionError && <p className="body-error" role="alert">{actionError}</p>}
-        {undoExclude && <p className="note" role="status">«{undoExclude}»: {excluded.has(undoExclude) ? 'исключено из будущих подборов' : 'снова доступно для подбора'}. <button className="text-action" disabled={saving !== undefined} onClick={() => void toggleExclude(undoExclude, false)}>Отменить</button></p>}
         <div className="manual-group">
           <span className="manual-group__label">
             {slot.allowedGroupIds[0]}
             {slotAlt}
           </span>
           <span className="manual-group__count">
-            {index + 1} / {total}
+            {slots.findIndex((s) => s.slotKey === slot.slotKey) + 1} / {total}
           </span>
         </div>
+
+        {lastPicked && <p className="body-muted manual-feedback" role="status">Добавлено: {lastPicked}</p>}
+        {actionError && <p className="body-error" role="alert">{actionError}</p>}
+        {undoExclude && <p className="note" role="status">«{undoExclude}»: {excluded.has(undoExclude) ? 'исключено из будущих подборов' : 'снова доступно для подбора'}. <button className="text-action" disabled={saving !== undefined} onClick={() => void toggleExclude(undoExclude, false)}>Отменить</button></p>}
 
         <div className="field manual-filter">
           <label className="field__label" htmlFor="manual-query">
@@ -161,7 +244,7 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
           />
         </div>
 
-        <ul className="manual-grid" aria-label="Подходящие упражнения">
+        <ul className="manual-grid manual-grid--picker" aria-label="Подходящие упражнения">
           {filtered.length === 0 && (
             <li className="manual-empty">
               {excluded.size > 0 && candidates.length === 0
@@ -174,7 +257,7 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
             const isActive = candidate.name === selectedName;
             const art = exerciseArt(candidate.name);
             return (
-              <li key={candidate.name} className={`manual-card ${isActive ? 'manual-card--active' : ''}`}>
+              <li key={candidate.name} className={`manual-card manual-card--option${isActive ? ' manual-card--active' : ''}`}>
                 <button
                   className="manual-card__open"
                   onClick={() => setDetail(candidate)}
@@ -196,48 +279,37 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
                   </span>
                   <span className="manual-card__info">
                     <span className="manual-card__name">{candidate.name}</span>
+                    {candidate.equipment.length > 0 && (
+                      <span className="manual-card__equip">{candidate.equipment.join(' · ')}</span>
+                    )}
                   </span>
                 </button>
-                <div className="manual-card__row">
-                  <button
-                    className="btn btn--sm manual-card__pick"
-                    aria-pressed={isActive}
-                    onClick={() => choose(candidate.name)}
-                  >
-                    {isActive ? 'Выбрано' : 'Выбрать'}
-                  </button>
-                </div>
+                <button
+                  className="btn manual-card__pick"
+                  type="button"
+                  aria-pressed={isActive}
+                  aria-label={`Выбрать: ${candidate.name}`}
+                  onClick={() => (isActive ? clearChoice() : choose(candidate.name))}
+                >
+                  {isActive ? (
+                    <IconCheck className="manual-card__pick-icon" />
+                  ) : (
+                    <IconPlus className="manual-card__pick-icon" />
+                  )}
+                </button>
               </li>
             );
           })}
         </ul>
 
-        {selectedName !== undefined && selectedName !== '' && (
-          <div className="manual-current">
-            <span className="manual-current__slot">Выбрано:</span>
-            <span className="manual-current__name">{selectedName}</span>
-            <button className="btn btn--ghost btn--sm" onClick={clearChoice}>
-              Снять
-            </button>
-          </div>
-        )}
-
-        <div className="screen__cta screen__cta--sticky">
-          {filled === total ? (
-              <button className="btn btn--primary" onClick={onDone}>
-                Готово — посмотреть состав
-              </button>
-            ) : isLast ? (
-              <button className="btn btn--primary" onClick={onToStructure}>
-                Заполнить оставшиеся
-              </button>
-            ) : (
-            <button className="btn btn--primary" onClick={() => setIndex(index + 1)}>
-              {selectedName ? 'Далее' : 'Пропустить пока'}
-            </button>
+        <div className="manual-current">
+          <span className="manual-current__slot">Выбрано:</span>
+          <span className="manual-current__name">{selectedName && selectedName.length > 0 ? selectedName : '—'}</span>
+          {selectedName && selectedName.length > 0 && (
+            <button className="btn btn--ghost btn--sm" onClick={clearChoice}>Снять</button>
           )}
-          <button className="btn btn--ghost" onClick={onToStructure}>Обзор состава</button>
         </div>
+
       </div>
 
       {detail !== null && (

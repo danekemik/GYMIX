@@ -64,3 +64,6 @@
   .screen--home .recent-row { gap: var(--space-2xs); }
   .screen--home .recent-row__plate { width: 36px; height: 40px; }
 }
+
+.screen--home .hero__discard { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; background: rgba(10, 12, 8, .12); color: var(--accent-ink); border-radius: 50%; text-decoration: none; }
+.screen--home .hero__discard-icon { width: 18px; height: 18px; }

@@ -10,7 +10,7 @@ import type { Draft } from '../lib/draft';
 import { getUserName } from '../lib/account';
 import { plural } from '../lib/draft';
 import { formatDay, formatDurationMs } from '../lib/format';
-import { IconArrowRight, IconChevronRight } from '../lib/icons';
+import { IconArrowRight, IconChevronRight, IconTrash } from '../lib/icons';
 import { typeIcon } from '../lib/typeIcon';
 import {
   deleteDraft,
@@ -30,8 +30,6 @@ interface WorkoutsScreenProps {
   onOpenActivity: () => void;
   onOpenSession: (sessionId: string) => void;
   onResume: (session: ResumedSession) => void;
-  builderDraft?: Draft | undefined;
-  onContinueBuilder: () => void;
 }
 
 export function WorkoutsScreen({
@@ -44,8 +42,6 @@ export function WorkoutsScreen({
   onOpenActivity,
   onOpenSession,
   onResume,
-  builderDraft,
-  onContinueBuilder,
 }: WorkoutsScreenProps) {
   const { db, error } = useDb();
   const name = getUserName();
@@ -124,12 +120,11 @@ export function WorkoutsScreen({
           {activeDraft && (activeDraft.readOnly ? (
             <p className="hero__ownership" id="draft-ownership">Занятие открыто на другом устройстве. Можно продолжить на этом.</p>
           ) : (
-            <button className="hero__discard" onClick={() => setRemoveDraft(true)} disabled={busy}>Удалить черновик</button>
+            <button className="hero__discard" onClick={() => setRemoveDraft(true)} disabled={busy} aria-label="Удалить черновик"><IconTrash className="hero__discard-icon" /></button>
           ))}
         </section>
 
         <section className="today-links" aria-label="Другие варианты старта">
-          {builderDraft && draft === null && <button className="journal-link" onClick={onContinueBuilder}><span><strong>Продолжить сборку</strong><small>{typeLabel(builderDraft.type)} · {builderDraft.volume}</small></span><IconChevronRight /></button>}
           {draft === null && recent !== 'loading' && recent.length > 0 && (
             <button className="journal-link" disabled={busy} onClick={() => {
               setBusy(true); setActionError('');
