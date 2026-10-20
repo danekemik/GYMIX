@@ -51,54 +51,6 @@ export function plural(n: number, [one, few, many]: [string, string, string]): s
   return `${n} ${many}`;
 }
 
-export interface RosterSlot {
-  readonly slotKey: string;
-  readonly label: string;
-  readonly alt?: string;
-}
-
-export interface RosterRow {
-  readonly key: string;
-  readonly label: string;
-  readonly alt?: string;
-  readonly count: number;
-  readonly slots: readonly RosterSlot[];
-}
-
-/**
- * Слоты структуры, сгруппированные по целевой группе, в порядке появления.
- * Слот с альтернативами («Бицепс или Трицепс») остаётся отдельной строкой.
- * Внутри строки сохраняется исходный порядок слотов — он нужен для раскрытия.
- */
-export function rosterRows(slots: readonly Slot[]): RosterRow[] {
-  const order: string[] = [];
-  const byKey = new Map<string, { label: string; alt?: string; slots: RosterSlot[] }>();
-
-  for (const slot of slots) {
-    const label = slot.allowedGroupIds[0] ?? 'Слот';
-    const alt = slot.alternativeGroupIds.filter(group => !slot.allowedGroupIds.includes(group)).join(' или ');
-    const key = alt ? `${label}±${alt}` : label;
-    let entry = byKey.get(key);
-    if (entry === undefined) {
-      entry = { label, ...(alt ? { alt } : {}), slots: [] };
-      byKey.set(key, entry);
-      order.push(key);
-    }
-    entry.slots.push({ slotKey: slot.slotKey, label, ...(alt ? { alt } : {}) });
-  }
-
-  return order.map((key) => {
-    const entry = byKey.get(key)!;
-    return {
-      key,
-      label: entry.label,
-      ...(entry.alt ? { alt: entry.alt } : {}),
-      count: entry.slots.length,
-      slots: entry.slots,
-    };
-  });
-}
-
 /** Уникальные группы охвата для карточки объёма. */
 export function coverageGroups(slots: readonly Slot[]): string[] {
   return [...new Set(slots.flatMap((slot) => slot.allowedGroupIds))];

@@ -123,6 +123,14 @@ async function _renameTemplate(db: GymixDb, templateId: string, title: string, p
     .where(eq(workoutTemplates.id, templateId));
 }
 
+export function copyTitle(sourceTitle: string, taken: ReadonlySet<string>): string {
+  // Не наследуем суффикс копии, иначе появляются «X · копия · копия».
+  const base = `${sourceTitle.replace(/(?: · копия)+(?: \d+)?$/, '')} · копия`;
+  let title = base;
+  for (let n = 2; taken.has(title); n += 1) title = `${base} ${n}`;
+  return title;
+}
+
 async function _copyTemplate(db: GymixDb, templateId: string): Promise<string> {
   const source = await loadTemplate(db, templateId);
   const owner = await ensureLocalOwner(db);
@@ -130,11 +138,7 @@ async function _copyTemplate(db: GymixDb, templateId: string): Promise<string> {
     .select({ title: workoutTemplates.title })
     .from(workoutTemplates)
     .where(eq(workoutTemplates.userId, owner.userId));
-  const taken = new Set(existing.map((row) => row.title));
-  // Не наследуем суффикс копии, иначе появляются «X · копия · копия».
-  const base = `${source.title.replace(/(?: · копия)+(?: \d+)?$/, '')} · копия`;
-  let title = base;
-  for (let n = 2; taken.has(title); n += 1) title = `${base} ${n}`;
+  const title = copyTitle(source.title, new Set(existing.map((row) => row.title)));
   const [copy] = await db.db
     .insert(workoutTemplates)
     .values({

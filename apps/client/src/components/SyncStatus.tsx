@@ -94,7 +94,7 @@ export function SyncStatus() {
         <p className="sync-notice__text sync-notice__text--muted">Локальная копия останется в резервной выгрузке.</p>
       </section>)}
       {(conflicts.length > 0 || message) && <div className="sync-notice__actions">
-        <button type="button" className="sync-notice__btn" onClick={() => void download().catch(() => setMessage('Не удалось подготовить выгрузку'))}>Скачать локальную резервную копию</button>
+        <button type="button" className="sync-notice__btn" onClick={() => void download().catch(() => setMessage('Не удалось подготовить выгрузку'))}>Сохранить копию перед решением</button>
       </div>}
     </details>
   </aside>;

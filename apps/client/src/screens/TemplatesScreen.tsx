@@ -20,7 +20,7 @@ interface TemplatesScreenProps {
 
 type MenuTarget = TemplateCard | null;
 
-/** «Мои тренировки» — сохранённые шаблоны, вынесены с главного экрана. */
+/** Сохранённые шаблоны тренировок, вынесены с главного экрана. */
 export function TemplatesScreen({
   onOpenTemplate,
   onEditTemplate,
@@ -85,7 +85,7 @@ export function TemplatesScreen({
       <div className="screen__body">
         {actionError && <p className="body-error" role="alert">{actionError}</p>}
         {feedback && <p className="note" role="status">{feedback}</p>}
-        <section className="mine" aria-label="Мои тренировки">
+        <section className="mine" aria-label="Сохранённые шаблоны">
           {loadError && data === undefined ? <div className="note note--error" role="alert">Не удалось загрузить сохранённые тренировки.<button className="text-action" onClick={() => void reload()}>Повторить</button></div> : templates === 'loading' ? (
             <p className="body-muted">Загружаем тренировки…</p>
           ) : templates.length === 0 ? (

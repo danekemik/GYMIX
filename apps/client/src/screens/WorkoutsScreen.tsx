@@ -134,11 +134,11 @@ export function WorkoutsScreen({
               <span><strong>{busy ? 'Открываем…' : 'Повторить последнюю'}</strong><small>{typeLabel(recent[0]!.type)} · {formatDay(recent[0]!.completedAt)}</small></span><IconChevronRight />
             </button>
           )}
-          <button className="journal-link" onClick={onOpenTemplates}><span><strong>Мои тренировки</strong><small>Сохранённые варианты для быстрого старта</small></span><IconChevronRight /></button>
+          <button className="journal-link" onClick={onOpenTemplates}><span><strong>Сохранённые</strong><small>Тренировки для быстрого старта</small></span><IconChevronRight /></button>
           {!draftLoading && quickDraft && draft === null && <button className="journal-link" disabled={busy} onClick={onQuickBuild}><span><strong>Новый состав</strong><small>По прошлым настройкам · {typeLabel(quickDraft.type)}</small></span><IconChevronRight /></button>}
         </section>
 
-        <WeekActivity variant="timeline" />
+        <WeekActivity variant="timeline" title="На неделе" />
 
         <section className="recent" aria-label="Последние тренировки">
           <div className="section-head">

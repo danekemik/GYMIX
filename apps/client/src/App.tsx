@@ -14,14 +14,12 @@ import type { Draft } from './lib/draft';
 import { createDraft, type DraftSession, type ResumedSession } from './lib/session';
 import { ExecuteScreen, type FinishPayload } from './screens/ExecuteScreen';
 import { FinishScreen } from './screens/FinishScreen';
-import { ManualScreen } from './screens/ManualScreen';
-import { MgsGroupScreen } from './screens/MgsGroupScreen';
+import { ManualScreen } from './screens/ManualScreen';import { MgsGroupScreen } from './screens/MgsGroupScreen';
 import { PreviewScreen } from './screens/PreviewScreen';
 import { ProgressScreen } from './screens/ProgressScreen';
 import { RandomizerScreen } from './screens/RandomizerScreen';
 import { RecordScreen } from './screens/RecordScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
-import { StructureScreen } from './screens/StructureScreen';
 import { TypeScreen } from './screens/TypeScreen';
 import { VolumeScreen } from './screens/VolumeScreen';
 import { WorkoutsScreen } from './screens/WorkoutsScreen';
@@ -34,7 +32,7 @@ const TABS = [
   { id: 'progress', label: 'Прогресс', icon: <span className="tabbar__glyph tabbar__glyph--rise" /> },
 ];
 
-type Step = 'home' | 'type' | 'mgs' | 'volume' | 'structure' | 'manual' | 'randomizer' | 'preview' | 'execute' | 'finish';
+type Step = 'home' | 'type' | 'mgs' | 'volume' | 'manual' | 'randomizer' | 'preview' | 'execute' | 'finish';
 type Nullable<T> = T | undefined;
 
 /** Подэкраны поверх основных разделов. */
@@ -61,7 +59,7 @@ export function App() {
   const [fromTemplate, setFromTemplate] = useState(false);
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [manualSlotKey, setManualSlotKey] = useState<Nullable<string>>(undefined);
-  const [manualReturn, setManualReturn] = useState<'volume' | 'structure' | 'preview'>('volume');
+  const [manualReturn, setManualReturn] = useState<'volume' | 'preview'>('volume');
   const [entryOrder, setEntryOrder] = useState<readonly string[]>([]);
   const [pendingChange, setPendingChange] = useState<{ run: () => void; text: string } | null>(null);
   const changeDialog = useRef<HTMLElement>(null);
@@ -118,7 +116,7 @@ export function App() {
       const positions = new Map(entryOrder.map((key, index) => [key, index]));
       setGenerated({ ...plan, entries: [...plan.entries].sort((a, b) => (positions.get(a.slotKey) ?? 999) - (positions.get(b.slotKey) ?? 999)) });
       setStep('preview');
-    } catch { setNavigationError('Не удалось собрать состав. Проверь выбранные упражнения.'); setStep('structure'); }
+    } catch { setNavigationError('Не удалось собрать состав. Проверь выбранные упражнения.'); setStep('manual'); }
   };
   const editComposition = () => {
     if (generated) {
@@ -178,7 +176,7 @@ export function App() {
       setFromTemplate(false);
       setGenerated(undefined);
       setManualSlotKey(undefined);
-      setManualReturn('structure');
+      setManualReturn('volume');
       setStep('manual');
     } catch {
       setNavigationError('Не удалось открыть сохранённую тренировку. Попробуй ещё раз.');
@@ -283,27 +281,6 @@ export function App() {
         onBack={() => setStep(isMgs(stepType) ? 'mgs' : 'type')}
       />
     );
-  } else if (step === 'structure') {
-    body = (
-      <StructureScreen
-        draft={draft}
-        onBack={() => setStep('volume')}
-        onManual={() => {
-          setManualReturn('structure');
-          setManualSlotKey(undefined);
-          setStep('manual');
-        }}
-        onOpenSlot={(slotKey) => {
-          setManualReturn('structure');
-          setManualSlotKey(slotKey);
-          setStep('manual');
-        }}
-        onGenerate={() => {
-          if (Object.keys(selections).length === structureFor(draft).slots.length) showManualPreview();
-          else { setSeed(randomSeed()); setGenerated(undefined); setStep('randomizer'); }
-        }}
-      />
-    );
   } else if (step === 'manual') {
     body = (
       <ManualScreen
@@ -319,9 +296,8 @@ export function App() {
         }}
         onBack={() => {
           if (manualReturn === 'preview' && Object.keys(selections).length === structureFor(draft).slots.length) showManualPreview();
-          else setStep(manualReturn === 'volume' ? 'volume' : 'structure');
+          else setStep('volume');
         }}
-        onToStructure={() => setStep('structure')}
         onGenerate={() => {
           if (Object.keys(selections).length === structureFor(draft).slots.length) showManualPreview();
           else { setSeed(randomSeed()); setGenerated(undefined); setStep('randomizer'); }

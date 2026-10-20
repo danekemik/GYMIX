@@ -1,9 +1,9 @@
 import { queryExcludedNames } from '../data/local/read-rpc';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useId, useEffect, useMemo, useRef, useState } from 'react';
 import { typeLabel } from '../lib/workoutTypes';
 import { slotCandidates } from '@gymix/generator';
 import type { CatalogExercise } from '@gymix/catalog/parse';
-import { structureFor, type Draft } from '../lib/draft';
+import { plural, structureFor, type Draft } from '../lib/draft';
 import { getCatalog } from '../lib/catalog';
 import { useDb } from '../hooks/useDb';
 import { excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
@@ -18,13 +18,13 @@ interface ManualScreenProps {
   onSelect: (slotKey: string, name: string) => void;
   onBack: () => void;
   onDone: () => void;
-  onToStructure: () => void;
   onGenerate: () => void;
 }
 
-export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBack, onDone, onToStructure, onGenerate }: ManualScreenProps) {
+export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBack, onDone, onGenerate }: ManualScreenProps) {
   const { db, revision } = useDb();
   const slots = useMemo(() => structureFor(draft).slots, [draft]);
+  const progressLabelId = useId();
   const [view, setView] = useState<'groups' | 'picker'>(startSlotKey !== undefined ? 'picker' : 'groups');
   const [pickerSlotKey, setPickerSlotKey] = useState<string | undefined>(startSlotKey);
   const [query, setQuery] = useState('');
@@ -124,11 +124,26 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
         </header>
 
         <div className="screen__body">
+          <div className="volume-head volume-head--stack">
+            <span className="context__type">{typeLabel(draft.type)}</span>
+            <span className="volume-head__meta volume-head__meta--stack">
+              <span>{draft.volume}</span>
+              <span>{plural(total, ['упражнение', 'упражнения', 'упражнений'])}</span>
+            </span>
+          </div>
+
           <div className="progress">
-            <span className="progress__label">Выбрано {filled} из {total}</span>
-            <div className="progress__track">
+            <span className="progress__label" id={progressLabelId}>Выбрано {filled} из {total} упражнений</span>
+            <span
+              className="progress__track"
+              role="progressbar"
+              aria-labelledby={progressLabelId}
+              aria-valuemin={0}
+              aria-valuemax={total}
+              aria-valuenow={filled}
+            >
               <span className="progress__bar" style={{ width: `${total > 0 ? (filled / total) * 100 : 0}%` }} />
-            </div>
+            </span>
           </div>
 
           {lastPicked && <p className="body-muted manual-feedback" role="status">Добавлено: {lastPicked}</p>}
@@ -186,12 +201,9 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
 
           <div className="screen__cta screen__cta--sticky">
             {filled === total ? (
-              <button className="btn btn--primary" onClick={onDone}>Готово — посмотреть состав</button>
+              <button className="btn btn--primary" onClick={onDone}>Посмотреть тренировку</button>
             ) : (
-              <>
-                <button className="btn btn--primary" onClick={onGenerate}>Заполнить оставшиеся</button>
-                <button className="btn btn--ghost" onClick={onToStructure}>Обзор состава</button>
-              </>
+              <button className="btn btn--primary" onClick={onGenerate}>Заполнить оставшиеся</button>
             )}
           </div>
         </div>
