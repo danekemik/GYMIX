@@ -13,8 +13,6 @@ import {
 } from '../lib/templates';
 
 interface TemplatesScreenProps {
-  embedded?: boolean;
-  onBack: () => void;
   onOpenTemplate: (templateId: string) => void;
   onEditTemplate: (templateId: string) => void;
   onCreate: () => void;
@@ -24,8 +22,6 @@ type MenuTarget = TemplateCard | null;
 
 /** «Мои тренировки» — сохранённые шаблоны, вынесены с главного экрана. */
 export function TemplatesScreen({
-  embedded = false,
-  onBack,
   onOpenTemplate,
   onEditTemplate,
   onCreate,
@@ -38,15 +34,20 @@ export function TemplatesScreen({
   const [renameValue, setRenameValue] = useState('');
   const [removeFor, setRemoveFor] = useState<MenuTarget>(null);
   const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const doRename = async () => {
     const title = renameValue.trim();
     if (title === '' || db === undefined || renameFor === null) return;
-    setBusy(true);
+    setBusy(true); setActionError('');
     try {
       await renameTemplate(db, renameFor.id, title, renameFor.title);
       setRenameFor(null);
       await reload();
+      setFeedback('Шаблон переименован.');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Не удалось переименовать шаблон.');
     } finally {
       setBusy(false);
     }
@@ -54,11 +55,14 @@ export function TemplatesScreen({
 
   const doCopy = async () => {
     if (db === undefined || menuFor === null) return;
-    setBusy(true);
+    setBusy(true); setActionError(''); setFeedback('');
     try {
       await copyTemplate(db, menuFor.id);
       setMenuFor(null);
       await reload();
+      setFeedback('Копия шаблона создана.');
+    } catch {
+      setActionError('Не удалось скопировать шаблон. Попробуй ещё раз.');
     } finally {
       setBusy(false);
     }
@@ -77,17 +81,10 @@ export function TemplatesScreen({
   };
 
   return (
-    <div className={embedded ? "library__content" : "screen"}>
-      {!embedded && <header className="topbar">
-        <button className="topbar__back" aria-label="Назад" onClick={onBack}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        <h1 className="topbar__title topbar__title--step">Мои тренировки</h1>
-      </header>}
-
+    <div className="library__content">
       <div className="screen__body">
+        {actionError && <p className="body-error" role="alert">{actionError}</p>}
+        {feedback && <p className="note" role="status">{feedback}</p>}
         <section className="mine" aria-label="Мои тренировки">
           {loadError && data === undefined ? <div className="note note--error" role="alert">Не удалось загрузить сохранённые тренировки.<button className="text-action" onClick={() => void reload()}>Повторить</button></div> : templates === 'loading' ? (
             <p className="body-muted">Загружаем тренировки…</p>

@@ -322,6 +322,10 @@ export function App() {
           else setStep(manualReturn === 'volume' ? 'volume' : 'structure');
         }}
         onToStructure={() => setStep('structure')}
+        onGenerate={() => {
+          if (Object.keys(selections).length === structureFor(draft).slots.length) showManualPreview();
+          else { setSeed(randomSeed()); setGenerated(undefined); setStep('randomizer'); }
+        }}
         onDone={showManualPreview}
       />
     );
@@ -438,10 +442,8 @@ export function App() {
     );
   } else if (tab === 'workouts') {
     body = <LibraryScreen view={libraryView} onViewChange={setLibraryView} onSettings={openSettings} onCreate={openFormats} onOpenSession={openRecord} onOpenTemplate={(id) => void openTemplate(id)} onEditTemplate={(id) => void openTemplateEdit(id)} />;
-  } else if (tab === 'progress') {
-    body = <ProgressScreen onSettings={openSettings} />;
   } else {
-    body = <SoonScreen tab={tab} />;
+    body = <ProgressScreen onSettings={openSettings} />;
   }
 
   return (
@@ -452,20 +454,6 @@ export function App() {
         <h2 className="dialog__title" id="change-composition-title">Изменить состав?</h2><p className="dialog__text">{pendingChange.text}</p>
         <div className="dialog__actions"><button className="btn btn--primary" onClick={() => { pendingChange.run(); setPendingChange(null); }}>Изменить</button><button className="btn btn--ghost" onClick={() => setPendingChange(null)} autoFocus>Оставить состав</button></div>
       </section></div>}
-    </div>
-  );
-}
-
-function SoonScreen({ tab }: { tab: string; }) {
-  const label = TABS.find((t) => t.id === tab)?.label ?? 'Раздел';
-  return (
-    <div className="screen">
-      <header className="topbar">
-        <h1 className="topbar__title">{label}</h1>
-      </header>
-      <div className="screen__body">
-        <p className="body-muted">Раздел «{label}» появится в ближайших шагах.</p>
-      </div>
     </div>
   );
 }

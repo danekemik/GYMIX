@@ -48,6 +48,36 @@ it('не запускает параллельные проверки, объе�
   runner.stop();
 });
 
+it('удлиняет интервал после повторных ошибок', async () => {
+  vi.useFakeTimers();
+  const run = vi.fn<() => Promise<boolean>>().mockRejectedValue(new Error('offline'));
+  const runner = startSyncRunner({ run, onBusy: vi.fn(), onSuccess: vi.fn(), onError: vi.fn() });
+  runner.request();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(run).toHaveBeenCalledTimes(1);
+  await vi.advanceTimersByTimeAsync(15000);
+  expect(run).toHaveBeenCalledTimes(2);
+  await vi.advanceTimersByTimeAsync(30000);
+  expect(run).toHaveBeenCalledTimes(3);
+  await vi.advanceTimersByTimeAsync(60000);
+  expect(run).toHaveBeenCalledTimes(4);
+  runner.stop();
+});
+
+it('ограничивает экспоненциальный интервал', async () => {
+  vi.useFakeTimers();
+  const run = vi.fn<() => Promise<boolean>>().mockRejectedValue(new Error('offline'));
+  const runner = startSyncRunner({ run, onBusy: vi.fn(), onSuccess: vi.fn(), onError: vi.fn(), maxIntervalMs: 20000 });
+  runner.request();
+  await vi.advanceTimersByTimeAsync(0);
+  expect(run).toHaveBeenCalledTimes(1);
+  await vi.advanceTimersByTimeAsync(15000);
+  expect(run).toHaveBeenCalledTimes(2);
+  await vi.advanceTimersByTimeAsync(20000);
+  expect(run).toHaveBeenCalledTimes(3);
+  runner.stop();
+});
+
 it('после закрытия экрана не меняет состояние и не запускает новые проверки', async () => {
   vi.useFakeTimers();
   let release!: (done: boolean) => void;

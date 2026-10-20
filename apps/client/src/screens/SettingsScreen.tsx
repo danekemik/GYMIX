@@ -21,6 +21,7 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
   const [query, setQuery] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmingAll, setConfirmingAll] = useState(false);
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
 
   const filtered = useMemo(() => {
     if (items === undefined) return undefined;
@@ -55,12 +56,16 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
   return (
     <div className="screen">
       <header className="topbar">
-        <button className="topbar__back" onClick={onBack} aria-label="Назад">←</button><h1 className="topbar__title topbar__title--step">Настройки</h1>
+        <button className="topbar__back" onClick={onBack} aria-label="Назад">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button><h1 className="topbar__title topbar__title--step">Настройки</h1>
       </header>
 
       <div className="screen__body">
         <p className="body-muted">{getSession()?.user.email}</p>
-        <button className="btn btn--ghost" onClick={() => void signOut()}>Выйти из аккаунта</button>
+        <button className="btn btn--ghost" onClick={() => setConfirmingSignOut(true)}>Выйти из аккаунта</button>
         <button className="btn btn--ghost" disabled={!db} onClick={() => { if (db) void downloadLocalBackup(db).catch(() => setError('Не удалось создать резервную копию')); }}>Скачать локальную резервную копию</button>
 
 
@@ -174,6 +179,37 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
                 className="btn btn--ghost"
                 disabled={busy}
                 onClick={() => setConfirmingAll(false)}
+              >
+                Отмена
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {confirmingSignOut && (
+        <div className="overlay">
+          <section
+            className="dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Выйти из аккаунта?"
+          >
+            <h2 className="dialog__title">Выйти из аккаунта?</h2>
+            <p className="dialog__text">
+              Тренировки и история останутся на устройстве. Для синхронизации
+              потребуется войти повторно.
+            </p>
+            <div className="dialog__actions">
+              <button
+                className="btn btn--primary"
+                onClick={() => void signOut()}
+              >
+                Выйти
+              </button>
+              <button
+                className="btn btn--ghost"
+                onClick={() => setConfirmingSignOut(false)}
               >
                 Отмена
               </button>

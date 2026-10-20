@@ -72,19 +72,18 @@ export function SyncStatus() {
   // Sync runs in the background. Only actionable conflicts or reauthentication
   // belong in the global UI; opening/reading/success/offline are silent.
   if (!alert) return null;
-  const showActions = true;
   return <aside className="sync-notice" aria-label="Синхронизация" data-state="alert">
     <div className="sync-notice__status">
       <span className="sync-notice__dot" aria-hidden />
       <p role="status" className="sync-notice__text">{conflicts.length ? 'Есть изменения, требующие решения.' : 'Нужно повторно войти для синхронизации.'}</p>
     </div>
-    {showActions && <details className="sync-notice__details" open={alert || undefined}>
+    <details className="sync-notice__details" open={alert || undefined}>
       <summary>Подробнее</summary>
       {message && <p className="sync-notice__text sync-notice__text--muted">{message}</p>}
-      {showActions && <div className="sync-notice__actions">
+      <div className="sync-notice__actions">
         <button type="button" className="sync-notice__btn" onClick={() => setRetry(x => x + 1)} disabled={busy}>Синхронизировать</button>
         {needsLogin && <button type="button" className="sync-notice__btn sync-notice__btn--accent" onClick={() => setLogin(true)}>Войти повторно</button>}
-      </div>}
+      </div>
       {conflicts.map(entry => <section className="sync-notice__conflict" key={entry.seq}>
         <p className="sync-notice__text">{entry.reply?.message ?? 'Запись изменена на другом устройстве.'}</p>
         <p className="sync-notice__text sync-notice__text--muted">{entry.payload?.kind === 'template' ? entry.payload.title : entry.payload?.kind === 'workout' ? `${entry.payload.type} · ${entry.payload.startedAt.slice(0, 10)}` : entry.key.startsWith('weight:') ? `Вес тела · ${entry.key.slice(7)}` : 'Исключённые упражнения'}</p>
@@ -97,6 +96,6 @@ export function SyncStatus() {
       {(conflicts.length > 0 || message) && <div className="sync-notice__actions">
         <button type="button" className="sync-notice__btn" onClick={() => void download().catch(() => setMessage('Не удалось подготовить выгрузку'))}>Скачать локальную резервную копию</button>
       </div>}
-    </details>}
+    </details>
   </aside>;
 }

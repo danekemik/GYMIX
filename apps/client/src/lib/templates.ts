@@ -126,11 +126,20 @@ async function _renameTemplate(db: GymixDb, templateId: string, title: string, p
 async function _copyTemplate(db: GymixDb, templateId: string): Promise<string> {
   const source = await loadTemplate(db, templateId);
   const owner = await ensureLocalOwner(db);
+  const existing = await db.db
+    .select({ title: workoutTemplates.title })
+    .from(workoutTemplates)
+    .where(eq(workoutTemplates.userId, owner.userId));
+  const taken = new Set(existing.map((row) => row.title));
+  // Не наследуем суффикс копии, иначе появляются «X · копия · копия».
+  const base = `${source.title.replace(/(?: · копия)+(?: \d+)?$/, '')} · копия`;
+  let title = base;
+  for (let n = 2; taken.has(title); n += 1) title = `${base} ${n}`;
   const [copy] = await db.db
     .insert(workoutTemplates)
     .values({
       userId: owner.userId,
-      title: `${source.title} · копия`,
+      title,
       typeId: source.typeId,
       volumeId: source.volumeId,
     })

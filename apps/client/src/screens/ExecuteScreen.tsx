@@ -594,7 +594,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
           );
         })()}
       </fieldset>
-      {detail && <ExerciseDetail exercise={detail} pickLabel="" excluded={false} onClose={() => setDetail(null)} />}
+      {detail && <ExerciseDetail exercise={detail} onClose={() => setDetail(null)} />}
     </div>
   );
 }

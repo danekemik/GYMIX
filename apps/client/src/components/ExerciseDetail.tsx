@@ -6,10 +6,10 @@ import { useDialogFocus } from '../hooks/useDialogFocus';
 
 interface ExerciseDetailProps {
   exercise: CatalogExercise;
-  /** Подпись основной кнопки выбора. */
-  pickLabel: string;
+  /** Подпись основной кнопки выбора. Кнопка показывается только вместе с onPick. */
+  pickLabel?: string;
   picked?: boolean;
-  excluded: boolean;
+  excluded?: boolean;
   saving?: boolean;
   onPick?: () => void;
   onToggleExclude?: () => void;
@@ -22,7 +22,7 @@ export function ExerciseDetail({
   exercise,
   pickLabel,
   picked = false,
-  excluded,
+  excluded = false,
   saving = false,
   onPick,
   onToggleExclude,
@@ -87,7 +87,7 @@ export function ExerciseDetail({
         <div className="dialog__actions">
           {onPick !== undefined && (
             <button className="btn btn--primary" aria-pressed={picked} onClick={onPick}>
-              {pickLabel}
+              {pickLabel ?? 'Выбрать'}
             </button>
           )}
           {onToggleExclude && <button

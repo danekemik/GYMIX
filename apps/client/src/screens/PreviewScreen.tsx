@@ -345,7 +345,7 @@ export function PreviewScreen({
           </section>
         </div>
       )}
-      {detail && <ExerciseDetail exercise={detail} pickLabel="" excluded={false} onClose={() => setDetail(null)} />}
+      {detail && <ExerciseDetail exercise={detail} onClose={() => setDetail(null)} />}
       </fieldset>
     </div>
   );

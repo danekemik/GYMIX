@@ -21,6 +21,7 @@ export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
   const [metric, setMetric] = useState<'weight' | 'reps'>('weight');
   const [weightInput, setWeightInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const [weightError, setWeightError] = useState('');
 
   const { data, error: readError, reload } = useLocalRead<{ series: ExerciseSeries[]; body: BodyWeightPoint[]; }>(`progress:${period}`, `progress:${period}:${new Date().toDateString()}`);
   const series = data?.series;
@@ -53,7 +54,11 @@ export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
   const recordWeight = async () => {
     if (db === undefined) return;
     const raw = weightInput.trim().replace(',', '.');
-    if (raw === '' || !/^\d+(\.\d{1,2})?$/.test(raw)) return;
+    if (raw === '' || !/^\d+(\.\d{1,2})?$/.test(raw)) {
+      setWeightError('Введи вес числом, например 72,5');
+      return;
+    }
+    setWeightError('');
     setSaving(true);
     try {
       await saveBodyWeight(db, new Date().toISOString().slice(0, 10), Number(raw));
@@ -213,14 +218,17 @@ export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
               min="0"
               step="0.1"
               value={weightInput}
-              onChange={(e) => setWeightInput(e.target.value)}
+              onChange={(e) => { setWeightInput(e.target.value); if (weightError) setWeightError(''); }}
               placeholder={`Вес сегодня, кг (${formatDate(new Date())})`}
               aria-label="Записать вес тела на сегодня"
+              aria-invalid={weightError !== '' || undefined}
+              aria-describedby={weightError ? 'weight-error' : undefined}
             />
             <button className="btn btn--primary btn--sm" disabled={saving} onClick={() => void recordWeight()}>
               Записать
             </button>
           </div>
+          {weightError && <p className="body-error" id="weight-error" role="alert">{weightError}</p>}
         </section>
       </div>
     </div>

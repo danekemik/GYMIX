@@ -49,6 +49,7 @@ export function WorkoutsScreen({
   const draftRead = useLocalRead<DraftSummary | null>('active');
   const recent = historyRead.data?.slice(0, 2) ?? 'loading';
   const draft = draftRead.data === undefined ? 'loading' : draftRead.data;
+  const draftLoading = draft === 'loading';
   const activeDraft = draft !== 'loading' ? draft : null;
   const loadError = Boolean(historyRead.error || draftRead.error);
   const [actionError, setActionError] = useState('');
@@ -99,14 +100,14 @@ export function WorkoutsScreen({
           </p>
         )}
 
-        <section className={`hero${activeDraft ? ' hero--active' : ''}`} aria-label={activeDraft ? 'Текущая тренировка' : 'Новая тренировка'}>
+        <section className={`hero${activeDraft ? ' hero--active' : ''}`} aria-label={activeDraft ? 'Текущая тренировка' : 'Новая тренировка'} aria-busy={draftLoading || undefined}>
           <span className="hero__circle" aria-hidden="true">
             <img className="hero__icon" src={fitnessIcon} alt="" width={46} height={46} />
           </span>
           <div className="hero__copy">
             <span className="hero__chip"><span className="hero__chip-dot" aria-hidden="true" />{activeDraft ? 'Текущая тренировка' : 'Готов двигаться?'}</span>
-            <h2 className="hero__title">{activeDraft ? typeLabel(activeDraft.type) : <>Поймай<br />свой ритм</>}</h2>
-            <p className="hero__sub">{activeDraft ? `${activeDraft.volume} · ${formatDay(activeDraft.startedAt)}` : 'Собери занятие под себя'}</p>
+            <h2 className="hero__title">{draftLoading ? <>Загружаем<br />тренировку</> : activeDraft ? typeLabel(activeDraft.type) : <>Поймай<br />свой ритм</>}</h2>
+            <p className="hero__sub">{draftLoading ? 'Секунду…' : activeDraft ? `${activeDraft.volume} · ${formatDay(activeDraft.startedAt)}` : 'Собери занятие под себя'}</p>
           </div>
           {activeDraft && (
             <div className="hero__progress">
@@ -114,8 +115,8 @@ export function WorkoutsScreen({
               <progress aria-labelledby="draft-progress" value={activeDraft.doneSets} max={Math.max(1, activeDraft.totalSets)} />
             </div>
           )}
-          <button className="hero__cta" onClick={activeDraft ? () => void continueDraft() : onCreate} disabled={busy || draft === 'loading'} aria-describedby={activeDraft?.readOnly ? 'draft-ownership' : undefined}>
-            <span className="hero__cta-label">{busy ? 'Открываем…' : activeDraft ? activeDraft.readOnly ? 'Продолжить здесь' : 'Продолжить тренировку' : 'Начать тренировку'}</span><IconArrowRight className="hero__cta-arrow" />
+          <button className="hero__cta" onClick={activeDraft ? () => void continueDraft() : onCreate} disabled={busy || draftLoading} aria-describedby={activeDraft?.readOnly ? 'draft-ownership' : undefined}>
+            <span className="hero__cta-label">{draftLoading ? 'Проверяем…' : busy ? 'Открываем…' : activeDraft ? activeDraft.readOnly ? 'Продолжить здесь' : 'Продолжить тренировку' : 'Начать тренировку'}</span><IconArrowRight className="hero__cta-arrow" />
           </button>
           {activeDraft && (activeDraft.readOnly ? (
             <p className="hero__ownership" id="draft-ownership">Занятие открыто на другом устройстве. Можно продолжить на этом.</p>
@@ -125,7 +126,7 @@ export function WorkoutsScreen({
         </section>
 
         <section className="today-links" aria-label="Другие варианты старта">
-          {draft === null && recent !== 'loading' && recent.length > 0 && (
+          {!draftLoading && draft === null && recent !== 'loading' && recent.length > 0 && (
             <button className="journal-link" disabled={busy} onClick={() => {
               setBusy(true); setActionError('');
               void onRepeat(recent[0]!.id).catch(() => setActionError('Не удалось повторить тренировку. Попробуй ещё раз.')).finally(() => setBusy(false));
@@ -134,7 +135,7 @@ export function WorkoutsScreen({
             </button>
           )}
           <button className="journal-link" onClick={onOpenTemplates}><span><strong>Мои тренировки</strong><small>Сохранённые варианты для быстрого старта</small></span><IconChevronRight /></button>
-          {quickDraft && draft === null && <button className="journal-link" disabled={busy} onClick={onQuickBuild}><span><strong>Новый состав</strong><small>По прошлым настройкам · {typeLabel(quickDraft.type)}</small></span><IconChevronRight /></button>}
+          {!draftLoading && quickDraft && draft === null && <button className="journal-link" disabled={busy} onClick={onQuickBuild}><span><strong>Новый состав</strong><small>По прошлым настройкам · {typeLabel(quickDraft.type)}</small></span><IconChevronRight /></button>}
         </section>
 
         <WeekActivity variant="timeline" />

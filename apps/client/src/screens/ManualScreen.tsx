@@ -19,9 +19,10 @@ interface ManualScreenProps {
   onBack: () => void;
   onDone: () => void;
   onToStructure: () => void;
+  onGenerate: () => void;
 }
 
-export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBack, onDone, onToStructure }: ManualScreenProps) {
+export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBack, onDone, onToStructure, onGenerate }: ManualScreenProps) {
   const { db, revision } = useDb();
   const slots = useMemo(() => structureFor(draft).slots, [draft]);
   const [view, setView] = useState<'groups' | 'picker'>(startSlotKey !== undefined ? 'picker' : 'groups');
@@ -188,7 +189,7 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
               <button className="btn btn--primary" onClick={onDone}>Готово — посмотреть состав</button>
             ) : (
               <>
-                <button className="btn btn--primary" onClick={onToStructure}>Заполнить оставшиеся</button>
+                <button className="btn btn--primary" onClick={onGenerate}>Заполнить оставшиеся</button>
                 <button className="btn btn--ghost" onClick={onToStructure}>Обзор состава</button>
               </>
             )}
@@ -211,7 +212,7 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
             <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h1 className="topbar__title topbar__title--step">Выбор упражнений</h1>
+        <h1 className="topbar__title topbar__title--step">Выбрать упражнение</h1>
       </header>
 
       <div className="screen__body">
