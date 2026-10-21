@@ -15,14 +15,6 @@ button:disabled { cursor: default; }
 .tabbar__label { font-size: var(--step--2); }
 .context__type { font-size: var(--step-1); text-transform: none; letter-spacing: 0; }
 .volume-head { align-items: center; gap: var(--space-s); }
-.plan__row { padding-block: var(--space-xs); gap: var(--space-2xs); }
-.plan__main { gap: var(--space-xs); }
-.plan__handle { display: none; }
-.plan__index { width: 24px; flex-shrink: 0; align-self: start; padding-top: var(--space-3xs); }
-.plan__exercise { font-size: var(--step-0); line-height: 1.4; font-weight: 650; }
-.plan__group, .plan__equip { font-size: var(--step--1); line-height: 1.4; }
-.plan__controls { padding-left: 36px; gap: var(--space-xs); }
-.plan__controls > .btn { border: 0; padding: 0 var(--space-xs); min-height: 44px; }
 .plan__more { position: relative; }
 .plan__more > summary { list-style: none; cursor: pointer; min-height: 44px; display: flex; align-items: center; padding-inline: var(--space-xs); color: var(--ink-2); border-radius: var(--radius-s); }
 .plan__more > summary::-webkit-details-marker { display: none; }
@@ -30,7 +22,7 @@ button:disabled { cursor: default; }
 .plan__more[open] > summary { background: var(--surface-2); color: var(--ink); }
 .plan__menu { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2xs); padding: var(--space-xs); margin-top: var(--space-2xs); border: var(--border); border-radius: var(--radius-m); background: var(--surface); }
 .plan__move-btn { width: 44px; height: 44px; }
-.plan + .note { margin-top: var(--space-s); font-size: var(--step--1); }
+.plan-groups + .note { margin-top: var(--space-s); font-size: var(--step--1); }
 .quick-start { display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-block: var(--space-s); }
 .quick-start .btn { flex: 1; min-width: 140px; }
 .exec-undo { display: flex; align-items: center; gap: var(--space-xs); margin-right: auto; font-size: var(--step--1); }

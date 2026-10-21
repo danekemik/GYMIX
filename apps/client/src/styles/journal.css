@@ -54,7 +54,6 @@
 .today-links, .recent, .resume { margin: 0; }
 /* The review viewport must use exactly the same mobile rules as the phone. */
 .type-list { display: flex; flex-direction: column; }
-.plan__row { display: flex; }
 .history-row { width: 100%; }
 button, summary { -webkit-tap-highlight-color: transparent; }
 button:active:not(:disabled) { filter: brightness(.9); }
@@ -143,9 +142,6 @@ summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .record-sets__caption { text-align: left; caption-side: bottom; padding-top: var(--space-xs); font-size: var(--step--2); color: var(--ink-2); }
 .record-sets thead th { white-space: nowrap; }
 .exec-detail-button { display: block; min-height: 44px; margin-bottom: var(--space-2xs); font-size: var(--step--2); }
-.plan__exercise-button { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2xs); width: 100%; min-height: 44px; text-align: left; }
-.plan__exercise-button > span { min-width: 0; }
-.plan__exercise-button > svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--ink-2); }
 
 .progress-card { padding: var(--space-s); border: var(--border); border-radius: var(--radius-l); background: var(--surface); }
 .progress-card__title { font: 650 var(--step-1)/1.3 var(--font-text); text-transform: none; letter-spacing: 0; }

@@ -14,6 +14,8 @@ import { getCatalog } from '../lib/catalog';
 import { useDb } from '../hooks/useDb';
 import { excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
 import { ExerciseDetail } from '../components/ExerciseDetail';
+import { exerciseArt } from '../lib/exerciseArt';
+import { IconDumbbellArt } from '../lib/icons';
 
 interface PreviewScreenProps {
   starting?: boolean;
@@ -68,6 +70,24 @@ export function PreviewScreen({
   }, [db, revision]);
 
   const total = workout.entries.length;
+
+  const groups = useMemo(() => {
+    const order: string[] = [];
+    const byGroup = new Map<string, { label: string; items: { entry: GeneratedEntry; index: number }[] }>();
+    workout.entries.forEach((entry, index) => {
+      const label = entry.groupUsed;
+      let bucket = byGroup.get(label);
+      if (bucket === undefined) {
+        bucket = { label, items: [] };
+        byGroup.set(label, bucket);
+        order.push(label);
+      }
+      bucket.items.push({ entry, index });
+    });
+    return order.map((label) => byGroup.get(label)!);
+  }, [workout.entries]);
+
+  const groupCount = groups.length;
 
   const current = replacing !== null ? workout.entries[replacing] : undefined;
 
@@ -147,114 +167,115 @@ export function PreviewScreen({
       </header>
 
       <div className="screen__body">
-        <div className="volume-head">
-          <span className="context__type">{typeLabel(workout.type)}</span>
-          <span className="volume-head__meta">
-            {workout.volume} · {plural(total, ['упражнение', 'упражнения', 'упражнений'])}
-          </span>
-        </div>
+        <section className="plan-summary" aria-label="Итог тренировки">
+          <span className="plan-summary__eyebrow">Тренировка готова</span>
+          <h2 className="plan-summary__title">{typeLabel(workout.type)}</h2>
+          <dl className="plan-summary__stats">
+            <div className="plan-summary__stat">
+              <dt>Упражнения</dt>
+              <dd>{total}</dd>
+            </div>
+            <div className="plan-summary__stat">
+              <dt>Группы</dt>
+              <dd>{groupCount}</dd>
+            </div>
+            <div className="plan-summary__stat">
+              <dt>Объём</dt>
+              <dd>{workout.volume}</dd>
+            </div>
+          </dl>
+          {onEditSelection && (
+            <button className="text-action plan-summary__edit" onClick={onEditSelection}>Изменить состав</button>
+          )}
+        </section>
 
         {actionError && <p className="body-error" role="alert">{actionError}</p>}
         {undoExclude && <p className="note" role="status">«{undoExclude}»: {excluded.has(undoExclude) ? 'исключено из будущих подборов' : 'снова доступно для подбора'}. <button className="text-action" disabled={saving !== undefined} onClick={() => void toggleExclude(undoExclude, false)}>Отменить</button></p>}
-        {onEditSelection && <button className="text-action preview-edit" onClick={onEditSelection}>Изменить состав</button>}
 
-        <ol className="plan" aria-label="Упражнения по порядку">
-          {workout.entries.map((entry, index) => {
-            const up = canMove(index, index - 1);
-            const down = canMove(index, index + 1);
-            const isExcluded = excluded.has(entry.exercise.name);
-            return (
-              <li
-                key={entry.slotKey}
-                className={`plan__row${dragIndex === index ? ' plan__row--dragging' : ''}`}
-                draggable={up || down}
-                onDragStart={(e) => {
-                  if (!(up || down)) return;
-                  setDragIndex(index);
-                  e.dataTransfer.effectAllowed = 'move';
-                }}
-                onDragOver={(e) => {
-                  if (dragIndex === null || dragIndex === index) return;
-                  if (workout.entries[dragIndex]?.groupUsed !== entry.groupUsed) return;
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = 'move';
-                }}
-                onDrop={(e) => {
-                  if (dragIndex === null) return;
-                  e.preventDefault();
-                  move(dragIndex, index);
-                  setDragIndex(null);
-                }}
-                onDragEnd={() => setDragIndex(null)}
-              >
-                <div className="plan__main">
-                  <span className="plan__handle" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                      <circle cx="9" cy="6" r="1.5" />
-                      <circle cx="15" cy="6" r="1.5" />
-                      <circle cx="9" cy="12" r="1.5" />
-                      <circle cx="15" cy="12" r="1.5" />
-                      <circle cx="9" cy="18" r="1.5" />
-                      <circle cx="15" cy="18" r="1.5" />
-                    </svg>
-                  </span>
-                  <span className="plan__index">{index + 1}</span>
-                  <span className="plan__body">
-                    <button className="plan__exercise plan__exercise-button" onClick={() => setDetail(entry.exercise)} aria-label={`Подробнее: ${entry.exercise.name}`}><span>{entry.exercise.name}</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="10" cy="10" r="7.5" /><path d="M10 9v5M10 5.5v1" /></svg></button>
-                    <span className="plan__group">
-                      {entry.groupUsed}
-                      {isExcluded ? ' · не предлагать' : ''}
-                    </span>
-                    {entry.exercise.equipment.length > 0 && (
-                      <span className="plan__equip">{entry.exercise.equipment.join(', ')}</span>
-                    )}
-                  </span>
-                  {entry.isRepeat && <span className="plan__badge">повтор</span>}
-                </div>
-                <div className="plan__controls">
-                  <button className="btn btn--ghost btn--sm" onClick={() => setReplacing(index)}>
-                    Заменить
-                  </button>
-                  <details className="plan__more">
-                    <summary aria-label={`Другие действия: ${entry.exercise.name}`}>Ещё</summary>
-                    <div className="plan__menu">
-                      {(up || down) && <span className="plan__move">
-                        <button
-                          className="plan__move-btn"
-                          aria-label={`Переместить выше: ${entry.exercise.name}`}
-                          disabled={!up}
-                          onClick={() => move(index, index - 1)}
-                        >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                            <path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </button>
-                        <button
-                          className="plan__move-btn"
-                          aria-label={`Переместить ниже: ${entry.exercise.name}`}
-                          disabled={!down}
-                          onClick={() => move(index, index + 1)}
-                        >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                            <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </button>
-                      </span>}
-                      <button
-                        className="btn btn--ghost btn--sm"
-                        aria-pressed={isExcluded}
-                        disabled={saving !== undefined}
-                        onClick={() => void toggleExclude(entry.exercise.name)}
-                      >
-                        {isExcluded ? 'Вернуть в подбор' : 'Исключить из будущих подборов'}
+        <div className="plan-groups">
+          {groups.map((group) => (
+            <section key={group.label} className="plan-group" aria-label={group.label}>
+              <header className="plan-group__head">
+                <h3 className="plan-group__title">{group.label}</h3>
+                <span className="plan-group__count">{plural(group.items.length, ['упражнение', 'упражнения', 'упражнений'])}</span>
+              </header>
+
+              <ol className="plan">
+                {group.items.map(({ entry, index }) => {
+                  const up = canMove(index, index - 1);
+                  const down = canMove(index, index + 1);
+                  const isExcluded = excluded.has(entry.exercise.name);
+                  const art = exerciseArt(entry.exercise.name);
+                  return (
+                    <li
+                      key={entry.slotKey}
+                      className={`plan__card${dragIndex === index ? ' plan__card--dragging' : ''}${isExcluded ? ' plan__card--muted' : ''}`}
+                      draggable={up || down}
+                      onDragStart={(e) => {
+                        if (!(up || down)) return;
+                        setDragIndex(index);
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragOver={(e) => {
+                        if (dragIndex === null || dragIndex === index) return;
+                        if (workout.entries[dragIndex]?.groupUsed !== entry.groupUsed) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                      }}
+                      onDrop={(e) => {
+                        if (dragIndex === null) return;
+                        e.preventDefault();
+                        move(dragIndex, index);
+                        setDragIndex(null);
+                      }}
+                      onDragEnd={() => setDragIndex(null)}
+                    >
+                      <button className="plan__open" onClick={() => setDetail(entry.exercise)} aria-label={`Подробнее: ${entry.exercise.name}`} aria-haspopup="dialog">
+                        <span className="plan__order" aria-hidden="true">{index + 1}</span>
+                        <span className={`plan__thumb${art !== undefined ? (art.kind === 'photo' ? ' plan__thumb--photo' : ' plan__thumb--art') : ''}`} aria-hidden="true">
+                          {art !== undefined ? (
+                            <img className="plan__thumb-img" src={art.src} alt="" loading="lazy" />
+                          ) : (
+                            <IconDumbbellArt className="plan__thumb-art" />
+                          )}
+                        </span>
+                        <span className="plan__info">
+                          <span className="plan__name">
+                            {entry.exercise.name}
+                            {entry.isRepeat && <span className="plan__badge">повтор</span>}
+                            {isExcluded && <span className="plan__badge plan__badge--muted">не предлагать</span>}
+                          </span>
+                          {entry.exercise.equipment.length > 0 && (
+                            <span className="plan__equip">{entry.exercise.equipment.join(' · ')}</span>
+                          )}
+                        </span>
                       </button>
-                    </div>
-                  </details>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+                      <div className="plan__actions">
+                        <button className="btn btn--ghost btn--sm plan__replace" onClick={() => setReplacing(index)}>Заменить</button>
+                        <details className="plan__more">
+                          <summary aria-label={`Другие действия: ${entry.exercise.name}`}>Ещё</summary>
+                          <div className="plan__menu">
+                            {(up || down) && <span className="plan__move">
+                              <button className="plan__move-btn" aria-label={`Переместить выше: ${entry.exercise.name}`} disabled={!up} onClick={() => move(index, index - 1)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                              </button>
+                              <button className="plan__move-btn" aria-label={`Переместить ниже: ${entry.exercise.name}`} disabled={!down} onClick={() => move(index, index + 1)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                              </button>
+                            </span>}
+                            <button className="btn btn--ghost btn--sm" aria-pressed={isExcluded} disabled={saving !== undefined} onClick={() => void toggleExclude(entry.exercise.name)}>
+                              {isExcluded ? 'Вернуть в подбор' : 'Исключить из будущих подборов'}
+                            </button>
+                          </div>
+                        </details>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          ))}
+        </div>
 
         {workout.entries.some((entry, index) => canMove(index, index + 1)) && <aside className="note">
           В меню «Ещё» можно менять порядок внутри одной группы. Между группами порядок фиксирован.
