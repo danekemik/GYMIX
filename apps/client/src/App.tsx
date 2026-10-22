@@ -347,7 +347,6 @@ export function App() {
         }}
         onReorder={(entries) => setGenerated({ ...generated, entries })}
         onEditParameters={() => setStep('volume')}
-        onEditSelection={editComposition}
         onRegenerate={() => {
           setPendingChange({ text: 'Текущий состав и замены будут заменены новым подбором.', run: () => {
             setSelections({}); setGenerated(undefined); setEntryOrder([]); setSeed(randomSeed()); setStep('randomizer');

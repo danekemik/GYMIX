@@ -28,8 +28,6 @@ interface PreviewScreenProps {
   onReplace: (index: number, exercise: CatalogExercise) => void;
   /** Порядок упражнений внутри групп изменён (S08). */
   onReorder: (entries: readonly GeneratedEntry[]) => void;
-  /** Вернуться к ручному выбору упражнений (S08 → S06). */
-  onEditSelection?: () => void;
   onEditParameters?: () => void;
   /** Шаблон не перегенерируется — упражнения зафиксированы. */
   regenerable?: boolean;
@@ -44,7 +42,6 @@ export function PreviewScreen({
   onBack,
   onReplace,
   onReorder,
-  onEditSelection,
   onEditParameters,
   regenerable = true,
 }: PreviewScreenProps) {
@@ -166,21 +163,12 @@ export function PreviewScreen({
 
       <div className="screen__body">
         <section className="plan-summary" aria-label="Итог тренировки">
-          <span className="plan-summary__eyebrow">Тренировка готова</span>
           <h2 className="plan-summary__title">{typeLabel(workout.type)}</h2>
-          <dl className="plan-summary__stats">
-            <div className="plan-summary__stat">
-              <dd>{total}</dd>
-              <dt>{plural(total, ['упражнение', 'упражнения', 'упражнений'])}</dt>
-            </div>
-            <div className="plan-summary__stat">
-              <dd>{workout.volume}</dd>
-              <dt>объём</dt>
-            </div>
-          </dl>
-          {onEditSelection && (
-            <button className="plan-summary__edit" onClick={onEditSelection}>Изменить состав</button>
-          )}
+          <p className="plan-summary__meta">
+            {plural(total, ['упражнение', 'упражнения', 'упражнений'])}
+            <span className="plan-summary__dot" aria-hidden="true">·</span>
+            {workout.volume}
+          </p>
         </section>
 
         {actionError && <p className="body-error" role="alert">{actionError}</p>}
