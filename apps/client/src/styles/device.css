@@ -9,7 +9,7 @@
 .preview-size { flex: none; }
 .phone--preview { position: relative; width: 417px; max-width: none; height: 876px; margin: 0; border: 12px solid #08090a; border-radius: 60px; outline: 1px solid #555a60; box-shadow: var(--shadow-l); transform-origin: top left; }
 .phone--preview .device { border-radius: 48px; --phone-bottom-inset: 24px; --screen-height: 852px; }
-.phone--preview .phone__statusbar { display: flex; flex: 0 0 54px; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 650; background: var(--base); }
+.phone--preview .phone__statusbar { display: flex; flex: 0 0 54px; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 15px; font-weight: 600; background: var(--base); }
 .phone__status-right { display: flex; align-items: center; gap: 6px; }
 .phone__status-right svg { width: 17px; height: 12px; }
 .phone__status-right svg:last-child { width: 25px; }

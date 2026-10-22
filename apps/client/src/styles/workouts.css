@@ -58,7 +58,7 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: var(--step--2);
-  font-weight: 600;
+  font-weight: 550;
   color: var(--accent-soft-ink);
 }
 
@@ -81,7 +81,7 @@
 
 .hero__sub {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 550;
   font-size: var(--step--1);
   color: var(--ink-2);
 }
@@ -105,7 +105,7 @@
 
 .hero__cta-label {
   font-size: var(--step-0);
-  font-weight: 600;
+  font-weight: 550;
   white-space: nowrap;
 }
 
@@ -133,7 +133,7 @@
 .section-title {
   font-family: var(--font-display);
   font-size: var(--step-0);
-  font-weight: 600;
+  font-weight: 550;
   letter-spacing: -0.01em;
   line-height: 1.2;
   white-space: nowrap;
@@ -159,7 +159,7 @@
   gap: var(--space-4xs);
   color: var(--ink-3);
   font-size: var(--step--1);
-  font-weight: 500;
+  font-weight: 450;
   white-space: nowrap;
 }
 
@@ -239,7 +239,7 @@ button.section-more {
 }
 
 .wk-card__title {
-  font-weight: 550;
+  font-weight: 500;
   font-size: var(--step-0);
   white-space: nowrap;
 }
@@ -250,7 +250,7 @@ button.section-more {
 
 .wk-card__meta {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
@@ -267,7 +267,7 @@ button.section-more {
   background: var(--surface-2);
   color: var(--ink-2);
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 450;
   white-space: nowrap;
 }
 
@@ -294,7 +294,7 @@ button.section-more {
 .wk-card__date {
   color: var(--ink-3);
   font-size: var(--step--2);
-  font-weight: 450;
+  font-weight: 400;
 }
 
 .wk-card__menu svg {
@@ -371,7 +371,7 @@ button.section-more {
 
 .recent-row__title {
   font-size: var(--step-0);
-  font-weight: 600;
+  font-weight: 550;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -379,14 +379,14 @@ button.section-more {
 
 .recent-row__sub {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
 }
 
 .recent-row__value {
   flex-shrink: 0;
   font-size: var(--step--1);
-  font-weight: 500;
+  font-weight: 450;
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -398,13 +398,13 @@ button.section-more {
   border-radius: var(--radius-xl);
   color: var(--ink-3);
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   text-align: center;
 }
 
 .context-hint {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
   margin: var(--space-2xs) 0 var(--space-s);
 }
@@ -412,14 +412,14 @@ button.section-more {
 .body-muted {
   color: var(--ink-3);
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   padding: var(--space-s) 0;
 }
 
 .body-error {
   color: var(--accent);
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   padding: var(--space-s);
   border: 1px solid currentColor;
   border-radius: var(--radius-m);
@@ -470,14 +470,14 @@ button.section-more {
 }
 
 .resume__title {
-  font-weight: 600;
+  font-weight: 550;
   font-size: var(--step-0);
   line-height: 1.25;
 }
 
 .resume__meta {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
@@ -509,12 +509,12 @@ button.section-more {
 .empty-train__title {
   font-family: var(--font-display);
   font-size: var(--step-1);
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .empty-train__text {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
   line-height: 1.4;
   margin-bottom: var(--space-2xs);
@@ -541,7 +541,7 @@ button.section-more {
   text-align: left;
   font-family: var(--font-text);
   font-size: var(--step-0);
-  font-weight: 500;
+  font-weight: 450;
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease);
 }
@@ -584,7 +584,7 @@ button.section-more {
 .settings-link__label {
   flex: 1;
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .settings-link svg {
@@ -612,12 +612,12 @@ button.section-more {
 .settings__title {
   font-family: var(--font-display);
   font-size: var(--step-0);
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .settings__text {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
   line-height: 1.4;
 }
@@ -655,11 +655,11 @@ button.section-more {
 
 .excluded__name {
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .excluded__meta {
   font-size: var(--step--2);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
 }

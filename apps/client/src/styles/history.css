@@ -12,7 +12,7 @@
 .empty__title {
   font-family: var(--font-display);
   font-size: var(--step-2);
-  font-weight: 600;
+  font-weight: 550;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -20,7 +20,7 @@
 .empty__text {
   max-width: 26ch;
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
@@ -65,13 +65,13 @@
 
 .history-row__type {
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .history-row__score {
   font-family: var(--font-display);
   font-size: var(--step-1);
-  font-weight: 600;
+  font-weight: 550;
   font-variant-numeric: tabular-nums;
 }
 
@@ -81,13 +81,13 @@
 
 .history-row__meta {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
 .history-row__sub {
   font-size: var(--step--2);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
 }
 
@@ -113,7 +113,7 @@
 .progress-card__title {
   font-family: var(--font-display);
   font-size: var(--step-1);
-  font-weight: 600;
+  font-weight: 550;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -126,7 +126,7 @@
 
 .progress-card__summary {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
@@ -167,7 +167,7 @@
   justify-content: space-between;
   gap: var(--space-xs);
   font-size: var(--step--2);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
@@ -202,13 +202,13 @@
 .chart-table thead th {
   color: var(--ink-2);
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 450;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .chart-table tbody th {
-  font-weight: 500;
+  font-weight: 450;
   color: var(--ink);
 }
 
@@ -248,7 +248,7 @@
 .record-exercise__index {
   font-family: var(--font-text);
   font-size: var(--step--1);
-  font-weight: 500;
+  font-weight: 450;
   color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
@@ -257,12 +257,12 @@
   flex: 1;
   min-width: 0;
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .record-exercise__status {
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 450;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -302,13 +302,13 @@
 .record-sets thead th {
   color: var(--ink-2);
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 450;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
 .record-sets tbody th {
-  font-weight: 500;
+  font-weight: 450;
 }
 
 .record-edit-set {
@@ -321,7 +321,7 @@
   width: 4.5em;
   flex-shrink: 0;
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 

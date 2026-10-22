@@ -10,12 +10,12 @@
 .volume-head__group {
   font-size: var(--step--1);
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .volume-head__meta {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
 }
 
@@ -72,7 +72,7 @@
 .volume-card__name {
   font-family: var(--font-display);
   font-size: var(--step-1);
-  font-weight: 600;
+  font-weight: 550;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -94,7 +94,7 @@
 .volume-card__count {
   font-family: var(--font-text);
   font-size: var(--step-0);
-  font-weight: 600;
+  font-weight: 550;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
@@ -115,7 +115,7 @@
   background: var(--surface);
   color: var(--ink-2);
   font-size: var(--step--1);
-  font-weight: 600;
+  font-weight: 550;
   transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
     background var(--dur-fast) var(--ease);
 }
@@ -157,7 +157,7 @@
 
 .mgs-group__name {
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 /* S05 — структура */
@@ -171,7 +171,7 @@
 
 .progress__label {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
@@ -207,13 +207,13 @@
 .manual-group__label {
   font-family: var(--font-display);
   font-size: var(--step-1);
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .manual-group__count {
   font-family: var(--font-text);
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
@@ -309,7 +309,7 @@
 
 .manual-card__name {
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
@@ -335,7 +335,7 @@
   background: var(--surface-2);
   color: var(--ink-2);
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 450;
 }
 
 .manual-card__row {
@@ -353,7 +353,7 @@
   border: 1px solid var(--accent);
   background: none;
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 550;
   gap: var(--space-3xs);
 }
 
@@ -375,7 +375,7 @@
   background: none;
   color: var(--ink-2);
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 450;
   cursor: pointer;
 }
 
@@ -391,7 +391,7 @@
 .manual-empty {
   padding: var(--space-m) 0;
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
   text-align: center;
 }
@@ -405,13 +405,13 @@
 
 .manual-current__slot {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
 }
 
 .manual-current__name {
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .note {
@@ -421,7 +421,7 @@
   border-radius: var(--radius-m);
   background: var(--surface);
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   line-height: 1.5;
   color: var(--ink-2);
 }

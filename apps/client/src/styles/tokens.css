@@ -1,7 +1,8 @@
 :root {
-  /* Display carries the identity; working text stays compact and legible. */
+  /* Unbounded — единая гарнитура продукта: широкий геометричный variable-шрифт.
+   * Для крупного и акцентного — средние/тяжёлые веса, для мелкого рабочего текста — лёгкие. */
   --font-display: 'Unbounded Variable', 'Unbounded', system-ui, sans-serif;
-  --font-text: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-text: 'Unbounded Variable', 'Unbounded', system-ui, sans-serif;
 
   --step--2: 0.75rem;
   --step--1: 0.875rem;

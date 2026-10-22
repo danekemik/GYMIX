@@ -10,7 +10,7 @@
   position: absolute; right: 2px; bottom: 2px;
   display: grid; place-items: center; width: 16px; height: 16px;
   border-radius: 50%; background: var(--surface); color: var(--ink-2);
-  font-size: 10px; font-weight: 650; border: var(--border);
+  font-size: 10px; font-weight: 600; border: var(--border);
 }
 .manual-grid--picker .manual-card__pick {
   width: 44px;

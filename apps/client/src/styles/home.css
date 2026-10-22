@@ -46,7 +46,7 @@
 .week--timeline .week__day--done .week__mark { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .week--timeline .week__day--today .week__mark { box-shadow: 0 0 0 4px var(--base); }
 .week--timeline .week__day--today .week__mark::after { content: ''; position: absolute; inset: -6px; border: 1px solid var(--accent); border-radius: 50%; }
-.week--timeline .week__day--today .week__label { color: var(--ink); font-weight: 600; }
+.week--timeline .week__day--today .week__label { color: var(--ink); font-weight: 550; }
 .week--timeline .week__retry { margin-top: var(--space-xs); }
 .screen--home .section-title { font-size: var(--step-0); line-height: 1.4; white-space: normal; }
 .screen--home .recent .section-head { gap: var(--space-xs); }
