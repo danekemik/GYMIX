@@ -179,7 +179,6 @@ export function PreviewScreen({
             <section key={group.label} className="plan-group" aria-label={group.label}>
               <header className="plan-group__head">
                 <h3 className="plan-group__title">{group.label}</h3>
-                <span className="plan-group__count">{plural(group.items.length, ['упражнение', 'упражнения', 'упражнений'])}</span>
               </header>
 
               <ol className="plan">
