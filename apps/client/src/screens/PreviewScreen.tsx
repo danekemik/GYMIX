@@ -87,8 +87,6 @@ export function PreviewScreen({
     return order.map((label) => byGroup.get(label)!);
   }, [workout.entries]);
 
-  const groupCount = groups.length;
-
   const current = replacing !== null ? workout.entries[replacing] : undefined;
 
   const candidates = useMemo(() => {
@@ -168,29 +166,21 @@ export function PreviewScreen({
 
       <div className="screen__body">
         <section className="plan-summary" aria-label="Итог тренировки">
-          <div className="plan-summary__head">
-            <div className="plan-summary__heading">
-              <span className="plan-summary__eyebrow">Тренировка готова</span>
-              <h2 className="plan-summary__title">{typeLabel(workout.type)}</h2>
-            </div>
-            {onEditSelection && (
-              <button className="plan-summary__edit" onClick={onEditSelection}>Изменить состав</button>
-            )}
-          </div>
+          <span className="plan-summary__eyebrow">Тренировка готова</span>
+          <h2 className="plan-summary__title">{typeLabel(workout.type)}</h2>
           <dl className="plan-summary__stats">
             <div className="plan-summary__stat">
               <dd>{total}</dd>
               <dt>{plural(total, ['упражнение', 'упражнения', 'упражнений'])}</dt>
             </div>
             <div className="plan-summary__stat">
-              <dd>{groupCount}</dd>
-              <dt>{plural(groupCount, ['группа', 'группы', 'групп'])}</dt>
-            </div>
-            <div className="plan-summary__stat">
               <dd>{workout.volume}</dd>
               <dt>объём</dt>
             </div>
           </dl>
+          {onEditSelection && (
+            <button className="plan-summary__edit" onClick={onEditSelection}>Изменить состав</button>
+          )}
         </section>
 
         {actionError && <p className="body-error" role="alert">{actionError}</p>}

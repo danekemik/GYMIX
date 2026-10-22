@@ -134,27 +134,16 @@
 /* Итоговая карточка: тип, метрики и вход в редактирование. */
 .plan-summary {
   display: grid;
+  justify-items: center;
   gap: var(--space-xs);
-  padding: var(--space-s);
+  padding: var(--space-m) var(--space-s);
   border: var(--border);
   border-radius: var(--radius-l);
   background:
-    radial-gradient(120% 90% at 100% 0%, var(--surface-2) 0%, transparent 60%),
+    radial-gradient(120% 90% at 50% 0%, var(--surface-2) 0%, transparent 65%),
     var(--surface);
   margin-bottom: var(--space-s);
-}
-
-.plan-summary__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-s);
-}
-
-.plan-summary__heading {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
+  text-align: center;
 }
 
 .plan-summary__eyebrow {
@@ -166,6 +155,7 @@
 }
 
 .plan-summary__title {
+  max-width: 100%;
   font-family: var(--font-display);
   font-size: var(--step-1);
   line-height: 1.15;
@@ -176,7 +166,6 @@
 }
 
 .plan-summary__edit {
-  flex-shrink: 0;
   padding: var(--space-3xs) var(--space-xs);
   border: var(--border);
   border-radius: var(--radius-s);
@@ -200,7 +189,10 @@
 
 .plan-summary__stats {
   display: flex;
-  gap: var(--space-s);
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-xs) var(--space-m);
+  width: 100%;
   padding-top: var(--space-xs);
   border-top: var(--border);
 }
