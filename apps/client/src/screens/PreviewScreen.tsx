@@ -282,10 +282,6 @@ export function PreviewScreen({
           ))}
         </div>
 
-        {workout.entries.some((entry, index) => canMove(index, index + 1)) && <aside className="note">
-          В меню каждого упражнения можно менять порядок внутри группы. Между группами порядок фиксирован.
-        </aside>}
-
         <div className="screen__cta screen__cta--sticky">
           <button className="btn btn--primary" onClick={onStart} disabled={starting}>
             {starting ? 'Открываем…' : 'Начать тренировку'}
