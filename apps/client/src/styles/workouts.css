@@ -241,7 +241,12 @@ button.section-more {
 .wk-card__title {
   font-weight: 500;
   font-size: var(--step-0);
-  white-space: nowrap;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .wk-card__dot {
@@ -601,6 +606,29 @@ button.section-more {
   display: flex;
   flex-direction: column;
   gap: var(--space-m);
+}
+
+.settings--account {
+  padding: var(--space-s);
+  border: var(--border);
+  border-radius: var(--radius-l);
+  background: var(--surface);
+}
+
+.settings__email {
+  font-size: var(--step--1);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.settings__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.settings__search {
+  width: 100%;
 }
 
 .settings__head {

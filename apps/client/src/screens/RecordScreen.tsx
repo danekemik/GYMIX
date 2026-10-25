@@ -24,6 +24,12 @@ interface EditExercise {
   sets: EditSet[];
 }
 
+const STATUS_LABELS: Record<EditExercise['status'], string> = {
+  completed: 'Выполнено',
+  skipped: 'Пропущено',
+  pending: 'Не завершено',
+};
+
 function toEditable(snapshot: RecordSnapshot): EditExercise[] {
   return snapshot.exercises.map((e) => ({
     id: e.id,
@@ -77,8 +83,16 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
     });
   };
 
-  const setStatus = (id: string, status: 'completed' | 'skipped') =>
-    setDraft((prev) => prev.map((e) => (e.id === id ? { ...e, status } : e)));
+  const setStatus = (id: string) =>
+    setDraft((prev) => prev.map((e) => {
+      if (e.id !== id) return e;
+      const next: EditExercise['status'] = e.status === 'completed'
+        ? 'skipped'
+        : e.status === 'skipped'
+          ? 'pending'
+          : 'completed';
+      return { ...e, status: next };
+    }));
 
   const setSet = (exerciseId: string, setId: string, field: 'weight' | 'reps', value: string) =>
     setDraft((prev) =>
@@ -121,7 +135,10 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
       await reload();
       setEditing(false);
     } catch (e: unknown) {
-      setSaveError(String(e));
+      const message = e instanceof Error ? e.message : '';
+      setSaveError(message.includes('обновилась')
+        ? message
+        : 'Не удалось сохранить изменения. Проверь соединение и повтори попытку.');
     } finally {
       setSaving(false);
     }
@@ -140,9 +157,10 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
 
       <div className="screen__body">
         {error !== undefined && (
-          <p className="body-error" role="alert">
-            Не удалось загрузить запись: {error}
-          </p>
+          <div className="note note--error" role="alert">
+            Не удалось загрузить запись.
+            <button className="text-action" onClick={() => void reload()}>Повторить</button>
+          </div>
         )}
 
         {error === undefined && record === undefined && <p className="body-muted">Загружаем запись…</p>}
@@ -152,7 +170,7 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
             <aside className="note record-context">
               <span className="context__type">{typeLabel(record.type)}</span>
               <span className="volume-head__meta">
-                {record.volume} · {done}/{total} · {formatDurationMs(record.durationMs)} ·{' '}
+                {record.volume} · {done} из {total} упражнений · {formatDurationMs(record.durationMs)} ·{' '}
                 {formatDate(record.completedAt)}
               </span>
             </aside>
@@ -169,7 +187,7 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
                   const head = <><span className="record-exercise__index">{index + 1}</span><span className="record-exercise__name">{ex.name}</span><span className={`record-exercise__status record-exercise__status--${ex.status}`}>{ex.status === 'completed' ? 'Выполнено' : ex.partial ? 'Не завершено' : 'Пропущено'}</span></>;
                   return <li key={ex.id} className="record-exercise">
                     {ex.status === 'completed' ? <><div className="record-exercise__head">{head}</div><RecordedSets exercise={ex} /></> : <details className="record-exercise__details">
-                      <summary className="record-exercise__head">{head}<span aria-hidden="true">⌄</span></summary>
+                      <summary className="record-exercise__head">{head}<svg className="record-exercise__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg><span className="visually-hidden"><span className="record-exercise__show">Показать подходы</span><span className="record-exercise__hide">Скрыть подходы</span></span></summary>
                       <RecordedSets exercise={ex} />
                     </details>}
                   </li>;
@@ -199,11 +217,11 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
                         <span className="record-exercise__index">{index + 1}</span>
                         <span className="record-exercise__name">{ex.name}</span>
                         <button
-                          className="btn btn--ghost btn--sm"
-                          aria-pressed={ex.status === 'completed'}
-                          onClick={() => setStatus(ex.id, ex.status === 'completed' ? 'skipped' : 'completed')}
+                          className={`btn btn--ghost btn--sm record-status-btn record-status-btn--${ex.status}`}
+                          aria-label={`Статус: ${STATUS_LABELS[ex.status]}. Сменить`}
+                          onClick={() => setStatus(ex.id)}
                         >
-                          {ex.status === 'completed' ? 'Выполнено' : ex.status === 'pending' ? 'Не завершено' : 'Пропущено'}
+                          {STATUS_LABELS[ex.status]}
                         </button>
                       </div>
                       <div className="record-exercise__tools">
@@ -247,7 +265,7 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
               </>
             )}
 
-            <div className="screen__cta">
+            <div className="screen__cta screen__cta--sticky">
               {!editing ? (
                 <button className="btn btn--primary" onClick={startEdit}>
                   Редактировать запись
@@ -255,7 +273,7 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
               ) : (
                 <>
                   <button className="btn btn--primary" disabled={saving} onClick={() => void save()}>
-                    Сохранить
+                    {saving ? 'Сохраняем…' : 'Сохранить'}
                   </button>
                   <button className="btn btn--ghost" disabled={saving} onClick={() => setEditing(false)}>
                     Отмена

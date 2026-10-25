@@ -11,10 +11,9 @@
 
 .empty__title {
   font-family: var(--font-display);
-  font-size: var(--step-2);
+  font-size: var(--step-1);
   font-weight: 550;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 .empty__text {
@@ -22,6 +21,14 @@
   font-size: var(--step--1);
   font-weight: 400;
   color: var(--ink-2);
+}
+
+.empty--compact {
+  padding-block: var(--space-m);
+}
+
+.empty--compact .empty__text {
+  max-width: 34ch;
 }
 
 .history {
@@ -73,6 +80,15 @@
   font-size: var(--step-1);
   font-weight: 550;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.history-row__score-label {
+  margin-left: var(--space-3xs);
+  font-family: var(--font-text);
+  font-size: var(--step--2);
+  font-weight: 400;
+  color: var(--ink-3);
 }
 
 .history-row__score-total {
@@ -128,6 +144,35 @@
   font-size: var(--step--1);
   font-weight: 400;
   color: var(--ink-2);
+}
+
+.progress-card__latest {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2xs);
+  font-size: var(--step--2);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress-card__latest strong {
+  font-size: var(--step-0);
+  font-weight: 550;
+  color: var(--ink);
+}
+
+.progress-card__delta {
+  color: var(--ink-2);
+}
+
+.progress-card__delta--down {
+  color: var(--ink-2);
+}
+
+.progress-card__hint {
+  font-size: var(--step--2);
+  line-height: 1.5;
+  color: var(--ink-3);
 }
 
 .progress-card__record {
@@ -272,6 +317,43 @@
 }
 
 .record-exercise__status--skipped {
+  color: var(--ink-3);
+}
+
+.record-exercise__status--pending {
+  color: var(--ink-2);
+}
+
+.record-exercise__chevron {
+  width: 18px;
+  height: 18px;
+  align-self: center;
+  color: var(--ink-2);
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.record-exercise__details[open] .record-exercise__chevron {
+  transform: rotate(180deg);
+}
+
+.record-exercise__hide {
+  display: none;
+}
+
+.record-exercise__details[open] .record-exercise__show {
+  display: none;
+}
+
+.record-exercise__details[open] .record-exercise__hide {
+  display: inline;
+}
+
+.record-status-btn--completed {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.record-status-btn--skipped {
   color: var(--ink-3);
 }
 

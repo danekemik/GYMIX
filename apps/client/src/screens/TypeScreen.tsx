@@ -29,9 +29,9 @@ export function TypeScreen({ initialType = 'Full Body', onSelect, onClose }: Typ
 
       <div className="screen__body">
         {error !== undefined && (
-          <p className="body-error" role="alert">
-            Не удалось открыть базу: {String(error)}
-          </p>
+          <div className="note note--error" role="alert">
+            Не удалось открыть локальную базу. Перезагрузи приложение — данные на устройстве сохранятся.
+          </div>
         )}
 
         <div className="type-list" role="radiogroup" aria-label="Формат">

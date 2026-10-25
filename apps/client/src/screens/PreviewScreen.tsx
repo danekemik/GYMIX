@@ -1,5 +1,5 @@
 import { queryExcludedNames } from '../data/local/read-rpc';
-import { typeLabel } from '../lib/workoutTypes';
+import { isMgs, typeLabel } from '../lib/workoutTypes';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDialogFocus } from '../hooks/useDialogFocus';
 import {
@@ -14,8 +14,9 @@ import { getCatalog } from '../lib/catalog';
 import { useDb } from '../hooks/useDb';
 import { excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
 import { ExerciseDetail } from '../components/ExerciseDetail';
+import { ActionMenu } from '../components/ActionMenu';
 import { exerciseArt } from '../lib/exerciseArt';
-import { IconDots, IconDumbbellArt } from '../lib/icons';
+import { IconDumbbellArt } from '../lib/icons';
 
 interface PreviewScreenProps {
   starting?: boolean;
@@ -31,6 +32,12 @@ interface PreviewScreenProps {
   onEditParameters?: () => void;
   /** Шаблон не перегенерируется — упражнения зафиксированы. */
   regenerable?: boolean;
+  /** Режим редактирования сохранённого шаблона. */
+  templateTitle?: string;
+  templateMode?: boolean;
+  savingTemplate?: boolean;
+  saveError?: string;
+  onSaveTemplate?: () => void;
 }
 
 export function PreviewScreen({
@@ -44,6 +51,11 @@ export function PreviewScreen({
   onReorder,
   onEditParameters,
   regenerable = true,
+  templateTitle,
+  templateMode = false,
+  savingTemplate = false,
+  saveError,
+  onSaveTemplate,
 }: PreviewScreenProps) {
   const { db, revision } = useDb();
   const [replacing, setReplacing] = useState<number | null>(null);
@@ -67,6 +79,15 @@ export function PreviewScreen({
   }, [db, revision]);
 
   const total = workout.entries.length;
+  const displayTitle = templateTitle ?? (isMgs(workout.type)
+    ? workout.entries[0]?.groupUsed ?? typeLabel(workout.type)
+    : typeLabel(workout.type));
+
+  useEffect(() => {
+    if (undoExclude === undefined) return;
+    const timer = window.setTimeout(() => setUndoExclude(undefined), 5000);
+    return () => window.clearTimeout(timer);
+  }, [undoExclude]);
 
   const groups = useMemo(() => {
     const order: string[] = [];
@@ -158,13 +179,14 @@ export function PreviewScreen({
             <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h1 className="topbar__title topbar__title--step">Состав тренировки</h1>
+        <h1 className="topbar__title topbar__title--step">{templateMode ? 'Состав шаблона' : 'Состав тренировки'}</h1>
       </header>
 
       <div className="screen__body">
         <section className="plan-summary" aria-label="Итог тренировки">
-          <h2 className="plan-summary__title">{typeLabel(workout.type)}</h2>
+          <h2 className="plan-summary__title">{displayTitle}</h2>
           <p className="plan-summary__meta">
+            {isMgs(workout.type) && <>{typeLabel(workout.type)}<span className="plan-summary__dot" aria-hidden="true">·</span></>}
             {plural(total, ['упражнение', 'упражнения', 'упражнений'])}
             <span className="plan-summary__dot" aria-hidden="true">·</span>
             {workout.volume}
@@ -172,7 +194,7 @@ export function PreviewScreen({
         </section>
 
         {actionError && <p className="body-error" role="alert">{actionError}</p>}
-        {undoExclude && <p className="note" role="status">«{undoExclude}»: {excluded.has(undoExclude) ? 'исключено из будущих подборов' : 'снова доступно для подбора'}. <button className="text-action" disabled={saving !== undefined} onClick={() => void toggleExclude(undoExclude, false)}>Отменить</button></p>}
+        {undoExclude && <p className="note" role="status">«{undoExclude}»: {excluded.has(undoExclude) ? 'исключено из подбора' : 'снова доступно для подбора'}. <button className="text-action" disabled={saving !== undefined} onClick={() => void toggleExclude(undoExclude, false)}>Отменить</button></p>}
 
         <div className="plan-groups">
           {groups.map((group) => (
@@ -225,32 +247,33 @@ export function PreviewScreen({
                           {(entry.isRepeat || isExcluded) && (
                             <span className="plan__tags">
                               {entry.isRepeat && <span className="plan__badge">повтор</span>}
-                              {isExcluded && <span className="plan__badge plan__badge--muted">не предлагать</span>}
+                              {isExcluded && <span className="plan__badge plan__badge--muted">исключено</span>}
                             </span>
                           )}
                         </span>
                       </button>
-                      <details className="plan__more">
-                        <summary aria-label={`Действия: ${entry.exercise.name}`}><IconDots className="plan__more-icon" /></summary>
-                        <div className="plan__menu">
-                          <button className="plan__menu-item" onClick={() => { setReplacing(index); }}>
-                            Заменить упражнение
-                          </button>
-                          {(up || down) && <span className="plan__move">
-                            <button className="plan__move-btn" aria-label={`Переместить выше: ${entry.exercise.name}`} disabled={!up} onClick={() => move(index, index - 1)}>
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                              Переместить выше
+                      <ActionMenu label={`Действия: ${entry.exercise.name}`}>
+                        {(close) => (
+                          <>
+                            <button className="action-menu__item" role="menuitem" onClick={() => { setReplacing(index); close(); }}>
+                              Заменить упражнение
                             </button>
-                            <button className="plan__move-btn" aria-label={`Переместить ниже: ${entry.exercise.name}`} disabled={!down} onClick={() => move(index, index + 1)}>
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                              Переместить ниже
+                            {(up || down) && <span className="action-menu__group">
+                              <button className="action-menu__item" role="menuitem" aria-label={`Переместить выше: ${entry.exercise.name}`} disabled={!up} onClick={() => { move(index, index - 1); close(); }}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                Переместить выше
+                              </button>
+                              <button className="action-menu__item" role="menuitem" aria-label={`Переместить ниже: ${entry.exercise.name}`} disabled={!down} onClick={() => { move(index, index + 1); close(); }}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                Переместить ниже
+                              </button>
+                            </span>}
+                            <button className="action-menu__item" role="menuitem" aria-pressed={isExcluded} disabled={saving !== undefined} onClick={() => { void toggleExclude(entry.exercise.name); close(); }}>
+                              {isExcluded ? 'Вернуть в подбор' : 'Исключить из подбора'}
                             </button>
-                          </span>}
-                          <button className="plan__menu-item" aria-pressed={isExcluded} disabled={saving !== undefined} onClick={() => void toggleExclude(entry.exercise.name)}>
-                            {isExcluded ? 'Вернуть в подбор' : 'Исключить из подбора'}
-                          </button>
-                        </div>
-                      </details>
+                          </>
+                        )}
+                      </ActionMenu>
                     </li>
                   );
                 })}
@@ -260,14 +283,30 @@ export function PreviewScreen({
         </div>
 
         <div className="screen__cta screen__cta--sticky">
-          <button className="btn btn--primary" onClick={onStart} disabled={starting}>
-            {starting ? 'Открываем…' : 'Начать тренировку'}
-          </button>
-          {regenerable && <details className="preview-options">
-            <summary>Изменить тренировку</summary>
-            {onEditParameters && <button className="btn btn--ghost" onClick={onEditParameters}>Формат и объём подбора</button>}
-            <button className="btn btn--ghost" onClick={onRegenerate}>Подобрать заново</button>
-          </details>}
+          {templateMode ? (
+            <>
+              <button className="btn btn--primary" onClick={onSaveTemplate} disabled={starting || savingTemplate || onSaveTemplate === undefined}>
+                {savingTemplate ? 'Сохраняем…' : 'Сохранить изменения'}
+              </button>
+              <button className="btn btn--ghost" onClick={onStart} disabled={starting || savingTemplate}>
+                {starting ? 'Открываем…' : 'Начать тренировку'}
+              </button>
+              {saveError !== undefined && saveError !== '' && <p className="body-error" role="alert">{saveError}</p>}
+            </>
+          ) : (
+            <>
+              <button className="btn btn--primary" onClick={onStart} disabled={starting}>
+                {starting ? 'Открываем…' : 'Начать тренировку'}
+              </button>
+              {regenerable && <details className="preview-options">
+                <summary>Изменить тренировку</summary>
+                <div className="preview-options__panel">
+                  {onEditParameters && <button className="btn btn--ghost" onClick={onEditParameters}>Формат и объём подбора</button>}
+                  <button className="btn btn--ghost" onClick={onRegenerate}>Подобрать заново</button>
+                </div>
+              </details>}
+            </>
+          )}
         </div>
       </div>
 
@@ -330,17 +369,18 @@ export function PreviewScreen({
                     </span>
                   </button>
                   {!excluded.has(candidate.name) && (
-                    <details className="plan__more"><summary aria-label={`Действия: ${candidate.name}`}><IconDots className="plan__more-icon" /></summary>
-                      <div className="plan__menu">
+                    <ActionMenu label={`Действия: ${candidate.name}`}>
+                      {(close) => (
                         <button
-                          className="plan__menu-item replace__exclude"
+                          className="action-menu__item replace__exclude"
+                          role="menuitem"
                           disabled={saving !== undefined}
-                          onClick={() => void toggleExclude(candidate.name)}
+                          onClick={() => { void toggleExclude(candidate.name); close(); }}
                         >
                           Исключить из подбора
                         </button>
-                      </div>
-                    </details>
+                      )}
+                    </ActionMenu>
                   )}
                 </li>
               ))}

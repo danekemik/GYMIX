@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { typeIcon } from '../lib/typeIcon';
-import { previewGroups, type WorkoutTypeCard } from '../lib/workoutTypes';
+import { previewGroups, typeLabel, type WorkoutTypeCard } from '../lib/workoutTypes';
 
 interface WorkoutTypeRowProps {
   card: WorkoutTypeCard;
@@ -18,7 +18,7 @@ export function WorkoutTypeRow({ card, selected, onSelect }: WorkoutTypeRowProps
         type="radio"
         name="workout-type"
         className="type-row__input"
-        aria-label={card.type}
+        aria-label={typeLabel(card.type)}
         aria-describedby={groups.length > 0 ? metaId : undefined}
         checked={selected}
         onChange={onSelect}
@@ -27,7 +27,7 @@ export function WorkoutTypeRow({ card, selected, onSelect }: WorkoutTypeRowProps
         {typeIcon(card.type)}
       </span>
       <span className="type-row__body">
-        <span className="type-row__name">{card.type}</span>
+        <span className="type-row__name">{typeLabel(card.type)}</span>
         {groups.length > 0 && (
           <span className="type-row__groups" id={metaId}>
             {groups.map((group) => (

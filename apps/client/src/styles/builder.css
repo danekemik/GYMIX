@@ -34,6 +34,13 @@
   white-space: nowrap;
 }
 
+.volume-head__template {
+  font-size: var(--step--2);
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
 .volume-grid {
   display: grid;
   gap: var(--space-xs);
@@ -137,6 +144,10 @@
 }
 
 .mgs-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-s);
   padding: var(--space-s);
   text-align: left;
   border: var(--border);
@@ -145,6 +156,18 @@
   color: var(--ink);
   transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease),
     transform var(--dur-fast) var(--ease);
+}
+
+.mgs-group[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.mgs-group__check {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--accent);
 }
 
 .mgs-group:hover {
@@ -250,6 +273,7 @@
   gap: var(--space-xs);
   flex: 1;
   min-width: 0;
+  min-height: 64px;
   padding: 0;
   border: 0;
   background: none;
@@ -258,6 +282,10 @@
   font: inherit;
   cursor: pointer;
   border-radius: var(--radius-s);
+}
+
+.manual-card--empty .manual-card__open {
+  min-height: 56px;
 }
 
 .manual-card__thumb {
@@ -314,6 +342,37 @@
   overflow-wrap: anywhere;
 }
 
+/* Подпись действия остаётся частью карточки-кнопки и не отнимает
+ * у названия упражнения половину строки. */
+.manual-card__action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--ink-3);
+  font-size: var(--step--2);
+  font-weight: 450;
+  white-space: nowrap;
+}
+
+.manual-card__action--primary {
+  color: var(--accent);
+  font-weight: 550;
+}
+
+.manual-card__action-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.manual-card__open:hover .manual-card__action {
+  color: var(--ink);
+}
+
+.manual-card__open:hover .manual-card__action--primary {
+  color: var(--accent-hover);
+}
+
 .manual-card__equip {
   font-size: var(--step--2);
   line-height: 1.4;
@@ -336,15 +395,6 @@
   color: var(--ink-2);
   font-size: var(--step--2);
   font-weight: 450;
-}
-
-.manual-card__row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2xs);
-  margin: 0;
-  flex-shrink: 0;
 }
 
 .manual-card__pick {

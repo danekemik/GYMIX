@@ -189,6 +189,18 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
 
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
+  useEffect(() => {
+    if (lastCompleted === null) return;
+    const timer = window.setTimeout(() => setLastCompleted(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [lastCompleted]);
+
+  useEffect(() => {
+    if (removedSet === null) return;
+    const timer = window.setTimeout(() => setRemovedSet(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [removedSet]);
+
   const update = (ex: number, set: number, patch: Partial<SetEntry>) => {
     setSets((prev) =>
       prev.map((group, i) =>
@@ -296,7 +308,11 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
       await saveQueue.flush();
       await finishDraft(db, draft, payload);
       onFinish({ ...payload, saved: true });
-    } catch { setToast('error'); }
+    } catch {
+      // Не выкидываем пользователя в пустоту: итог показывает попытку и
+      // позволяет вернуться к тренировке и повторить сохранение.
+      onFinish({ ...payload, saved: false });
+    }
     finally { finishingRef.current = false; setFinishing(false); }
 
   };
@@ -307,6 +323,14 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
     void queryReadModel<boolean>(db, `ownership:${draft.sessionId}`).then(locked => { if (alive) setReadOnly(locked); }).catch(() => { if (alive) setToast('error'); });
     return () => { alive = false; };
   }, [db, draft, revision]);
+
+  const markInvalid = (ex: number, index: number, set: SetEntry) => {
+    if (set.done) return;
+    const errors = setInputErrors(set);
+    if ((set.weight.trim() !== '' || set.reps.trim() !== '') && (errors.weight || errors.reps)) {
+      setAttempted((previous) => new Set([...previous, `${ex}:${index}`]));
+    }
+  };
 
   return (
     <div className="screen exec">
@@ -371,7 +395,13 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                 }}
                 className={`exec-card exec-card--${state}`}
               >
-                <h2 className="exec-card__heading"><button className="exec-card__toggle" aria-expanded={open} aria-controls={`exercise-${ex}`} onClick={() => setFocused(open ? -1 : ex)}>
+                <h2 className="exec-card__heading"><button
+                  className="exec-card__toggle"
+                  aria-expanded={open}
+                  aria-controls={`exercise-${ex}`}
+                  aria-label={`Упражнение ${ex + 1} из ${total}: ${entry.exercise.name}. ${skippedHere ? 'Пропущено' : done ? 'Выполнено' : open ? 'Открыто' : 'Не завершено'}. ${open ? 'Свернуть' : 'Развернуть'}`}
+                  onClick={() => setFocused(open ? -1 : ex)}
+                >
                   <span className="exec-card__ordinal" aria-hidden="true">{String(ex + 1).padStart(2, '0')}</span>
                   <span className="exec-card__head">
                     <span className="exec-card__group">{entry.groupUsed} · {skippedHere ? 'Пропущено' : done ? 'Выполнено' : open ? 'Сейчас' : `${group.filter(set => set.done).length}/${group.length} подходов`}</span>
@@ -399,52 +429,56 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                         const errorId = `set-error-${ex}-${index}`;
                         return (
                         <li key={index} className={`set-row${!set.done && index === group.findIndex(item => !item.done) ? ' set-row--current' : ''}`}>
-                          <span className="set-row__num">{index + 1}</span>
-                          <label className="set-field">
-                            <span className="set-field__label">кг</span>
-                            <input
-                              className="set-input"
-                              type="text"
-                              inputMode="decimal"
-                              aria-label={`Вес, подход ${index + 1}, ${entry.exercise.name}`}
-                              value={set.weight}
-                              aria-invalid={showErrors && Boolean(errors.weight)}
-                              aria-describedby={showErrors && errors.weight ? errorId : undefined}
-                              onChange={(e) => update(ex, index, { weight: e.target.value })}
-                            />
-                          </label>
-                          <label className="set-field">
-                            <span className="set-field__label">повт.</span>
-                            <input
-                              className="set-input"
-                              type="text"
-                              inputMode="numeric"
-                              aria-label={`Повторения, подход ${index + 1}, ${entry.exercise.name}`}
-                              value={set.reps}
-                              aria-invalid={showErrors && Boolean(errors.reps)}
-                              aria-describedby={showErrors && errors.reps ? errorId : undefined}
-                              onChange={(e) => update(ex, index, { reps: e.target.value })}
-                            />
-                          </label>
-                          <button
-                            className={`set-check ${set.done ? 'set-check--on' : ''}`}
-                            aria-pressed={set.done}
-                            aria-label={`Подход ${index + 1} выполнен`}
-                            onClick={event => {
-                              if (!set.done && !validSetInput(set)) {
-                                setAttempted(previous => new Set([...previous, `${ex}:${index}`]));
-                                const row = event.currentTarget.closest('li');
-                                requestAnimationFrame(() => row?.querySelector<HTMLInputElement>('input[aria-invalid="true"]')?.focus());
-                                return;
-                              }
-                              update(ex, index, { done: !set.done });
-                              setLastCompleted(set.done ? null : { ex, set: index });
-                            }}
-                          >
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
-                              <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          </button>
+                          <div className="set-row__main">
+                            <span className="set-row__num">{index + 1}</span>
+                            <label className="set-field">
+                              <span className="set-field__label">кг</span>
+                              <input
+                                className="set-input"
+                                type="text"
+                                inputMode="decimal"
+                                aria-label={`Вес, подход ${index + 1}, ${entry.exercise.name}`}
+                                value={set.weight}
+                                aria-invalid={showErrors && Boolean(errors.weight)}
+                                aria-describedby={showErrors && errors.weight ? errorId : undefined}
+                                onChange={(e) => update(ex, index, { weight: e.target.value })}
+                                onBlur={() => markInvalid(ex, index, set)}
+                              />
+                            </label>
+                            <label className="set-field">
+                              <span className="set-field__label">повт.</span>
+                              <input
+                                className="set-input"
+                                type="text"
+                                inputMode="numeric"
+                                aria-label={`Повторения, подход ${index + 1}, ${entry.exercise.name}`}
+                                value={set.reps}
+                                aria-invalid={showErrors && Boolean(errors.reps)}
+                                aria-describedby={showErrors && errors.reps ? errorId : undefined}
+                                onChange={(e) => update(ex, index, { reps: e.target.value })}
+                                onBlur={() => markInvalid(ex, index, set)}
+                              />
+                            </label>
+                            <button
+                              className={`set-check ${set.done ? 'set-check--on' : ''}`}
+                              aria-pressed={set.done}
+                              aria-label={`Подход ${index + 1} выполнен`}
+                              onClick={event => {
+                                if (!set.done && !validSetInput(set)) {
+                                  setAttempted(previous => new Set([...previous, `${ex}:${index}`]));
+                                  const row = event.currentTarget.closest('li');
+                                  requestAnimationFrame(() => row?.querySelector<HTMLInputElement>('input[aria-invalid="true"]')?.focus());
+                                  return;
+                                }
+                                update(ex, index, { done: !set.done });
+                                setLastCompleted(set.done ? null : { ex, set: index });
+                              }}
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+                                <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                          </div>
                           {showErrors && (errors.weight || errors.reps) && <span className="set-row__error" id={errorId} role="alert">{[errors.weight, errors.reps].filter(Boolean).join(' ')}</span>}
                           {past?.[index] && <span className="set-row__previous">Ранее: {past[index]!.weight ? `${past[index]!.weight} кг × ` : ''}{past[index]!.reps || '—'} повт.</span>}
                           {index >= DEFAULT_SETS && <button type="button" className="set-row__remove" onClick={() => removeSet(ex, index)} aria-label={`Убрать подход ${index + 1}: ${entry.exercise.name}`}>Убрать подход {index + 1}</button>}
@@ -461,6 +495,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                       </button>
                       <button
                         className="exec-card__skip"
+                        aria-label={`Пропустить упражнение: ${entry.exercise.name}`}
                         onClick={() => {
                           setSkipIndex(ex);
                           setModal('skip-exercise');
@@ -471,6 +506,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                       {groupSize > 1 && (
                         <button
                           className="exec-card__skip"
+                          aria-label={`Пропустить группу: ${entry.groupUsed}`}
                           onClick={() => {
                             setSkipIndex(ex);
                             setModal('skip-group');
@@ -489,43 +525,51 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
         </div>
 
         <div className="exec-footer">
-          {removedSet && <div className="exec-undo" role="status">Подход {removedSet.index + 1} убран <button type="button" onClick={restoreSet}>Вернуть</button></div>}
+          {toast !== null && (
+            <div
+              className={`exec-status ${toast === 'error' ? 'exec-status--error' : ''}`}
+              role={toast === 'error' ? 'alert' : 'status'}
+              aria-live="polite"
+            >
+              {toast === 'ok' ? (
+                'Сохранено на устройстве'
+              ) : (
+                <>
+                  <span>Не удалось сохранить</span>
+                  <button className="exec-status__action" onClick={() => void persist()}>
+                    Повторить
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+          {removedSet && <div className="exec-undo" role="status">Подход {removedSet.index + 1} убран <button type="button" className="exec-undo__action" onClick={restoreSet}>Вернуть</button></div>}
           {lastCompleted && <div className="exec-undo" role="status">Подход {lastCompleted.set + 1} отмечен
-            <button type="button" onClick={() => {
+            <button type="button" className="exec-undo__action" onClick={() => {
               update(lastCompleted.ex, lastCompleted.set, { done: false }); setLastCompleted(null);
             }}>Отменить</button>
           </div>}
-          <span className="exec-footer__hint">
-            {plural(completed, ['упражнение', 'упражнения', 'упражнений'])} готово
-          </span>
-          <button className="btn btn--primary exec-footer__cta" onClick={() => void finish()}>
-            {finishing ? 'Сохраняем…' : 'Завершить'}
-          </button>
-        </div>
-
-        {toast !== null && (
-          <div
-            className={`autosave-toast ${toast === 'error' ? 'autosave-toast--error' : ''}`}
-            role="status"
-            aria-live="polite"
-          >
-            {toast === 'ok' ? (
-              'Сохранено'
-            ) : (
-              <>
-                <span>Не удалось сохранить</span>
-                <button className="autosave-toast__retry" onClick={() => void persist()}>
-                  Повторить
-                </button>
-              </>
-            )}
+          <div className="exec-footer__bar">
+            <span className="exec-footer__hint">
+              {plural(completed, ['упражнение', 'упражнения', 'упражнений'])} готово
+            </span>
+            <button className="btn btn--primary exec-footer__cta" onClick={() => void finish()}>
+              {finishing ? 'Сохраняем…' : 'Завершить'}
+            </button>
           </div>
-        )}
+        </div>
 
         {modal !== null && (() => {
           const targetName = workout.entries[skipIndex]?.exercise.name ?? '';
           const targetGroup = workout.entries[skipIndex]?.groupUsed ?? '';
           const isSkip = modal === 'skip-exercise' || modal === 'skip-group';
+          const targetSets = sets[skipIndex] ?? [];
+          const targetDoneSets = targetSets.filter(set => set.done).length;
+          const targetDone = isDone(targetSets);
+          const groupEntries = workout.entries
+            .map((entry, index) => ({ entry, index }))
+            .filter(({ entry }) => entry.groupUsed === targetGroup);
+          const groupDone = groupEntries.filter(({ index }) => isDone(sets[index] ?? []) && skipped[index] !== true).length;
           const title =
             modal === 'finish'
               ? 'Тренировка не будет засчитана'
@@ -542,9 +586,13 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
               : modal === 'partial-finish'
                 ? `Завершено ${completed} из ${total} упражнений, отмечено ${doneSets} из ${totalSets} подходов. В статистику попадут только полностью выполненные упражнения. Остальные результаты сохранятся в истории без учёта в статистике.`
               : modal === 'skip-exercise'
-                ? `«${targetName}» не засчитается в итоге. Вернуть его можно в любой момент.`
+                ? targetDone
+                  ? `«${targetName}» уже выполнено: ${targetDoneSets} из ${targetSets.length} подходов. Если пропустить, результат не попадёт в итог, но отметки сохранятся — упражнение можно вернуть.`
+                  : targetDoneSets > 0
+                    ? `У «${targetName}» отмечено ${targetDoneSets} из ${targetSets.length} подходов. После пропуска они не попадут в итог. Вернуть упражнение можно в любой момент.`
+                    : `«${targetName}» не засчитается в итоге. Вернуть его можно в любой момент.`
                 : modal === 'skip-group'
-                  ? `Все упражнения группы «${targetGroup}» в этой тренировке будут пропущены.`
+                  ? `Все упражнения группы «${targetGroup}» в этой тренировке будут пропущены.${groupDone > 0 ? ` Уже выполнено: ${groupDone} из ${groupEntries.length} — их результаты не попадут в итог, но отметки сохранятся.` : ''}`
                   : 'Прогресс сохранится — продолжить можно будет с главного экрана.';
           return (
             <div className="overlay">
@@ -561,8 +609,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                   </> : isSkip ? (
                     <>
                       <button
-                        className="btn btn--primary"
-                        autoFocus
+                        className="btn btn--ghost dialog__danger"
                         onClick={() => {
                           if (modal === 'skip-exercise') skipExercise(skipIndex);
                           else skipGroup(targetGroup);
@@ -571,7 +618,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                       >
                         Пропустить
                       </button>
-                      <button className="btn btn--ghost" onClick={() => setModal(null)}>
+                      <button className="btn btn--ghost" onClick={() => setModal(null)} autoFocus>
                         Отмена
                       </button>
                     </>

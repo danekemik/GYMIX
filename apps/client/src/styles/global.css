@@ -8,6 +8,19 @@
   padding: 0;
 }
 
+/* Текст только для скринридеров. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip-path: inset(50%);
+}
+
 html,
 body {
   height: 100%;
@@ -34,6 +47,11 @@ button {
 }
 
 button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }

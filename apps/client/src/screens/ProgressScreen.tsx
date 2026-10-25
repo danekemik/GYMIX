@@ -1,12 +1,12 @@
 import { useLocalRead } from '../hooks/useLocalRead';
 import { SettingsButton } from '../components/SettingsButton';
 import { WeekActivity } from '../components/WeekActivity';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDb } from '../hooks/useDb';
 import { LineChart } from '../components/LineChart';
 import { Segmented } from '../components/Segmented';
 import { plural } from '../lib/draft';
-import { formatDate } from '../lib/format';
+import { formatDate, localDateKey } from '../lib/format';
 import {
   saveBodyWeight,
   type BodyWeightPoint,
@@ -20,8 +20,16 @@ export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
   const [period, setPeriod] = useState<'6m' | 'all'>('6m');
   const [metric, setMetric] = useState<'weight' | 'reps'>('weight');
   const [weightInput, setWeightInput] = useState('');
+  const weightRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
   const [weightError, setWeightError] = useState('');
+  const [weightSaved, setWeightSaved] = useState(false);
+
+  useEffect(() => {
+    if (!weightSaved) return;
+    const timer = window.setTimeout(() => setWeightSaved(false), 4000);
+    return () => window.clearTimeout(timer);
+  }, [weightSaved]);
 
   const { data, error: readError, reload } = useLocalRead<{ series: ExerciseSeries[]; body: BodyWeightPoint[]; }>(`progress:${period}`, `progress:${period}:${new Date().toDateString()}`);
   const series = data?.series;
@@ -54,20 +62,32 @@ export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
   const recordWeight = async () => {
     if (db === undefined) return;
     const raw = weightInput.trim().replace(',', '.');
-    if (raw === '' || !/^\d+(\.\d{1,2})?$/.test(raw)) {
-      setWeightError('Введи вес числом, например 72,5');
+    const value = Number(raw);
+    if (raw === '' || !/^\d+(\.\d{1,2})?$/.test(raw) || value <= 0 || value > 500) {
+      setWeightError('Введи вес от 1 до 500 кг, например 72,5');
+      weightRef.current?.focus();
       return;
     }
     setWeightError('');
+    setWeightSaved(false);
     setSaving(true);
     try {
-      await saveBodyWeight(db, new Date().toISOString().slice(0, 10), Number(raw));
+      await saveBodyWeight(db, localDateKey(), value);
       setWeightInput('');
+      setWeightSaved(true);
       await reload();
+    } catch {
+      setWeightError('Не удалось записать вес. Попробуй ещё раз.');
     } finally {
       setSaving(false);
     }
   };
+
+  const latestBody = body?.at(-1);
+  const previousBody = body !== undefined && body.length > 1 ? body[body.length - 2] : undefined;
+  const bodyDelta = latestBody !== undefined && previousBody !== undefined
+    ? Math.round((latestBody.value - previousBody.value) * 10) / 10
+    : undefined;
 
   return (
     <div className="screen">
@@ -80,6 +100,7 @@ export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
         <Segmented
           value={period}
           onChange={(v) => setPeriod(v as '6m' | 'all')}
+          label="Период"
           options={[
             { value: '6m', label: '6 месяцев' },
             { value: 'all', label: 'Вся история' },
@@ -87,9 +108,9 @@ export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
         />
 
         {error !== undefined && (
-          <p className="body-error" role="alert">
-            Не удалось загрузить прогресс: {error}
-          </p>
+          <div className="note note--error" role="alert">
+            Не удалось загрузить прогресс. <button className="text-action" onClick={() => void reload()}>Повторить</button>
+          </div>
         )}
 
         {error === undefined && series === undefined && <p className="body-muted">Загружаем прогресс…</p>}
@@ -101,6 +122,7 @@ export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
               <Segmented
                 value={metric}
                 onChange={(v) => setMetric(v as 'weight' | 'reps')}
+                label="Что показывать на графике"
                 options={[
                   { value: 'weight', label: 'Вес' },
                   { value: 'reps', label: 'Повторы' },
@@ -151,14 +173,21 @@ export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
                       ariaLabel={`Динамика упражнения «${active.name}» по ${metric === 'weight' ? 'весу' : 'повторениям'}`}
                       describedBy={summaryId}
                     />
-                    <div className="chart__axis" aria-hidden="true">
-                      <span>{first!.label}</span>
-                      <span>
-                        {formatValue(Math.max(...formatted.map((p) => p.value)))} ·{' '}
-                        {formatValue(Math.min(...formatted.map((p) => p.value)))}
-                      </span>
-                      <span>{last!.label}</span>
-                    </div>
+                    {formatted.length === 1 && (
+                      <p className="progress-card__hint">
+                        Пока одна тренировка за период — линия появится после следующей.
+                      </p>
+                    )}
+                    {formatted.length > 1 && (
+                      <div className="chart__axis" aria-hidden="true">
+                        <span>{first!.label}</span>
+                        <span>
+                          {formatValue(Math.max(...formatted.map((p) => p.value)))} ·{' '}
+                          {formatValue(Math.min(...formatted.map((p) => p.value)))}
+                        </span>
+                        <span>{last!.label}</span>
+                      </div>
+                    )}
 
                     <table className="chart-table">
                       <caption className="chart-table__caption">
@@ -191,6 +220,17 @@ export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
         <section className="progress-card">
           <div className="progress-card__head">
             <h2 className="progress-card__title">Вес тела</h2>
+            {latestBody !== undefined && (
+              <p className="progress-card__latest">
+                <strong>{latestBody.value.toLocaleString('ru-RU')} кг</strong>
+                <span>{formatDate(new Date(`${latestBody.date}T00:00:00`))}</span>
+                {bodyDelta !== undefined && bodyDelta !== 0 && (
+                  <span className={bodyDelta > 0 ? 'progress-card__delta' : 'progress-card__delta progress-card__delta--down'}>
+                    {bodyDelta > 0 ? '+' : '−'}{Math.abs(bodyDelta).toLocaleString('ru-RU')} кг
+                  </span>
+                )}
+              </p>
+            )}
           </div>
           {body === undefined ? (
             <p className="body-muted">Загружаем…</p>
@@ -203,32 +243,48 @@ export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
                 formatValue={(n) => `${n} кг`}
                 ariaLabel="Динамика веса тела"
               />
-              <div className="chart__axis" aria-hidden="true">
-                <span>{formatDate(new Date(`${body[0]!.date}T00:00:00`))}</span>
-                <span>{formatDate(new Date(`${body[body.length - 1]!.date}T00:00:00`))}</span>
-              </div>
+              {body.length === 1 && (
+                <p className="progress-card__hint">
+                  Пока одно взвешивание — линия появится после следующего.
+                </p>
+              )}
+              {body.length > 1 && (
+                <div className="chart__axis" aria-hidden="true">
+                  <span>{formatDate(new Date(`${body[0]!.date}T00:00:00`))}</span>
+                  <span>{formatDate(new Date(`${body[body.length - 1]!.date}T00:00:00`))}</span>
+                </div>
+              )}
             </>
           )}
 
           <div className="progress-card__record">
             <input
+              ref={weightRef}
               className="field__input"
               type="number"
               inputMode="decimal"
-              min="0"
+              min="1"
+              max="500"
               step="0.1"
               value={weightInput}
               onChange={(e) => { setWeightInput(e.target.value); if (weightError) setWeightError(''); }}
-              placeholder={`Вес сегодня, кг (${formatDate(new Date())})`}
-              aria-label="Записать вес тела на сегодня"
+              placeholder="Например, 72,5"
+              aria-label="Вес тела на сегодня, кг"
               aria-invalid={weightError !== '' || undefined}
-              aria-describedby={weightError ? 'weight-error' : undefined}
+              aria-describedby={weightError ? 'weight-error' : 'weight-hint'}
             />
-            <button className="btn btn--primary btn--sm" disabled={saving} onClick={() => void recordWeight()}>
-              Записать
+            <button className="btn btn--primary btn--sm" disabled={saving || weightInput.trim() === ''} onClick={() => void recordWeight()}>
+              {saving ? 'Сохраняем…' : 'Записать'}
             </button>
           </div>
-          {weightError && <p className="body-error" id="weight-error" role="alert">{weightError}</p>}
+          {weightError !== '' ? (
+            <p className="body-error" id="weight-error" role="alert">{weightError}</p>
+          ) : (
+            <p className="progress-card__hint" id="weight-hint">
+              Запись за сегодня, {formatDate(new Date())}. Вес от 1 до 500 кг.
+            </p>
+          )}
+          {weightSaved && <p className="body-muted" role="status">Вес записан.</p>}
         </section>
       </div>
     </div>

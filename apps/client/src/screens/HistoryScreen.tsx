@@ -8,15 +8,15 @@ interface HistoryScreenProps {
 }
 
 export function HistoryScreen({ onOpen }: HistoryScreenProps) {
-  const { data: items, error } = useLocalRead<HistoryItem[]>('history');
+  const { data: items, error, reload } = useLocalRead<HistoryItem[]>('history');
 
   return (
     <div className="library__content">
       <div className="screen__body">
         {error !== undefined && (
-          <p className="body-error" role="alert">
-            Не удалось загрузить историю: {error.message}
-          </p>
+          <div className="note note--error" role="alert">
+            Не удалось загрузить историю. <button className="text-action" onClick={() => void reload()}>Повторить</button>
+          </div>
         )}
 
         {error === undefined && items === undefined && (
@@ -39,13 +39,14 @@ export function HistoryScreen({ onOpen }: HistoryScreenProps) {
                 <button
                   className="history-row"
                   onClick={() => onOpen(item.id)}
-                  aria-label={`Тренировка ${typeLabel(item.type)}, ${formatDay(item.completedAt)}`}
+                  aria-label={`Тренировка ${typeLabel(item.type)}, ${formatDay(item.completedAt)}, выполнено ${item.done} из ${item.total} упражнений`}
                 >
                   <div className="history-row__head">
                     <span className="history-row__type">{typeLabel(item.type)}</span>
                     <span className="history-row__score">
                       {item.done}
                       <span className="history-row__score-total">/{item.total}</span>
+                      <span className="history-row__score-label">упражнений</span>
                     </span>
                   </div>
                   <span className="history-row__meta">{item.volume}</span>

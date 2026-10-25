@@ -153,9 +153,11 @@
   font-weight: 600;
   line-height: 1.15;
   color: var(--ink);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .plan-summary__meta {
@@ -219,9 +221,11 @@
 .plan__card[draggable='true']:active { cursor: grabbing; }
 .plan__card--dragging { opacity: 0.55; border-color: var(--accent); }
 
-.plan__card:has(.plan__more[open]) { z-index: 30; }
+.plan__card:has(.action-menu__panel) { z-index: 30; }
 
-.plan__card--muted { opacity: 0.55; }
+/* Исключённое упражнение приглушаем внутри карточки, чтобы меню действий
+ * не наследовало прозрачность и оставалось читаемым. */
+.plan__card--muted .plan__open { opacity: 0.55; }
 
 .plan__open {
   display: flex;
@@ -286,9 +290,11 @@
   font-weight: 550;
   line-height: 1.25;
   color: var(--ink);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .plan__tags {
@@ -690,55 +696,6 @@
   color: var(--danger);
 }
 
-/* --- тост автосохранения (S16) --- */
-
-.autosave-toast {
-  position: fixed;
-  left: 50%;
-  bottom: calc(92px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  z-index: 45;
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
-  padding: var(--space-2xs) var(--space-s);
-  border: var(--border);
-  border-radius: 999px;
-  background: var(--surface-2);
-  box-shadow: var(--shadow-s);
-  font-size: var(--step--1);
-  font-weight: 400;
-  color: var(--ink-2);
-  animation: toast-in var(--dur) var(--ease-out);
-}
-
-.autosave-toast--error {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-
-.autosave-toast__retry {
-  font-weight: 550;
-  color: var(--accent);
-}
-
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 6px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .autosave-toast {
-    animation: none;
-  }
-}
-
 .exec-card__head {
   display: flex;
   flex-direction: column;
@@ -783,7 +740,11 @@
 }
 
 .exec-top {
+  position: sticky;
+  top: 0;
+  z-index: 25;
   background: var(--base);
+  border-bottom: 1px solid transparent;
 }
 
 .exec-clock {
@@ -975,6 +936,35 @@
   font-weight: 450;
 }
 
+.field__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-s);
+}
+
+.field__toggle {
+  min-height: 44px;
+  margin-block: calc(-1 * var(--space-2xs));
+  font-size: var(--step--2);
+}
+
+.auth-alt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding-top: var(--space-2xs);
+}
+
+.auth-alt .btn {
+  width: 100%;
+}
+
+.auth-alt__back {
+  align-self: center;
+}
+
 .field__input {
   width: 100%;
   min-height: 46px;
@@ -1105,4 +1095,8 @@
   border-color: var(--accent);
   color: var(--accent);
   font-weight: 550;
+}
+
+.finish-history-link {
+  align-self: center;
 }

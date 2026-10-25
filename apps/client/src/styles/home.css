@@ -28,6 +28,10 @@
 .hero__progress progress::-moz-progress-bar { background: var(--accent-ink); border-radius: 999px; }
 .hero__discard { align-self: center; min-height: 44px; margin-block: calc(-1 * var(--space-s)); padding-inline: var(--space-xs); color: #35471c; font-size: var(--step--2); text-decoration: underline; text-underline-offset: 4px; }
 .hero__discard:focus-visible { outline-color: var(--accent-ink); }
+.hero__actions { display: flex; align-items: center; gap: var(--space-2xs); }
+.screen--home .hero__secondary { min-height: 44px; padding: 0 var(--space-s); border: 1px solid rgba(10, 12, 8, .28); border-radius: 999px; color: var(--accent-ink); font-size: var(--step--1); font-weight: 550; }
+.screen--home .hero__secondary:hover { background: rgba(10, 12, 8, .08); }
+.screen--home .hero__secondary:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 .hero__ownership { color: #35471c; font-size: var(--step--2); line-height: 1.5; margin-top: calc(-1 * var(--space-xs)); }
 .screen--home .today-links { background: var(--surface); border-radius: var(--radius-xl); padding-inline: var(--space-s); }
 .screen--home .journal-link { padding-block: var(--space-xs); gap: var(--space-s); min-height: 72px; }
@@ -65,5 +69,7 @@
   .screen--home .recent-row__plate { width: 36px; height: 40px; }
 }
 
-.screen--home .hero__discard { display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; background: rgba(10, 12, 8, .12); color: var(--accent-ink); border-radius: 50%; text-decoration: none; }
+.screen--home .hero__discard { display: inline-grid; place-items: center; width: 44px; height: 44px; margin-left: auto; padding: 0; border: 0; background: rgba(10, 12, 8, .12); color: var(--accent-ink); border-radius: 50%; text-decoration: none; }
+.screen--home .hero__discard:hover { background: rgba(10, 12, 8, .2); }
+.screen--home .hero__discard:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
 .screen--home .hero__discard-icon { width: 18px; height: 18px; }

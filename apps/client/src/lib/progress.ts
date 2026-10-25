@@ -3,6 +3,7 @@ import { and, asc, eq, isNotNull } from 'drizzle-orm';
 import { bodyWeightEntries, exercises, sessionExercises, sessionSets, workoutSessions } from '@gymix/db/schema';
 import type { GymixDb } from './db';
 import { ensureLocalOwner } from './session';
+import { localDateKey } from './format';
 
 /**
  * Точка графика: лучший подход одной тренировки.
@@ -88,7 +89,7 @@ export async function bodyWeightSeries(db: GymixDb, since?: Date): Promise<BodyW
     .from(bodyWeightEntries)
     .where(eq(bodyWeightEntries.userId, owner.userId))
     .orderBy(asc(bodyWeightEntries.measuredAt));
-  const sinceKey = since === undefined ? undefined : since.toISOString().slice(0, 10);
+  const sinceKey = since === undefined ? undefined : localDateKey(since);
   return rows
     .filter((r) => sinceKey === undefined || r.date >= sinceKey)
     .map((r) => ({ date: r.date, value: Number(r.value) }));

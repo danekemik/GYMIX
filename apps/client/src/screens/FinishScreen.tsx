@@ -3,6 +3,7 @@ import { useDialogFocus } from '../hooks/useDialogFocus';
 import { plural } from '../lib/draft';
 import { formatDate, formatDurationMs } from '../lib/format';
 import { saveTemplate } from '../lib/templates';
+import { downloadLocalBackup } from '../data/sync/backup';
 import { useDb } from '../hooks/useDb';
 import type { FinishPayload } from './ExecuteScreen';
 import { typeLabel } from '../lib/workoutTypes';
@@ -10,13 +11,14 @@ import { typeLabel } from '../lib/workoutTypes';
 interface FinishScreenProps {
   payload: FinishPayload;
   onDone: () => void;
+  onRetry: () => void;
   onOpenHistory: () => void;
   onOpenTemplates: () => void;
 }
 
 type Dialog = 'idle' | 'naming' | 'saving' | 'error' | 'saved';
 
-export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }: FinishScreenProps) {
+export function FinishScreen({ payload, onDone, onRetry, onOpenHistory, onOpenTemplates }: FinishScreenProps) {
   const { db } = useDb();
   const { workout, sets } = payload;
   const total = workout.entries.length;
@@ -30,8 +32,20 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
   const date = formatDate(new Date(payload.endedAt));
   const [dialog, setDialog] = useState<Dialog>('idle');
   const [name, setName] = useState<string>(typeLabel(workout.type));
+  const [backup, setBackup] = useState<{ text: string; tone: 'ok' | 'error' }>();
   const modal = useRef<HTMLDivElement>(null);
   useDialogFocus(modal, dialog !== 'idle', () => { if (dialog !== 'saving') setDialog('idle'); }, dialog);
+
+  const downloadBackup = async () => {
+    if (db === undefined) return;
+    setBackup(undefined);
+    try {
+      await downloadLocalBackup(db);
+      setBackup({ text: 'Резервная копия скачана.', tone: 'ok' });
+    } catch {
+      setBackup({ text: 'Не удалось создать резервную копию. Попробуй ещё раз.', tone: 'error' });
+    }
+  };
 
   const save = async () => {
     const title = name.trim();
@@ -88,7 +102,8 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
 
         {payload.saved === false && (
           <div className="note note--error" role="alert">
-            Запись не сохранилась в историю. Вернись к тренировке и повтори сохранение.
+            Запись не сохранилась в историю. Вернись к тренировке и повтори сохранение —
+            введённые подходы останутся на месте.
           </div>
         )}
 
@@ -96,10 +111,9 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
           {workout.entries.map((entry, ex) => {
             const group = sets[ex] ?? [];
             const skipped = skippedFlags?.[ex] === true;
-            const touched = group.some((s) => s.done);
             const done = !skipped && group.length > 0 && group.every((s) => s.done);
-            const status = done ? 'done' : !skipped && touched ? 'partial' : 'skip';
-            const statusLabel = status === 'done' ? 'Выполнено' : status === 'partial' ? 'Не завершено' : 'Пропущено';
+            const status = done ? 'done' : skipped ? 'skip' : 'partial';
+            const statusLabel = done ? 'Выполнено' : skipped ? 'Пропущено' : 'Не завершено';
             return (
               <li key={entry.slotKey} className="finish-ex">
                 <div className="finish-ex__head">
@@ -128,15 +142,29 @@ export function FinishScreen({ payload, onDone, onOpenHistory, onOpenTemplates }
         </ul>
 
         <div className="screen__cta">
-          <button className="btn btn--primary" onClick={onDone}>
-            Готово
-          </button>
-          <button className="btn btn--ghost" onClick={() => setDialog('naming')}>
-            Сохранить как шаблон
-          </button>
-          <button className="btn btn--ghost" onClick={onOpenHistory}>
-            Открыть историю
-          </button>
+          {payload.saved === false ? (
+            <>
+              <button className="btn btn--primary" onClick={onRetry}>
+                Вернуться к тренировке
+              </button>
+              <button className="btn btn--ghost" onClick={() => void downloadBackup()} disabled={db === undefined}>
+                Скачать резервную копию
+              </button>
+              {backup !== undefined && <p className={backup.tone === 'error' ? 'body-error' : 'body-muted'} role={backup.tone === 'error' ? 'alert' : 'status'}>{backup.text}</p>}
+            </>
+          ) : (
+            <>
+              <button className="btn btn--primary" onClick={onDone}>
+                Готово
+              </button>
+              <button className="btn btn--ghost" onClick={() => setDialog('naming')}>
+                Сохранить как шаблон
+              </button>
+              <button className="text-action finish-history-link" onClick={onOpenHistory}>
+                Перейти в историю
+              </button>
+            </>
+          )}
         </div>
       </div>
 

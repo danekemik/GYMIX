@@ -9,11 +9,13 @@ import { useDb } from '../hooks/useDb';
 import { excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
 import { ExerciseDetail } from '../components/ExerciseDetail';
 import { exerciseArt } from '../lib/exerciseArt';
-import { IconCheck, IconDumbbellArt, IconPlus } from '../lib/icons';
+import { IconCheck, IconChevronRight, IconDumbbellArt, IconPlus } from '../lib/icons';
 
 interface ManualScreenProps {
   draft: Draft;
   startSlotKey?: string;
+  /** Название редактируемого шаблона. */
+  templateTitle?: string;
   onSlotChange: (slotKey: string) => void;
   onSelect: (slotKey: string, name: string) => void;
   onBack: () => void;
@@ -21,7 +23,7 @@ interface ManualScreenProps {
   onGenerate: () => void;
 }
 
-export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBack, onDone, onGenerate }: ManualScreenProps) {
+export function ManualScreen({ draft, startSlotKey, templateTitle, onSlotChange, onSelect, onBack, onDone, onGenerate }: ManualScreenProps) {
   const { db, revision } = useDb();
   const slots = useMemo(() => structureFor(draft).slots, [draft]);
   const progressLabelId = useId();
@@ -46,6 +48,18 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
       alive = false;
     };
   }, [db, revision]);
+
+  useEffect(() => {
+    if (lastPicked === '') return;
+    const timer = window.setTimeout(() => setLastPicked(''), 4000);
+    return () => window.clearTimeout(timer);
+  }, [lastPicked]);
+
+  useEffect(() => {
+    if (undoExclude === undefined) return;
+    const timer = window.setTimeout(() => setUndoExclude(undefined), 5000);
+    return () => window.clearTimeout(timer);
+  }, [undoExclude]);
 
   const slot = useMemo(() => slots.find((s) => s.slotKey === pickerSlotKey), [slots, pickerSlotKey]);
   const filled = Object.values(draft.selections ?? {}).filter((n) => n.length > 0).length;
@@ -115,18 +129,19 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
     return (
       <div className="screen" ref={root}>
         <header className="topbar">
-          <button className="topbar__back" onClick={onBack} aria-label="Назад">
+          <button className="topbar__back" onClick={onBack} aria-label={templateTitle ? 'Назад к шаблонам' : 'Назад'}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
               <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <h1 className="topbar__title topbar__title--step">Выбор упражнений</h1>
+          <h1 className="topbar__title topbar__title--step">{templateTitle ?? 'Выбор упражнений'}</h1>
         </header>
 
         <div className="screen__body">
           <div className="volume-head volume-head--stack">
             <span className="context__type">{typeLabel(draft.type)}</span>
             <span className="volume-head__meta volume-head__meta--stack">
+              {templateTitle !== undefined && <span className="volume-head__template">Шаблон</span>}
               <span>{draft.volume}</span>
               <span>{plural(total, ['упражнение', 'упражнения', 'упражнений'])}</span>
             </span>
@@ -148,7 +163,7 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
 
           {lastPicked && <p className="body-muted manual-feedback" role="status">Добавлено: {lastPicked}</p>}
           {actionError && <p className="body-error" role="alert">{actionError}</p>}
-          {undoExclude && <p className="note" role="status">«{undoExclude}»: {excluded.has(undoExclude) ? 'исключено из будущих подборов' : 'снова доступно для подбора'}. <button className="text-action" disabled={saving !== undefined} onClick={() => void toggleExclude(undoExclude, false)}>Отменить</button></p>}
+          {undoExclude && <p className="note" role="status">«{undoExclude}»: {excluded.has(undoExclude) ? 'исключено из подбора' : 'снова доступно для подбора'}. <button className="text-action" disabled={saving !== undefined} onClick={() => void toggleExclude(undoExclude, false)}>Отменить</button></p>}
 
           <ul className="manual-grid" aria-label="Слоты">
             {slots.map((s) => {
@@ -178,22 +193,26 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
                           <span className="manual-card__chip">{groupName}</span>
                         </span>
                       </span>
+                      <span className="manual-card__action" aria-hidden="true">
+                        Изменить
+                        <IconChevronRight className="manual-card__action-icon" />
+                      </span>
                     </button>
-                    <div className="manual-card__row">
-                      <button className="btn btn--sm manual-card__pick" onClick={() => openPicker(s.slotKey)}>Изменить</button>
-                    </div>
                   </li>
                 );
               }
               return (
-                <li key={s.slotKey} className="manual-card">
-                  <div className="manual-card__info">
-                    <span className="manual-card__name">{groupName}</span>
-                    <span className="manual-group__count">не выбрано</span>
-                  </div>
-                  <div className="manual-card__row">
-                    <button className="btn btn--primary btn--sm manual-card__pick" onClick={() => openPicker(s.slotKey)}>Выбрать</button>
-                  </div>
+                <li key={s.slotKey} className="manual-card manual-card--empty">
+                  <button className="manual-card__open" onClick={() => openPicker(s.slotKey)} aria-label={`Выбрать упражнение: ${groupName}`}>
+                    <span className="manual-card__info">
+                      <span className="manual-card__name">{groupName}</span>
+                      <span className="manual-group__count">не выбрано</span>
+                    </span>
+                    <span className="manual-card__action manual-card__action--primary" aria-hidden="true">
+                      Выбрать
+                      <IconChevronRight className="manual-card__action-icon" />
+                    </span>
+                  </button>
                 </li>
               );
             })}
@@ -219,7 +238,7 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
   return (
     <div className="screen" ref={root}>
       <header className="topbar">
-        <button className="topbar__back" onClick={() => setView('groups')} aria-label="Назад">
+        <button className="topbar__back" onClick={() => setView('groups')} aria-label="Назад к составу">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -240,7 +259,7 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
 
         {lastPicked && <p className="body-muted manual-feedback" role="status">Добавлено: {lastPicked}</p>}
         {actionError && <p className="body-error" role="alert">{actionError}</p>}
-        {undoExclude && <p className="note" role="status">«{undoExclude}»: {excluded.has(undoExclude) ? 'исключено из будущих подборов' : 'снова доступно для подбора'}. <button className="text-action" disabled={saving !== undefined} onClick={() => void toggleExclude(undoExclude, false)}>Отменить</button></p>}
+        {undoExclude && <p className="note" role="status">«{undoExclude}»: {excluded.has(undoExclude) ? 'исключено из подбора' : 'снова доступно для подбора'}. <button className="text-action" disabled={saving !== undefined} onClick={() => void toggleExclude(undoExclude, false)}>Отменить</button></p>}
 
         <div className="field manual-filter">
           <label className="field__label" htmlFor="manual-query">
@@ -261,7 +280,7 @@ export function ManualScreen({ draft, startSlotKey, onSlotChange, onSelect, onBa
           {filtered.length === 0 && (
             <li className="manual-empty">
               {excluded.size > 0 && candidates.length === 0
-                ? 'Все упражнения группы отмечены «Не предлагать». Загляни в Настройки, чтобы вернуть их.'
+                ? 'Все упражнения группы исключены из подбора. Загляни в Настройки, чтобы вернуть их.'
                 : query ? `По запросу «${query}» ничего не найдено.` : 'Подходящих упражнений не нашлось.'}
               {query && <button className="text-action" onClick={() => setQuery('')}>Сбросить поиск</button>}
             </li>

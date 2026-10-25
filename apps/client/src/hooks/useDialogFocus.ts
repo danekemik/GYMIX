@@ -4,10 +4,18 @@ import { useEffect, useRef, type RefObject } from 'react';
 export function useDialogFocus(root: RefObject<HTMLElement | null>, open: boolean, onClose: () => void, context?: unknown) {
   const close = useRef(onClose);
   close.current = onClose;
+  // Запоминаем элемент до открытия: autoFocus внутри диалога успевает
+  // перехватить фокус ещё во время коммита, поэтому читать activeElement
+  // в эффекте уже поздно.
+  const restoreTo = useRef<HTMLElement | null>(null);
+  const wasOpen = useRef(false);
+  if (open && !wasOpen.current && document.activeElement instanceof HTMLElement) {
+    restoreTo.current = document.activeElement;
+  }
+  wasOpen.current = open;
   useEffect(() => {
     const dialog = root.current;
     if (!open || !dialog) return;
-    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const controls = () => [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [href], [tabindex="0"]')].filter(element => element.getClientRects().length > 0);
     if (!dialog.contains(document.activeElement)) {
       dialog.tabIndex = -1;
@@ -22,6 +30,10 @@ export function useDialogFocus(root: RefObject<HTMLElement | null>, open: boolea
       else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
     };
     document.addEventListener('keydown', keydown, true);
-    return () => { document.removeEventListener('keydown', keydown, true); if (previous?.isConnected) previous.focus({ preventScroll: true }); };
+    return () => {
+      document.removeEventListener('keydown', keydown, true);
+      const previous = restoreTo.current;
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
+    };
   }, [root, open, context]);
 }

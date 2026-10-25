@@ -11,6 +11,23 @@
   padding: 0 var(--space-m) var(--space-m);
 }
 
+/* Подтверждение действия на уровне приложения (сохранение шаблона и т. п.). */
+.app-flash {
+  margin: var(--space-xs) var(--space-m) 0;
+  padding: var(--space-2xs) var(--space-s);
+  border: var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--step--1);
+}
+
+.app-flash--error {
+  border-left-color: var(--danger);
+  color: var(--danger);
+}
+
 .screen__cta {
   display: flex;
   flex-direction: column;

@@ -1,8 +1,9 @@
 import { queryReadModel } from '../data/local/read-rpc';
 import { useLocalRead } from '../hooks/useLocalRead';
 import { takeOwnership } from '../data/sync/engine';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useDb } from '../hooks/useDb';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 import fitnessIcon from '../assets/fitness.png';
 import { SettingsButton } from '../components/SettingsButton';
 import { WeekActivity } from '../components/WeekActivity';
@@ -55,6 +56,11 @@ export function WorkoutsScreen({
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
   const [removeDraft, setRemoveDraft] = useState(false);
+  const [startNew, setStartNew] = useState(false);
+  const removeDialog = useRef<HTMLDivElement>(null);
+  const startDialog = useRef<HTMLDivElement>(null);
+  useDialogFocus(removeDialog, removeDraft, () => { if (!busy) setRemoveDraft(false); });
+  useDialogFocus(startDialog, startNew, () => { if (!busy) setStartNew(false); });
 
   const continueDraft = async () => {
     if (db === undefined || draft === null || draft === 'loading') return;
@@ -84,6 +90,23 @@ export function WorkoutsScreen({
     }
   };
 
+  const startNewWorkout = async () => {
+    if (db === undefined || draft === null || draft === 'loading') return;
+    setBusy(true);
+    setActionError('');
+    try {
+      await deleteDraft(db, draft.sessionId);
+      await draftRead.reload();
+      setStartNew(false);
+      onCreate();
+    } catch {
+      setActionError('Не удалось удалить черновик. Попробуй ещё раз.');
+      setStartNew(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="screen screen--home">
       <header className="topbar">
@@ -95,9 +118,9 @@ export function WorkoutsScreen({
         {loadError && <div className="note note--error" role="alert">Не удалось загрузить тренировки. <button className="text-action" onClick={() => { void historyRead.reload(); void draftRead.reload(); }}>Повторить</button></div>}
         {actionError && <p className="body-error" role="alert">{actionError}</p>}
         {error !== undefined && (
-          <p className="body-error" role="alert">
-            Не удалось открыть базу: {String(error)}
-          </p>
+          <div className="note note--error" role="alert">
+            Не удалось открыть локальную базу. Перезагрузи приложение — данные на устройстве сохранятся.
+          </div>
         )}
 
         <section className={`hero${activeDraft ? ' hero--active' : ''}`} aria-label={activeDraft ? 'Текущая тренировка' : 'Новая тренировка'} aria-busy={draftLoading || undefined}>
@@ -121,21 +144,26 @@ export function WorkoutsScreen({
           {activeDraft && (activeDraft.readOnly ? (
             <p className="hero__ownership" id="draft-ownership">Занятие открыто на другом устройстве. Можно продолжить на этом.</p>
           ) : (
-            <button className="hero__discard" onClick={() => setRemoveDraft(true)} disabled={busy} aria-label="Удалить черновик"><IconTrash className="hero__discard-icon" /></button>
+            <div className="hero__actions">
+              <button className="hero__secondary" onClick={() => setStartNew(true)} disabled={busy}>
+                Начать новую
+              </button>
+              <button className="hero__discard" onClick={() => setRemoveDraft(true)} disabled={busy} aria-label="Удалить черновик"><IconTrash className="hero__discard-icon" /></button>
+            </div>
           ))}
         </section>
 
         <section className="today-links" aria-label="Другие варианты старта">
           {!draftLoading && draft === null && recent !== 'loading' && recent.length > 0 && (
-            <button className="journal-link" disabled={busy} onClick={() => {
+            <button className="journal-link" disabled={busy} aria-label={`Повторить тренировку ${typeLabel(recent[0]!.type)} от ${formatDay(recent[0]!.completedAt)}`} onClick={() => {
               setBusy(true); setActionError('');
               void onRepeat(recent[0]!.id).catch(() => setActionError('Не удалось повторить тренировку. Попробуй ещё раз.')).finally(() => setBusy(false));
             }}>
               <span><strong>{busy ? 'Открываем…' : 'Повторить последнюю'}</strong><small>{typeLabel(recent[0]!.type)} · {formatDay(recent[0]!.completedAt)}</small></span><IconChevronRight />
             </button>
           )}
-          <button className="journal-link" onClick={onOpenTemplates}><span><strong>Сохранённые</strong><small>Тренировки для быстрого старта</small></span><IconChevronRight /></button>
-          {!draftLoading && quickDraft && draft === null && <button className="journal-link" disabled={busy} onClick={onQuickBuild}><span><strong>Новый состав</strong><small>По прошлым настройкам · {typeLabel(quickDraft.type)}</small></span><IconChevronRight /></button>}
+          <button className="journal-link" onClick={onOpenTemplates} aria-label="Открыть сохранённые тренировки"><span><strong>Сохранённые</strong><small>Тренировки для быстрого старта</small></span><IconChevronRight /></button>
+          {!draftLoading && quickDraft && draft === null && <button className="journal-link" disabled={busy} onClick={onQuickBuild} aria-label={`Новый состав по прошлым настройкам, ${typeLabel(quickDraft.type)}`}><span><strong>Новый состав</strong><small>По прошлым настройкам · {typeLabel(quickDraft.type)}</small></span><IconChevronRight /></button>}
         </section>
 
         <WeekActivity variant="timeline" title="На неделе" />
@@ -180,7 +208,7 @@ export function WorkoutsScreen({
 
       {removeDraft && (
         <div className="overlay">
-          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="remove-draft-title">
+          <div ref={removeDialog} className="dialog" role="dialog" aria-modal="true" aria-labelledby="remove-draft-title">
             <h2 id="remove-draft-title" className="dialog__title">
               Удалить черновик?
             </h2>
@@ -189,10 +217,31 @@ export function WorkoutsScreen({
               отменить.
             </p>
             <div className="dialog__actions">
-              <button className="btn btn--primary" onClick={() => void confirmDeleteDraft()} disabled={busy}>
-                Удалить
+              <button className="btn btn--danger" onClick={() => void confirmDeleteDraft()} disabled={busy}>
+                {busy ? 'Удаляем…' : 'Удалить'}
               </button>
-              <button className="btn btn--ghost" onClick={() => setRemoveDraft(false)}>
+              <button className="btn btn--ghost" onClick={() => setRemoveDraft(false)} disabled={busy} autoFocus>
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {startNew && (
+        <div className="overlay">
+          <div ref={startDialog} className="dialog" role="dialog" aria-modal="true" aria-labelledby="start-new-title">
+            <h2 id="start-new-title" className="dialog__title">
+              Начать новую тренировку?
+            </h2>
+            <p className="dialog__text">
+              Текущий черновик будет удалён, а его прогресс — потерян.
+            </p>
+            <div className="dialog__actions">
+              <button className="btn btn--primary" onClick={() => void startNewWorkout()} disabled={busy}>
+                {busy ? 'Удаляем…' : 'Начать новую'}
+              </button>
+              <button className="btn btn--ghost" onClick={() => setStartNew(false)} disabled={busy} autoFocus>
                 Отмена
               </button>
             </div>

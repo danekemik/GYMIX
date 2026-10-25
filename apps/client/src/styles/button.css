@@ -47,6 +47,18 @@
   border-color: var(--ink-3);
 }
 
+/* Опасное действие: не маскируем его лаймовым primary. */
+.btn--danger {
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.btn--danger:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: rgba(255, 122, 107, 0.08);
+}
+
 .btn:disabled {
   opacity: 0.45;
   box-shadow: none;

@@ -96,7 +96,7 @@ export function ExerciseDetail({
             disabled={saving}
             onClick={onToggleExclude}
           >
-            {excluded ? 'Вернуть в подбор' : 'Исключить из будущих подборов'}
+            {excluded ? 'Вернуть в подбор' : 'Исключить из подбора'}
           </button>}
         </div>
       </section>
