@@ -9,7 +9,9 @@
   "scripts": {
     "test": "turbo test",
     "typecheck": "turbo typecheck",
-    "check": "pnpm typecheck && pnpm test && python3 scripts/verify_sync.py",
+    "e2e": "playwright test",
+    "e2e:typecheck": "tsc -p tsconfig.e2e.json --noEmit",
+    "check": "pnpm typecheck && pnpm e2e:typecheck && pnpm test && python3 scripts/verify_sync.py",
     "sync:check": "python3 scripts/verify_sync.py",
     "server:dev": "pnpm --filter @gymix/server dev",
     "server:build": "pnpm --filter @gymix/server build",
@@ -21,6 +23,8 @@
     "db:prepare": "pnpm --filter @gymix/server db:prepare"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^22.10.0",
     "turbo": "^2.11.7",
     "typescript": "^5.9.3",
