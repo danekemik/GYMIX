@@ -399,14 +399,17 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                   className="exec-card__toggle"
                   aria-expanded={open}
                   aria-controls={`exercise-${ex}`}
-                  aria-label={`Упражнение ${ex + 1} из ${total}: ${entry.exercise.name}. ${skippedHere ? 'Пропущено' : done ? 'Выполнено' : open ? 'Открыто' : 'Не завершено'}. ${open ? 'Свернуть' : 'Развернуть'}`}
                   onClick={() => setFocused(open ? -1 : ex)}
                 >
-                  <span className="exec-card__ordinal" aria-hidden="true">{String(ex + 1).padStart(2, '0')}</span>
+                  <span className="exec-card__ordinal">{String(ex + 1).padStart(2, '0')}</span>{' '}
                   <span className="exec-card__head">
-                    <span className="exec-card__group">{entry.groupUsed} · {skippedHere ? 'Пропущено' : done ? 'Выполнено' : open ? 'Сейчас' : `${group.filter(set => set.done).length}/${group.length} подходов`}</span>
+                    <span className="exec-card__group">{entry.groupUsed} · {skippedHere ? 'Пропущено' : done ? 'Выполнено' : open ? 'Сейчас' : `${group.filter(set => set.done).length}/${group.length} подходов`}</span>{' '}
                     <span className="exec-card__name">{entry.exercise.name}</span>
-                  </span><span className="exec-card__chevron" aria-hidden="true">{open ? '−' : '+'}</span>
+                  </span>{' '}
+                  <svg className="exec-card__chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    {open ? <path d="M5 12h14" strokeLinecap="round" /> : <><path d="M12 5v14" strokeLinecap="round" /><path d="M5 12h14" strokeLinecap="round" /></>}
+                  </svg>
+                  <span className="visually-hidden">{open ? 'Свернуть' : 'Развернуть'}</span>
                 </button></h2>
 
                 <div id={`exercise-${ex}`} hidden={!open} className="exec-card__content">

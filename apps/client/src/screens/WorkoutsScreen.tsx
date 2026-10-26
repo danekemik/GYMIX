@@ -155,15 +155,15 @@ export function WorkoutsScreen({
 
         <section className="today-links" aria-label="Другие варианты старта">
           {!draftLoading && draft === null && recent !== 'loading' && recent.length > 0 && (
-            <button className="journal-link" disabled={busy} aria-label={`Повторить тренировку ${typeLabel(recent[0]!.type)} от ${formatDay(recent[0]!.completedAt)}`} onClick={() => {
+            <button className="journal-link" disabled={busy} aria-label={`${busy ? 'Открываем…' : 'Повторить последнюю'} ${typeLabel(recent[0]!.type)} · ${formatDay(recent[0]!.completedAt)}`} onClick={() => {
               setBusy(true); setActionError('');
               void onRepeat(recent[0]!.id).catch(() => setActionError('Не удалось повторить тренировку. Попробуй ещё раз.')).finally(() => setBusy(false));
             }}>
-              <span><strong>{busy ? 'Открываем…' : 'Повторить последнюю'}</strong><small>{typeLabel(recent[0]!.type)} · {formatDay(recent[0]!.completedAt)}</small></span><IconChevronRight />
+              <span><strong>{busy ? 'Открываем…' : 'Повторить последнюю'}</strong>{' '}<small>{typeLabel(recent[0]!.type)} · {formatDay(recent[0]!.completedAt)}</small></span><IconChevronRight />
             </button>
           )}
-          <button className="journal-link" onClick={onOpenTemplates} aria-label="Открыть сохранённые тренировки"><span><strong>Сохранённые</strong><small>Тренировки для быстрого старта</small></span><IconChevronRight /></button>
-          {!draftLoading && quickDraft && draft === null && <button className="journal-link" disabled={busy} onClick={onQuickBuild} aria-label={`Новый состав по прошлым настройкам, ${typeLabel(quickDraft.type)}`}><span><strong>Новый состав</strong><small>По прошлым настройкам · {typeLabel(quickDraft.type)}</small></span><IconChevronRight /></button>}
+          <button className="journal-link" onClick={onOpenTemplates} aria-label="Сохранённые тренировки для быстрого старта"><span><strong>Сохранённые</strong>{' '}<small>Тренировки для быстрого старта</small></span><IconChevronRight /></button>
+          {!draftLoading && quickDraft && draft === null && <button className="journal-link" disabled={busy} onClick={onQuickBuild} aria-label={`Новый состав по прошлым настройкам · ${typeLabel(quickDraft.type)}`}><span><strong>Новый состав</strong>{' '}<small>По прошлым настройкам · {typeLabel(quickDraft.type)}</small></span><IconChevronRight /></button>}
         </section>
 
         <WeekActivity variant="timeline" title="На неделе" />

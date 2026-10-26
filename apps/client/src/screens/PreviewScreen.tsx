@@ -209,6 +209,7 @@ export function PreviewScreen({
                   const down = canMove(index, index + 1);
                   const isExcluded = excluded.has(entry.exercise.name);
                   const art = exerciseArt(entry.exercise.name);
+                  const badges = [entry.isRepeat ? 'повтор' : '', isExcluded ? 'исключено' : ''].filter(Boolean).join(' ');
                   return (
                     <li
                       key={entry.slotKey}
@@ -233,8 +234,8 @@ export function PreviewScreen({
                       }}
                       onDragEnd={() => setDragIndex(null)}
                     >
-                      <button className="plan__open" onClick={() => setDetail(entry.exercise)} aria-label={`Подробнее: ${entry.exercise.name}`} aria-haspopup="dialog">
-                        <span className="plan__order" aria-hidden="true">{index + 1}</span>
+                      <button className="plan__open" onClick={() => setDetail(entry.exercise)} aria-label={`${index + 1} ${entry.exercise.name}${badges ? ` ${badges}` : ''}. Подробнее`} aria-haspopup="dialog">
+                        <span className="plan__order" aria-hidden="true">{index + 1}</span>{' '}
                         <span className={`plan__thumb${art !== undefined ? (art.kind === 'photo' ? ' plan__thumb--photo' : ' plan__thumb--art') : ''}`} aria-hidden="true">
                           {art !== undefined ? (
                             <img className="plan__thumb-img" src={art.src} alt="" loading="lazy" />
@@ -243,7 +244,7 @@ export function PreviewScreen({
                           )}
                         </span>
                         <span className="plan__info">
-                          <span className="plan__name">{entry.exercise.name}</span>
+                          <span className="plan__name">{entry.exercise.name}</span>{' '}
                           {(entry.isRepeat || isExcluded) && (
                             <span className="plan__tags">
                               {entry.isRepeat && <span className="plan__badge">повтор</span>}
