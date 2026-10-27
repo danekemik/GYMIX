@@ -13,6 +13,9 @@
   font-family: var(--font-text);
   font-size: var(--step-0);
   font-weight: 550;
+  text-align: center;
+  /* Крупный текст переносится внутри кнопки, а не вылезает за экран. */
+  overflow-wrap: anywhere;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
     transform var(--dur-fast) var(--ease);
 }
@@ -59,8 +62,13 @@
   background: rgba(255, 122, 107, 0.08);
 }
 
+/* Выключенная кнопка не должна выглядеть грязно-оливковой: это нейтральная
+ * плашка, а не приглушённый лайм. */
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 1;
+  border-color: var(--line);
+  background: var(--surface-2);
+  color: var(--ink-3);
   box-shadow: none;
   cursor: default;
   pointer-events: none;

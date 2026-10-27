@@ -5,9 +5,10 @@ import { type HistoryItem } from '../lib/session';
 
 interface HistoryScreenProps {
   onOpen: (sessionId: string) => void;
+  onStart: () => void;
 }
 
-export function HistoryScreen({ onOpen }: HistoryScreenProps) {
+export function HistoryScreen({ onOpen, onStart }: HistoryScreenProps) {
   const { data: items, error, reload } = useLocalRead<HistoryItem[]>('history');
 
   return (
@@ -24,11 +25,14 @@ export function HistoryScreen({ onOpen }: HistoryScreenProps) {
         )}
 
         {error === undefined && items !== undefined && items.length === 0 && (
-          <div className="empty">
-            <h2 className="empty__title">Пока пусто</h2>
+          <div className="empty empty--history">
+            <h2 className="empty__title">Здесь появятся тренировки</h2>
             <p className="empty__text">
-              Заверши первую тренировку — здесь сохранятся упражнения, подходы и время занятия.
+              Заверши первую — сохраним упражнения, подходы и время занятия.
             </p>
+            <button className="btn btn--primary btn--sm" onClick={onStart}>
+              Собрать тренировку
+            </button>
           </div>
         )}
 
@@ -41,18 +45,22 @@ export function HistoryScreen({ onOpen }: HistoryScreenProps) {
                   onClick={() => onOpen(item.id)}
                   aria-label={`Тренировка ${typeLabel(item.type)}, ${formatDay(item.completedAt)}, выполнено ${item.done} из ${item.total} упражнений`}
                 >
-                  <div className="history-row__head">
-                    <span className="history-row__type">{typeLabel(item.type)}</span>
-                    <span className="history-row__score">
-                      {item.done}
-                      <span className="history-row__score-total">/{item.total}</span>
-                      <span className="history-row__score-label">упражнений</span>
+                  <span className="history-row__main">
+                    <span className="history-row__head">
+                      <span className="history-row__type">{typeLabel(item.type)}</span>
+                      <span className="history-row__date">{formatDay(item.completedAt)}</span>
                     </span>
-                  </div>
-                  <span className="history-row__meta">{item.volume}</span>
-                  <span className="history-row__sub">
-                    {formatDay(item.completedAt)} · {formatDurationMs(item.durationMs)}
+                    <span className="history-row__meta">
+                      {item.volume}
+                      <span aria-hidden="true"> · </span>
+                      {item.done} из {item.total} упражнений
+                      <span aria-hidden="true"> · </span>
+                      {formatDurationMs(item.durationMs)}
+                    </span>
                   </span>
+                  <svg className="history-row__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="m9 5 7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </button>
               </li>
             ))}

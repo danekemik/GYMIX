@@ -1,11 +1,13 @@
 .screen {
   min-height: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
 .screen__body {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   padding: 0 var(--space-m) var(--space-m);
@@ -74,6 +76,8 @@
   font-weight: 550;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .context__volume {

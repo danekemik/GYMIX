@@ -11,10 +11,10 @@
 .screen--home .hero__circle { width: 190px; height: 190px; top: -82px; right: -90px; background: none; border: 1px solid rgba(10, 12, 8, .12); box-shadow: none; }
 .screen--home .hero__circle::before { content: ''; position: absolute; inset: 23px; border: 1px solid rgba(10, 12, 8, .12); border-radius: 50%; }
 .screen--home .hero__icon { left: 31px; top: 102px; width: 43px; height: 43px; }
-.screen--home .hero__copy { gap: var(--space-2xs); max-width: 100%; }
-.screen--home .hero__chip { max-width: calc(100% - 120px); font-size: var(--step--2); line-height: 1.5; color: var(--accent-ink); }
+.screen--home .hero__copy { gap: var(--space-2xs); max-width: 100%; width: 100%; }
+.screen--home .hero__chip { max-width: 100%; font-size: var(--step--2); line-height: 1.5; color: var(--accent-ink); flex-wrap: wrap; }
 .screen--home .hero__chip-dot { flex-shrink: 0; background: currentColor; }
-.screen--home .hero__title { font-size: var(--step-3); line-height: 1.12; margin-top: var(--space-3xs); max-width: 260px; color: var(--accent-ink); }
+.screen--home .hero__title { font-size: var(--step-3); line-height: 1.12; margin-top: var(--space-3xs); max-width: 100%; color: var(--accent-ink); overflow-wrap: anywhere; }
 .screen--home .hero--active .hero__title { max-width: calc(100% - 24px); overflow-wrap: anywhere; }
 .screen--home .hero__sub { font-size: var(--step--1); line-height: 1.5; color: #35471c; }
 .screen--home .hero__cta { min-height: 54px; height: auto; padding: 14px var(--space-s); background: var(--base); color: var(--ink); }
@@ -28,7 +28,7 @@
 .hero__progress progress::-moz-progress-bar { background: var(--accent-ink); border-radius: 999px; }
 .hero__discard { align-self: center; min-height: 44px; margin-block: calc(-1 * var(--space-s)); padding-inline: var(--space-xs); color: #35471c; font-size: var(--step--2); text-decoration: underline; text-underline-offset: 4px; }
 .hero__discard:focus-visible { outline-color: var(--accent-ink); }
-.hero__actions { display: flex; align-items: center; gap: var(--space-2xs); }
+.hero__actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2xs); }
 .screen--home .hero__secondary { min-height: 44px; padding: 0 var(--space-s); border: 1px solid rgba(10, 12, 8, .28); border-radius: 999px; color: var(--accent-ink); font-size: var(--step--1); font-weight: 550; }
 .screen--home .hero__secondary:hover { background: rgba(10, 12, 8, .08); }
 .screen--home .hero__secondary:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }

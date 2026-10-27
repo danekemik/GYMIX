@@ -517,7 +517,7 @@ export function App() {
   } else if (tab === 'workouts') {
     body = <LibraryScreen view={libraryView} onViewChange={setLibraryView} onSettings={openSettings} onCreate={openFormats} onOpenSession={openRecord} onOpenTemplate={(id) => void openTemplate(id)} onEditTemplate={(id) => void openTemplateEdit(id)} />;
   } else {
-    body = <ProgressScreen onSettings={openSettings} />;
+    body = <ProgressScreen onSettings={openSettings} onCreate={openFormats} />;
   }
 
   return (

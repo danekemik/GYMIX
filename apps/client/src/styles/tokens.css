@@ -1,8 +1,9 @@
 :root {
-  /* Unbounded — единая гарнитура продукта: широкий геометричный variable-шрифт.
-   * Для крупного и акцентного — средние/тяжёлые веса, для мелкого рабочего текста — лёгкие. */
+  /* Две роли: Unbounded — голос бренда (заголовки, цифры, акценты).
+   * Onest — рабочий текст: подписи, поля, таблицы, длинные списки.
+   * Обе гарнитуры лежат локально и не требуют сети. */
   --font-display: 'Unbounded Variable', 'Unbounded', system-ui, sans-serif;
-  --font-text: 'Unbounded Variable', 'Unbounded', system-ui, sans-serif;
+  --font-text: 'Onest Variable', 'Onest', system-ui, sans-serif;
 
   --step--2: 0.75rem;
   --step--1: 0.875rem;
@@ -14,16 +15,18 @@
   --step-5: 3.052rem;
   --step-6: 3.815rem;
 
-  /* SPACE — базовая единица и кратные */
+  /* SPACE — базовая единица и кратные.
+   * Отступы не обязаны расти вместе с текстом: при 200% они упираются в
+   * обычный размер, чтобы контент не оставался в узкой колонке. */
   --space-4xs: 0.125rem;
-  --space-3xs: 0.25rem;
-  --space-2xs: 0.5rem;
-  --space-xs: 0.75rem;
-  --space-s: 1rem;
-  --space-m: 1.5rem;
-  --space-l: 2rem;
-  --space-xl: 3rem;
-  --space-2xl: 4.5rem;
+  --space-3xs: clamp(2px, 0.25rem, 4px);
+  --space-2xs: clamp(4px, 0.5rem, 8px);
+  --space-xs: clamp(6px, 0.75rem, 12px);
+  --space-s: clamp(8px, 1rem, 16px);
+  --space-m: clamp(12px, 1.5rem, 24px);
+  --space-l: clamp(16px, 2rem, 32px);
+  --space-xl: clamp(24px, 3rem, 48px);
+  --space-2xl: clamp(36px, 4.5rem, 72px);
 
   /* COLOR — Midnight Circuit: почти чёрный + графит + один лайм-акцент.
    * Нейтралы нейтральные (без зелёного отлива); лайм <10% поверхности. */
@@ -37,9 +40,13 @@
   --accent: #a8f53a;
   --accent-hover: #b8f04a;
   --accent-ink: #0a0c08;
-  --accent-soft: rgba(168, 245, 58, 0.14);
-  --accent-soft-ink: #cbe79a;
-  --plate: #1d2921;
+  --accent-soft: rgba(168, 245, 58, 0.12);
+  --accent-soft-ink: #d6edb0;
+  /* Плашки и выбранные состояния — нейтральные. Лайм остаётся действием,
+   * а не фоном: иначе выбор читается как «недоступно». */
+  --plate: #21262a;
+  --select-bg: #20262a;
+  --select-line: #3d454d;
   --danger: #ff7a6b;
 
   /* Функциональные оттенки поверхностей и оверлеев */

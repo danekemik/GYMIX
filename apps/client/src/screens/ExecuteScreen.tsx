@@ -554,9 +554,9 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
           </div>}
           <div className="exec-footer__bar">
             <span className="exec-footer__hint">
-              {plural(completed, ['упражнение', 'упражнения', 'упражнений'])} готово
+              Выполнено {plural(doneSets, ['подход', 'подхода', 'подходов'])}
             </span>
-            <button className="btn btn--primary exec-footer__cta" onClick={() => void finish()}>
+            <button className="btn btn--ghost exec-footer__cta" onClick={() => void finish()}>
               {finishing ? 'Сохраняем…' : 'Завершить'}
             </button>
           </div>

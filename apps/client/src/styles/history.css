@@ -10,10 +10,10 @@
 }
 
 .empty__title {
-  font-family: var(--font-display);
+  font-family: var(--font-text);
   font-size: var(--step-1);
-  font-weight: 550;
-  letter-spacing: 0.01em;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 
 .empty__text {
@@ -25,10 +25,38 @@
 
 .empty--compact {
   padding-block: var(--space-m);
+  padding-inline: 0;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.empty--compact .empty__title {
+  font-size: var(--step-0);
 }
 
 .empty--compact .empty__text {
   max-width: 34ch;
+}
+
+/* Внутри карточки прогресса пустое состояние не должно оставлять «дыру». */
+.progress-card .empty--compact {
+  padding-block: 0 var(--space-2xs);
+}
+
+/* Пустая история: короткое объяснение и одно действие, без «плаката». */
+.empty--history {
+  align-items: flex-start;
+  gap: var(--space-2xs);
+  padding: var(--space-l) 0;
+  text-align: left;
+}
+
+.empty--history .empty__text {
+  max-width: 38ch;
+}
+
+.empty--history .btn {
+  margin-top: var(--space-2xs);
 }
 
 .history {
@@ -42,8 +70,8 @@
 .history-row {
   display: flex;
   width: 100%;
-  flex-direction: column;
-  gap: var(--space-3xs);
+  align-items: center;
+  gap: var(--space-s);
   padding: var(--space-s) 0;
   border: 0;
   border-bottom: var(--border);
@@ -63,47 +91,49 @@
   outline-offset: -2px;
 }
 
+.history-row__main {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
 .history-row__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--space-s);
+  flex-wrap: wrap;
+  gap: var(--space-3xs) var(--space-s);
+  min-width: 0;
 }
 
 .history-row__type {
   font-size: var(--step-0);
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 
-.history-row__score {
-  font-family: var(--font-display);
-  font-size: var(--step-1);
-  font-weight: 550;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.history-row__score-label {
-  margin-left: var(--space-3xs);
-  font-family: var(--font-text);
+.history-row__date {
+  flex-shrink: 0;
   font-size: var(--step--2);
   font-weight: 400;
-  color: var(--ink-3);
-}
-
-.history-row__score-total {
-  color: var(--ink-3);
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
 }
 
 .history-row__meta {
-  font-size: var(--step--1);
-  font-weight: 400;
-  color: var(--ink-2);
-}
-
-.history-row__sub {
   font-size: var(--step--2);
   font-weight: 400;
+  line-height: 1.4;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+.history-row__chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
   color: var(--ink-3);
 }
 
@@ -124,6 +154,12 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-xs);
+}
+
+/* В карточках прогресса служебный текст не добавляет собственных отступов:
+ * воздух задаёт gap карточки. */
+.progress-card .body-muted {
+  padding-block: 0;
 }
 
 .progress-card__title {

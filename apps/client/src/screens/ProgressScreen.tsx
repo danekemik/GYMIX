@@ -14,7 +14,7 @@ import {
 } from '../lib/progress';
 
 
-export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
+export function ProgressScreen({ onSettings, onCreate }: { onSettings: () => void; onCreate: () => void }) {
   const { db } = useDb();
   const [selected, setSelected] = useState<string | undefined>(undefined);
   const [period, setPeriod] = useState<'6m' | 'all'>('6m');
@@ -119,22 +119,29 @@ export function ProgressScreen({ onSettings }: { onSettings: () => void }) {
           <section className="progress-card">
             <div className="progress-card__head">
               <h2 className="progress-card__title">Упражнения</h2>
-              <Segmented
-                value={metric}
-                onChange={(v) => setMetric(v as 'weight' | 'reps')}
-                label="Что показывать на графике"
-                options={[
-                  { value: 'weight', label: 'Вес' },
-                  { value: 'reps', label: 'Повторы' },
-                ]}
-              />
+              {series.length > 0 && (
+                <Segmented
+                  value={metric}
+                  onChange={(v) => setMetric(v as 'weight' | 'reps')}
+                  label="Что показывать на графике"
+                  options={[
+                    { value: 'weight', label: 'Вес' },
+                    { value: 'reps', label: 'Повторы' },
+                  ]}
+                />
+              )}
             </div>
 
             {series.length === 0 && (
-              <p className="body-muted">
-                Здесь появится график лучшего подхода по каждому упражнению после
-                нескольких тренировок.
-              </p>
+              <div className="empty empty--compact">
+                <h3 className="empty__title">Пока нечего сравнивать</h3>
+                <p className="empty__text">
+                  Заверши пару тренировок — покажем лучший подход по каждому упражнению.
+                </p>
+                <button className="btn btn--primary btn--sm" onClick={onCreate}>
+                  Собрать тренировку
+                </button>
+              </div>
             )}
 
             {series.length > 0 && (

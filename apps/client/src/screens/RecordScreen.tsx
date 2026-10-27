@@ -67,7 +67,7 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
   const startEdit = () => {
     if (record === undefined) return;
     setDraft(toEditable(record));
-    setDate(localDateInput(record.startedAt));
+    setDate(formatDateInput(new Date(record.startedAt)));
     setSaveError(undefined);
     setEditing(true);
   };
@@ -105,8 +105,8 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
 
   const save = async () => {
     if (db === undefined || record === undefined) return;
-    const day = new Date(`${date}T00:00:00`);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(day.getTime()) || localDateInput(day) !== date) { setSaveError('Выбери корректную дату.'); return; }
+    const day = parseDateInput(date);
+    if (day === undefined) { setSaveError('Введи дату в формате ДД.ММ.ГГГГ, например 27.10.2026.'); return; }
     const invalid = draft.find(exercise => exercise.sets.some(set =>
       (set.weight.trim() !== '' && weightValue(set.weight) === null) ||
       (set.reps.trim() !== '' && repsValue(set.reps) === null) ||
@@ -115,7 +115,9 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
     if (invalid) { setSaveError(`Проверь вес и повторения: «${invalid.name}».`); return; }
     const started = new Date(record.startedAt);
     const completed = new Date(record.completedAt);
-    const delta = day.getTime() - new Date(localDateInput(record.startedAt) + 'T00:00:00').getTime();
+    const baseDay = new Date(record.startedAt);
+    baseDay.setHours(0, 0, 0, 0);
+    const delta = day.getTime() - baseDay.getTime();
     started.setTime(started.getTime() + delta);
     completed.setTime(completed.getTime() + delta);
 
@@ -204,10 +206,16 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
                   <input
                     id="record-date"
                     className="field__input"
-                    type="date"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder="ДД.ММ.ГГГГ"
+                    maxLength={10}
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
+                    aria-describedby="record-date-hint"
                   />
+                  <p className="field__hint" id="record-date-hint">Формат: ДД.ММ.ГГГГ</p>
                 </div>
 
                 <ul className="record-exercises">
@@ -287,8 +295,21 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
     </div>
   );
 }
-function localDateInput(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+/** Дата в интерфейсе — русский порядок ДД.ММ.ГГГГ. */
+function formatDateInput(date: Date): string {
+  return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
+}
+
+/** Строгий разбор ДД.ММ.ГГГГ: отсекает 31.02 и неполные даты. */
+function parseDateInput(value: string): Date | undefined {
+  const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(value.trim());
+  if (match === null) return undefined;
+  const [day, month, year] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return undefined;
+  }
+  return date;
 }
 
 function RecordedSets({ exercise }: { exercise: RecordExercise }) {

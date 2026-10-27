@@ -20,7 +20,7 @@ test('частичное завершение сохраняет шаблон, �
 
   await finishPartially(page);
   await expect(page.getByRole('listitem').filter({ hasText: '20×10' }).first()).toBeVisible();
-  await expect(page.getByText('1 упражнение выполнено')).toBeVisible();
+  await expect(page.getByText(/1 из \d+ упражнений/)).toBeVisible();
 
   const title = 'E2E шаблон';
   await createTemplateFromFinishedWorkout(page, title);

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useDialogFocus } from '../hooks/useDialogFocus';
-import { plural } from '../lib/draft';
+import { plural, pluralForm } from '../lib/draft';
 import { formatDate, formatDurationMs } from '../lib/format';
 import { saveTemplate } from '../lib/templates';
 import { downloadLocalBackup } from '../data/sync/backup';
@@ -79,24 +79,25 @@ export function FinishScreen({ payload, onDone, onRetry, onOpenHistory, onOpenTe
 
       <div className="screen__body">
         <div className="finish-hero">
+          <span className="finish-hero__lead">{partial ? 'Результат сохранён' : 'Тренировка засчитана'}</span>
           <span className="finish-hero__score">
-            {completed} <span className="finish-hero__total">/ {total}</span>
+            {doneSets}
+            <span className="finish-hero__unit">{pluralForm(doneSets, ['подход', 'подхода', 'подходов'])}</span>
           </span>
           <span className="finish-hero__caption">
-            {plural(completed, ['упражнение', 'упражнения', 'упражнений'])} выполнено
+            {completed} из {plural(total, ['упражнения', 'упражнений', 'упражнений'])}
+            <span aria-hidden> · </span>
+            {duration}
           </span>
-          <span className="finish-hero__meta">
-            {duration} <span aria-hidden>·</span> {date}
-          </span>
+          <span className="finish-hero__meta">{date}</span>
         </div>
 
-        <div className="finish-recap"><div><span>Отмечено подходов</span><strong>{doneSets}</strong></div><div><span>Активное время</span><strong>{duration}</strong></div></div>
         {payload.saved && <p className="finish-recap__note">Занятие сохранено на устройстве. Его можно повторить с главного экрана.</p>}
 
         {partial && (
           <div className="note">
-            Тренировка завершена частично — неполные и пропущенные упражнения
-            не попадут в статистику.
+            Неполные и пропущенные упражнения останутся в истории, но не попадут
+            в статистику. Это нормально — следующая тренировка будет легче.
           </div>
         )}
 

@@ -55,7 +55,7 @@
 
 .type-row--on,
 .type-row--on:hover {
-  background: var(--accent-soft);
+  background: var(--select-bg);
 }
 
 .type-row__plate {
@@ -123,6 +123,7 @@
   font-weight: 550;
   line-height: 1.2;
   letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
 
 /* Предпросмотр охвата: все группы формата видны, теги переносятся. */
@@ -134,14 +135,15 @@
 }
 
 .type-row__group {
-  padding: 1px 6px;
+  padding: 1px 4px;
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--ink-2);
   font-size: var(--step--2);
   font-weight: 450;
   line-height: 1.5;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
 
