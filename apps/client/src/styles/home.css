@@ -1,10 +1,11 @@
 /* Home composition, within the established GYMIX palette and type system. */
-.screen--home .screen__body { gap: var(--space-m); }
+.screen--home .screen__body { gap: var(--space-s); }
 .screen--home .hero {
-  gap: var(--space-m);
-  padding: var(--space-m);
+  gap: var(--space-s);
+  margin-bottom: 0;
+  padding: var(--space-s);
   border-color: transparent;
-  border-radius: 30px;
+  border-radius: 26px;
   background: var(--accent);
   color: var(--accent-ink);
 }
@@ -14,10 +15,10 @@
 .screen--home .hero__copy { gap: var(--space-2xs); max-width: 100%; width: 100%; }
 .screen--home .hero__chip { max-width: 100%; font-size: var(--step--2); line-height: 1.5; color: var(--accent-ink); flex-wrap: wrap; }
 .screen--home .hero__chip-dot { flex-shrink: 0; background: currentColor; }
-.screen--home .hero__title { font-size: var(--step-3); line-height: 1.12; margin-top: var(--space-3xs); max-width: 100%; color: var(--accent-ink); overflow-wrap: anywhere; }
+.screen--home .hero__title { font-size: var(--step-2); line-height: 1.15; margin-top: var(--space-3xs); max-width: 100%; color: var(--accent-ink); overflow-wrap: anywhere; }
 .screen--home .hero--active .hero__title { max-width: calc(100% - 24px); overflow-wrap: anywhere; }
-.screen--home .hero__sub { font-size: var(--step--1); line-height: 1.5; color: #35471c; }
-.screen--home .hero__cta { min-height: 54px; height: auto; padding: 14px var(--space-s); background: var(--base); color: var(--ink); }
+.screen--home .hero__sub { font-size: var(--step--1); line-height: 1.4; color: #35471c; }
+.screen--home .hero__cta { min-height: 50px; height: auto; padding: 12px var(--space-s); background: var(--base); color: var(--ink); }
 .screen--home .hero__cta-label { white-space: normal; text-align: left; line-height: 1.35; }
 .screen--home .hero__cta-arrow { color: var(--accent); }
 .screen--home .hero__cta:focus-visible { outline-color: var(--ink); }

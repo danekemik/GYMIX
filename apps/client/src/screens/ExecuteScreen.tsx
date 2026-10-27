@@ -422,7 +422,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                   </button>
                 ) : (
                   <>
-                    <button className="text-action exec-detail-button" onClick={() => setDetail(entry.exercise)}>Подробнее об упражнении</button>
+                    <button className="btn btn--ghost btn--sm exec-detail-button" onClick={() => setDetail(entry.exercise)}>Подробнее об упражнении</button>
                     <div className="set-columns" aria-hidden="true"><span>№</span><span>кг</span><span>повт.</span><span>Готово</span></div>
                     <p className="set-input-hint">Без дополнительного веса — оставь «кг» пустым.</p>
                     <ul className="set-list">
@@ -496,6 +496,9 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                       <button className="exec-card__next" onClick={() => goNext(ex)}>
                         Следующее
                       </button>
+                    </div>
+
+                    <div className="exec-card__danger">
                       <button
                         className="exec-card__skip"
                         aria-label={`Пропустить упражнение: ${entry.exercise.name}`}

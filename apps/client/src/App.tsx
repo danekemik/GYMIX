@@ -504,7 +504,6 @@ export function App() {
         onQuickBuild={quickBuildNow}
         quickDraft={db ? readBuilderPreferences(db.account.userId) : undefined}
         onCreate={openFormats}
-        onOpenTemplates={openTemplates}
         onRepeat={repeatWorkout}
         onOpenActivity={openHistory}
         onOpenSession={openRecord}

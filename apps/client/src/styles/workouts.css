@@ -611,11 +611,33 @@ button.section-more {
   gap: var(--space-m);
 }
 
+.settings + .settings {
+  margin-top: var(--space-m);
+}
+
 .settings--account {
   padding: var(--space-s);
   border: var(--border);
   border-radius: var(--radius-l);
   background: var(--surface);
+}
+
+/* Выход — последнее, что видно на экране: тихая текстовая кнопка, а не баннер. */
+.settings__signout {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--step--1);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.settings__signout:hover {
+  background: none;
+  text-decoration-thickness: 2px;
 }
 
 .settings__email {

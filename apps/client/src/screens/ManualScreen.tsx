@@ -9,7 +9,7 @@ import { useDb } from '../hooks/useDb';
 import { excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
 import { ExerciseDetail } from '../components/ExerciseDetail';
 import { exerciseArt } from '../lib/exerciseArt';
-import { IconCheck, IconChevronRight, IconDumbbellArt, IconPlus } from '../lib/icons';
+import { IconCheck, IconChevronRight, IconDumbbellArt } from '../lib/icons';
 
 interface ManualScreenProps {
   draft: Draft;
@@ -26,6 +26,29 @@ interface ManualScreenProps {
 export function ManualScreen({ draft, startSlotKey, templateTitle, onSlotChange, onSelect, onBack, onDone, onGenerate }: ManualScreenProps) {
   const { db, revision } = useDb();
   const slots = useMemo(() => structureFor(draft).slots, [draft]);
+  // Одинаковые группы в составе различаем номером слота: «Спина · 1/2».
+  const slotLabels = useMemo(() => {
+    const counts = new Map<string, number>();
+    const labels = slots.map((s) => {
+      const alternatives = s.alternativeGroupIds.filter((g) => !s.allowedGroupIds.includes(g));
+      const label = `${s.allowedGroupIds[0]}${alternatives.length > 0 ? ` или ${alternatives.join(' или ')}` : ''}`;
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+      return { slotKey: s.slotKey, label };
+    });
+    const seen = new Map<string, number>();
+    const result = new Map<string, { label: string; slot?: number; total: number }>();
+    for (const entry of labels) {
+      const total = counts.get(entry.label) ?? 1;
+      if (total < 2) {
+        result.set(entry.slotKey, { label: entry.label, total });
+        continue;
+      }
+      const slot = (seen.get(entry.label) ?? 0) + 1;
+      seen.set(entry.label, slot);
+      result.set(entry.slotKey, { label: entry.label, slot, total });
+    }
+    return result;
+  }, [slots]);
   const progressLabelId = useId();
   const [view, setView] = useState<'groups' | 'picker'>(startSlotKey !== undefined ? 'picker' : 'groups');
   const [pickerSlotKey, setPickerSlotKey] = useState<string | undefined>(startSlotKey);
@@ -171,7 +194,8 @@ export function ManualScreen({ draft, startSlotKey, templateTitle, onSlotChange,
               const filledSlot = Boolean(name && name.length > 0);
               const alternatives = s.alternativeGroupIds.filter((g) => !s.allowedGroupIds.includes(g));
               const alt = alternatives.length > 0 ? ` или ${alternatives.join(' или ')}` : '';
-              const groupName = `${s.allowedGroupIds[0]}${alt}`;
+              const info = slotLabels.get(s.slotKey);
+              const groupName = `${info?.label ?? `${s.allowedGroupIds[0]}${alt}`}${info?.slot !== undefined ? ` · ${info.slot}/${info.total}` : ''}`;
               if (filledSlot) {
                 const art = exerciseArt(name!);
                 return (
@@ -208,7 +232,7 @@ export function ManualScreen({ draft, startSlotKey, templateTitle, onSlotChange,
                       <span className="manual-card__name">{groupName}</span>
                       <span className="manual-group__count">не выбрано</span>
                     </span>
-                    <span className="manual-card__action manual-card__action--primary" aria-hidden="true">
+                    <span className="manual-card__action" aria-hidden="true">
                       Выбрать
                       <IconChevronRight className="manual-card__action-icon" />
                     </span>
@@ -292,9 +316,9 @@ export function ManualScreen({ draft, startSlotKey, templateTitle, onSlotChange,
               <li key={candidate.name} className={`manual-card manual-card--option${isActive ? ' manual-card--active' : ''}`}>
                 <button
                   className="manual-card__open"
-                  onClick={() => setDetail(candidate)}
-                  aria-label={`Подробнее: ${candidate.name}`}
-                  aria-haspopup="dialog"
+                  onClick={() => (isActive ? clearChoice() : choose(candidate.name))}
+                  aria-pressed={isActive}
+                  aria-label={`${isActive ? 'Убрать' : 'Выбрать'}: ${candidate.name}`}
                 >
                   <span
                     className={`manual-card__thumb${
@@ -307,7 +331,6 @@ export function ManualScreen({ draft, startSlotKey, templateTitle, onSlotChange,
                     ) : (
                       <IconDumbbellArt className="manual-card__thumb-art" />
                     )}
-                    <span className="manual-card__hint">i</span>
                   </span>
                   <span className="manual-card__info">
                     <span className="manual-card__name">{candidate.name}</span>
@@ -315,19 +338,16 @@ export function ManualScreen({ draft, startSlotKey, templateTitle, onSlotChange,
                       <span className="manual-card__equip">{candidate.equipment.join(' · ')}</span>
                     )}
                   </span>
+                  {isActive && <IconCheck className="manual-card__check" />}
                 </button>
                 <button
-                  className="btn manual-card__pick"
+                  className="manual-card__details"
                   type="button"
-                  aria-pressed={isActive}
-                  aria-label={`Выбрать: ${candidate.name}`}
-                  onClick={() => (isActive ? clearChoice() : choose(candidate.name))}
+                  aria-haspopup="dialog"
+                  aria-label={`Подробнее: ${candidate.name}`}
+                  onClick={() => setDetail(candidate)}
                 >
-                  {isActive ? (
-                    <IconCheck className="manual-card__pick-icon" />
-                  ) : (
-                    <IconPlus className="manual-card__pick-icon" />
-                  )}
+                  <IconChevronRight />
                 </button>
               </li>
             );

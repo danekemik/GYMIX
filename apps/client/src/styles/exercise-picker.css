@@ -1,38 +1,28 @@
-/* Compact picker cards: one scannable row per exercise, facts live in the dialog. */
+/* Compact picker cards: tap the row to select, chevron opens the details. */
 .manual-card--option {
   padding: var(--space-2xs) var(--space-2xs) var(--space-2xs) var(--space-xs);
-  gap: var(--space-xs);
+  gap: var(--space-2xs);
 }
 .manual-card--option.manual-card--active { background: var(--accent-soft); }
 .manual-card--active .manual-card__equip { color: var(--accent-soft-ink); }
-.manual-card__thumb { position: relative; }
-.manual-card__hint {
-  position: absolute; right: 2px; bottom: 2px;
-  display: grid; place-items: center; width: 16px; height: 16px;
-  border-radius: 50%; background: var(--surface); color: var(--ink-2);
-  font-size: 10px; font-weight: 600; border: var(--border);
-}
-.manual-grid--picker .manual-card__pick {
+.manual-card__check { flex-shrink: 0; width: 18px; height: 18px; color: var(--accent-soft-ink); }
+.manual-card__details {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
   width: 44px;
-  min-width: 44px;
-  min-height: 44px;
+  height: 44px;
   padding: 0;
+  border: 0;
   border-radius: 50%;
-  border: 1.5px solid var(--line);
-  background: var(--surface-2);
-  color: var(--ink-2);
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
-.manual-grid--picker .manual-card__pick:hover { border-color: var(--ink-3); color: var(--ink); }
-.manual-grid--picker .manual-card__pick[aria-pressed='true'] {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-.manual-grid--picker .manual-card__pick[aria-pressed='true']:focus-visible {
-  outline: 3px solid var(--accent-ink);
-  outline-offset: -3px;
-}
-.manual-card__pick-icon { width: 20px; height: 20px; }
+.manual-card__details svg { width: 16px; height: 16px; }
+.manual-card__details:hover { color: var(--ink); background: var(--surface-2); }
+.manual-card__details:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .manual-card__open:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: var(--radius-s); }
 
 /* Scope the sheet geometry so ordinary confirmations keep their own layout. */

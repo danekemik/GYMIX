@@ -6,11 +6,13 @@ import { plural } from '../lib/draft';
 interface WeekActivityProps {
   variant?: 'compact' | 'timeline';
   title?: string;
+  /** На главной пустая неделя не нужна: там уже есть пустое состояние. */
+  hideWhenEmpty?: boolean;
 }
 
 const dayLabel = new Intl.DateTimeFormat('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
 
-export function WeekActivity({ variant = 'compact', title = 'Эта неделя' }: WeekActivityProps) {
+export function WeekActivity({ variant = 'compact', title = 'Эта неделя', hideWhenEmpty = false }: WeekActivityProps) {
   // A day change also refreshes the current week when the app stays open.
   const [date, setDate] = useState(() => new Date().toDateString());
   const { data: activity, error, reload } = useLocalRead<WeeklyActivity>('week', `week:${date}`);
@@ -23,6 +25,8 @@ export function WeekActivity({ variant = 'compact', title = 'Эта неделя
   const today = (now.getDay() + 6) % 7;
   const start = weekStart(now);
   const timeline = variant === 'timeline';
+
+  if (hideWhenEmpty && activity?.count === 0) return null;
 
   return <section className={`week${timeline ? ' week--timeline' : ''}`} aria-label="Активность на этой неделе">
     <div className="section-head"><h2 className="section-title">{title}</h2><span className="body-muted">{activity ? plural(activity.count, ['тренировка', 'тренировки', 'тренировок']) : failed ? 'Не удалось загрузить' : 'Загружаем…'}</span></div>

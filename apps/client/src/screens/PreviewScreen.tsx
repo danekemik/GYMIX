@@ -346,20 +346,6 @@ export function PreviewScreen({
                       {candidate.equipment.length > 0 ? ` · ${candidate.equipment.join(', ')}` : ''}
                     </span>
                   </button>
-                  {!excluded.has(candidate.name) && (
-                    <ActionMenu label={`Действия: ${candidate.name}`}>
-                      {(close) => (
-                        <button
-                          className="action-menu__item replace__exclude"
-                          role="menuitem"
-                          disabled={saving !== undefined}
-                          onClick={() => { void toggleExclude(candidate.name); close(); }}
-                        >
-                          Исключить из подбора
-                        </button>
-                      )}
-                    </ActionMenu>
-                  )}
                 </li>
               ))}
             </ul>

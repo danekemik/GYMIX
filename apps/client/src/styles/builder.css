@@ -120,32 +120,48 @@
 
 .mgs-cats {
   display: flex;
-  gap: var(--space-2xs);
-  margin-bottom: var(--space-s);
-  flex-wrap: wrap;
+  gap: var(--space-s);
+  margin-bottom: var(--space-m);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mgs-cats::-webkit-scrollbar {
+  display: none;
 }
 
 .mgs-cat {
-  padding: var(--space-2xs) var(--space-s);
-  border-radius: var(--radius-s);
-  border: var(--border);
-  background: var(--surface);
-  color: var(--ink-2);
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 0 var(--space-2xs);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--ink-3);
   font-size: var(--step--1);
-  font-weight: 550;
-  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
-    background var(--dur-fast) var(--ease);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 
 .mgs-cat:hover {
   color: var(--ink);
-  border-color: var(--ink-3);
 }
 
 .mgs-cat--on {
-  border-color: var(--accent);
-  background: var(--select-bg);
   color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.mgs-groups__label {
+  margin-bottom: var(--space-2xs);
+  font-size: var(--step--2);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
 
 .mgs-groups {
@@ -365,11 +381,6 @@
   white-space: nowrap;
 }
 
-.manual-card__action--primary {
-  color: var(--accent);
-  font-weight: 550;
-}
-
 .manual-card__action-icon {
   width: 14px;
   height: 14px;
@@ -377,10 +388,6 @@
 
 .manual-card__open:hover .manual-card__action {
   color: var(--ink);
-}
-
-.manual-card__open:hover .manual-card__action--primary {
-  color: var(--accent-hover);
 }
 
 .manual-card__equip {
@@ -405,26 +412,6 @@
   color: var(--ink-2);
   font-size: var(--step--2);
   font-weight: 450;
-}
-
-.manual-card__pick {
-  margin-left: auto;
-  flex-shrink: 0;
-  border: 1px solid var(--accent);
-  background: none;
-  color: var(--accent);
-  font-weight: 550;
-  gap: var(--space-3xs);
-}
-
-.manual-card__pick[aria-pressed='true'] {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-.manual-card__pick[aria-pressed='true']:focus-visible {
-  outline: 3px solid var(--accent-ink);
-  outline-offset: -3px;
 }
 
 .manual-card__exclude {

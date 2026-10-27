@@ -116,7 +116,6 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
             <button className="btn btn--ghost" disabled={!db || busy} onClick={() => void backup()}>
               Скачать резервную копию
             </button>
-            <button className="btn btn--danger" onClick={() => setConfirmingSignOut(true)}>Выйти из аккаунта</button>
           </div>
         </section>
 
@@ -214,6 +213,19 @@ export function SettingsScreen({ onBack }: SettingsScreenProps) {
               )}
             </>
           )}
+        </section>
+
+        <section className="settings settings--session" aria-label="Сессия">
+          <div className="settings__head">
+            <h2 className="settings__title">Сессия</h2>
+            <p className="settings__text">
+              Тренировки на устройстве останутся. Синхронизация остановится
+              до следующего входа.
+            </p>
+          </div>
+          <button className="btn btn--danger settings__signout" onClick={() => setConfirmingSignOut(true)}>
+            Выйти из аккаунта
+          </button>
         </section>
       </div>
 

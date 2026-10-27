@@ -1,4 +1,4 @@
-import { useMemo, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import {
   MGS_CATEGORIES,
   MGS_CATEGORY_GROUPS,
@@ -22,6 +22,12 @@ export function MgsGroupScreen({ selectedGroup, onGroupSelect, onBack }: MgsGrou
   const [pending, setPending] = useState<GeneratorMuscleGroup | undefined>(selectedGroup);
 
   const groups = MGS_CATEGORY_GROUPS[category];
+
+  // В категориях «Грудь», «Спина», «Плечи» выбор один — незачем просить его подтвердить.
+  useEffect(() => {
+    const options = MGS_CATEGORY_GROUPS[category];
+    if (options.length === 1) setPending(options[0]);
+  }, [category]);
 
   const chooseCategory = (value: MgsCategory) => {
     setCategory(value);
@@ -80,6 +86,8 @@ export function MgsGroupScreen({ selectedGroup, onGroupSelect, onBack }: MgsGrou
             </button>
           ))}
         </div>
+
+        <p className="mgs-groups__label">Мышца</p>
 
         <div className="mgs-groups" id="mgs-groups" role="tabpanel" aria-label={MGS_CATEGORY_LABELS[category]}>
           {groups.map((group) => (

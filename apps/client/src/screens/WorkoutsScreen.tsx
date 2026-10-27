@@ -26,7 +26,6 @@ interface WorkoutsScreenProps {
   onQuickBuild: () => void;
   quickDraft: Draft | undefined;
   onCreate: () => void;
-  onOpenTemplates: () => void;
   onRepeat: (sessionId: string) => Promise<void>;
   onOpenActivity: () => void;
   onOpenSession: (sessionId: string) => void;
@@ -38,7 +37,6 @@ export function WorkoutsScreen({
   onQuickBuild,
   quickDraft,
   onCreate,
-  onOpenTemplates,
   onRepeat,
   onOpenActivity,
   onOpenSession,
@@ -53,6 +51,10 @@ export function WorkoutsScreen({
   const draftLoading = draft === 'loading';
   const activeDraft = draft !== 'loading' ? draft : null;
   const loadError = Boolean(historyRead.error || draftRead.error);
+  // Повтор последней и быстрый старт показываем, только когда они реально есть:
+  // пустая секция не должна занимать место над неделей.
+  const lastSession = !draftLoading && draft === null && recent !== 'loading' ? recent[0] : undefined;
+  const showQuickBuild = !draftLoading && draft === null && quickDraft !== undefined;
   const [actionError, setActionError] = useState('');
   const [busy, setBusy] = useState(false);
   const [removeDraft, setRemoveDraft] = useState(false);
@@ -129,7 +131,7 @@ export function WorkoutsScreen({
           </span>
           <div className="hero__copy">
             <span className="hero__chip"><span className="hero__chip-dot" aria-hidden="true" />{activeDraft ? 'Текущая тренировка' : 'Готов двигаться?'}</span>
-            <h2 className="hero__title">{draftLoading ? <>Загружаем<br />тренировку</> : activeDraft ? typeLabel(activeDraft.type) : <>Поймай<br />свой ритм</>}</h2>
+            <h2 className="hero__title">{draftLoading ? 'Загружаем тренировку' : activeDraft ? typeLabel(activeDraft.type) : 'Поймай свой ритм'}</h2>
             <p className="hero__sub">{draftLoading ? 'Секунду…' : activeDraft ? `${activeDraft.volume} · ${formatDay(activeDraft.startedAt)}` : 'Собери занятие под себя'}</p>
           </div>
           {activeDraft && (
@@ -153,20 +155,23 @@ export function WorkoutsScreen({
           ))}
         </section>
 
+        {(lastSession !== undefined || showQuickBuild) && (
         <section className="today-links" aria-label="Другие варианты старта">
-          {!draftLoading && draft === null && recent !== 'loading' && recent.length > 0 && (
-            <button className="journal-link" disabled={busy} aria-label={`${busy ? 'Открываем…' : 'Повторить последнюю'} ${typeLabel(recent[0]!.type)} · ${formatDay(recent[0]!.completedAt)}`} onClick={() => {
+          {lastSession !== undefined && (
+            <button className="journal-link" disabled={busy} aria-label={`${busy ? 'Открываем…' : 'Повторить последнюю'} ${typeLabel(lastSession.type)} · ${formatDay(lastSession.completedAt)}`} onClick={() => {
               setBusy(true); setActionError('');
-              void onRepeat(recent[0]!.id).catch(() => setActionError('Не удалось повторить тренировку. Попробуй ещё раз.')).finally(() => setBusy(false));
+              void onRepeat(lastSession.id).catch(() => setActionError('Не удалось повторить тренировку. Попробуй ещё раз.')).finally(() => setBusy(false));
             }}>
-              <span><strong>{busy ? 'Открываем…' : 'Повторить последнюю'}</strong>{' '}<small>{typeLabel(recent[0]!.type)} · {formatDay(recent[0]!.completedAt)}</small></span><IconChevronRight />
+              <span><strong>{busy ? 'Открываем…' : 'Повторить последнюю'}</strong>{' '}<small>{typeLabel(lastSession.type)} · {formatDay(lastSession.completedAt)}</small></span><IconChevronRight />
             </button>
           )}
-          <button className="journal-link" onClick={onOpenTemplates} aria-label="Сохранённые тренировки для быстрого старта"><span><strong>Сохранённые</strong>{' '}<small>Тренировки для быстрого старта</small></span><IconChevronRight /></button>
-          {!draftLoading && quickDraft && draft === null && <button className="journal-link" disabled={busy} onClick={onQuickBuild} aria-label={`Новый состав по прошлым настройкам · ${typeLabel(quickDraft.type)}`}><span><strong>Новый состав</strong>{' '}<small>По прошлым настройкам · {typeLabel(quickDraft.type)}</small></span><IconChevronRight /></button>}
+          {showQuickBuild && quickDraft !== undefined && (
+            <button className="journal-link" disabled={busy} onClick={onQuickBuild} aria-label={`Новый состав по прошлым настройкам · ${typeLabel(quickDraft.type)}`}><span><strong>Новый состав</strong>{' '}<small>По прошлым настройкам · {typeLabel(quickDraft.type)}</small></span><IconChevronRight /></button>
+          )}
         </section>
+        )}
 
-        <WeekActivity variant="timeline" title="На неделе" />
+        {(lastSession !== undefined || showQuickBuild) && <WeekActivity variant="timeline" title="На неделе" hideWhenEmpty />}
 
         <section className="recent" aria-label="Последние тренировки">
           <div className="section-head">
