@@ -9,9 +9,9 @@
   background: var(--accent);
   color: var(--accent-ink);
 }
-.screen--home .hero__circle { width: 190px; height: 190px; top: -82px; right: -90px; background: none; border: 1px solid rgba(10, 12, 8, .12); box-shadow: none; }
-.screen--home .hero__circle::before { content: ''; position: absolute; inset: 23px; border: 1px solid rgba(10, 12, 8, .12); border-radius: 50%; }
-.screen--home .hero__icon { left: 31px; top: 102px; width: 43px; height: 43px; }
+.screen--home .hero__circle { width: 168px; height: 168px; top: -58px; right: -74px; background: none; border: 1px solid rgba(10, 12, 8, .12); box-shadow: none; }
+.screen--home .hero__circle::before { content: ''; position: absolute; inset: 21px; border: 1px solid rgba(10, 12, 8, .12); border-radius: 50%; }
+.screen--home .hero__icon { left: 20px; top: 70px; width: 32px; height: 32px; }
 .screen--home .hero__copy { gap: var(--space-2xs); max-width: 100%; width: 100%; }
 .screen--home .hero__chip { max-width: 100%; font-size: var(--step--2); line-height: 1.5; color: var(--accent-ink); flex-wrap: wrap; }
 .screen--home .hero__chip-dot { flex-shrink: 0; background: currentColor; }
