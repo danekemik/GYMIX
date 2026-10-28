@@ -425,7 +425,7 @@ button.section-more {
 }
 
 .body-error {
-  color: var(--accent);
+  color: var(--danger);
   font-size: var(--step--1);
   font-weight: 400;
   padding: var(--space-s);

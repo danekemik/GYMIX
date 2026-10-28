@@ -243,7 +243,7 @@ export function WorkoutsScreen({
               Текущий черновик будет удалён, а его прогресс — потерян.
             </p>
             <div className="dialog__actions">
-              <button className="btn btn--primary" onClick={() => void startNewWorkout()} disabled={busy}>
+              <button className="btn btn--danger" onClick={() => void startNewWorkout()} disabled={busy}>
                 {busy ? 'Удаляем…' : 'Начать новую'}
               </button>
               <button className="btn btn--ghost" onClick={() => setStartNew(false)} disabled={busy} autoFocus>

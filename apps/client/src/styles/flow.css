@@ -984,6 +984,12 @@
   border-color: var(--accent);
 }
 
+/* Ошибка важнее фокуса: поле остаётся красным, пока значение не исправят. */
+.field__input[aria-invalid='true'],
+.field__input[aria-invalid='true']:focus-visible {
+  border-color: var(--danger);
+}
+
 .field__hint {
   font-size: var(--step--2);
   line-height: 1.4;

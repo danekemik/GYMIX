@@ -223,6 +223,14 @@
   min-width: 0;
 }
 
+/* На узких экранах поле и кнопка не делят строку: placeholder не обрезается. */
+@media (max-width: 359px) {
+  .progress-card__record {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
 .chart {
   display: block;
 }

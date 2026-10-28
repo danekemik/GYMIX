@@ -536,7 +536,7 @@ export function App() {
         <h2 className="dialog__title" id="start-new-title">Начать новую тренировку?</h2>
         <p className="dialog__text">У тебя есть начатая тренировка. Если начнёшь новую, черновик с её прогрессом будет удалён.</p>
         <div className="dialog__actions">
-          <button className="btn btn--primary" disabled={starting} onClick={() => void startWorkout(true)}>{starting ? 'Удаляем…' : 'Удалить черновик и начать'}</button>
+          <button className="btn btn--danger" disabled={starting} onClick={() => void startWorkout(true)}>{starting ? 'Удаляем…' : 'Удалить черновик и начать'}</button>
           <button className="btn btn--ghost" disabled={starting} onClick={() => setPendingStart(false)} autoFocus>Отмена</button>
         </div>
       </section></div>}
