@@ -249,8 +249,6 @@
 .plan__thumb-art { width: auto; height: auto; max-width: 80%; max-height: 80%; }
 .plan__thumb--art { background: var(--art-tile); }
 .plan__thumb-img { width: 84%; height: 84%; object-fit: contain; }
-.plan__thumb--photo { background: var(--surface-2); }
-.plan__thumb--photo .plan__thumb-img { width: 100%; height: 100%; object-fit: cover; }
 
 .plan__info {
   display: grid;
@@ -464,7 +462,7 @@
   height: auto;
 }
 
-/* Иллюстрация упражнения (Everkinetic) — чёрная линия на светлой плитке. */
+/* Иллюстрация упражнения (Open Exercise Art) — чёрная линия на светлой плитке. */
 .exercise-detail__photo--art {
   flex: 0 0 auto;
   height: 180px;
@@ -475,20 +473,7 @@
 .exercise-detail__photo-img {
   max-width: 100%;
   max-height: 100%;
-}
-
-/* Фотография упражнения (free-exercise-db) — кадр заполняет плитку. */
-.exercise-detail__photo--photo {
-  flex: 0 0 auto;
-  height: 180px;
-  padding: 0;
-  background: var(--surface-2);
-}
-
-.exercise-detail__photo--photo .exercise-detail__photo-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .exercise-detail__facts {

@@ -215,7 +215,7 @@ export function PreviewScreen({
               >
                 <button className="plan__open" onClick={() => setDetail(entry.exercise)} aria-label={`${index + 1} ${entry.exercise.name}${badges ? ` ${badges}` : ''} ${entry.groupUsed}. Подробнее`} aria-haspopup="dialog">
                   <span className="plan__order" aria-hidden="true">{index + 1}</span>{' '}
-                  <span className={`plan__thumb${art !== undefined ? (art.kind === 'photo' ? ' plan__thumb--photo' : ' plan__thumb--art') : ''}`} aria-hidden="true">
+                  <span className={`plan__thumb${art !== undefined ? ' plan__thumb--art' : ''}`} aria-hidden="true">
                     {art !== undefined ? (
                       <img className="plan__thumb-img" src={art.src} alt="" loading="lazy" />
                     ) : (

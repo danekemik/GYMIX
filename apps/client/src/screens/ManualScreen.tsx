@@ -202,7 +202,7 @@ export function ManualScreen({ draft, startSlotKey, templateTitle, onSlotChange,
                   <li key={s.slotKey} className="manual-card manual-card--active">
                     <button className="manual-card__open" onClick={() => openPicker(s.slotKey)} aria-label={`Изменить: ${name}`}>
                       <span
-                        className={`manual-card__thumb${art !== undefined ? (art.kind === 'photo' ? ' manual-card__thumb--photo' : ' manual-card__thumb--art') : ''}`}
+                        className={`manual-card__thumb${art !== undefined ? ' manual-card__thumb--art' : ''}`}
                         aria-hidden="true"
                       >
                         {art !== undefined ? (
@@ -321,9 +321,7 @@ export function ManualScreen({ draft, startSlotKey, templateTitle, onSlotChange,
                   aria-label={`${isActive ? 'Убрать' : 'Выбрать'}: ${candidate.name}`}
                 >
                   <span
-                    className={`manual-card__thumb${
-                      art !== undefined ? (art.kind === 'photo' ? ' manual-card__thumb--photo' : ' manual-card__thumb--art') : ''
-                    }`}
+                    className={`manual-card__thumb${art !== undefined ? ' manual-card__thumb--art' : ''}`}
                     aria-hidden="true"
                   >
                     {art !== undefined ? (

@@ -331,7 +331,7 @@
   height: auto;
 }
 
-/* Иллюстрация упражнения (Everkinetic) — чёрная линия на светлой плитке. */
+/* Иллюстрация упражнения (Open Exercise Art) — чёрная линия на светлой плитке. */
 .manual-card__thumb--art {
   background: var(--art-tile);
 }
@@ -340,17 +340,6 @@
   width: 84%;
   height: 84%;
   object-fit: contain;
-}
-
-/* Фотография упражнения (free-exercise-db) — кадр заполняет плитку. */
-.manual-card__thumb--photo {
-  background: var(--surface-2);
-}
-
-.manual-card__thumb--photo .manual-card__thumb-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 .manual-card__info {

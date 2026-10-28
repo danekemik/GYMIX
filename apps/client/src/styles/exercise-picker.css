@@ -50,7 +50,6 @@
 .exercise-detail__fact dd { text-align: left; line-height: 1.5; overflow-wrap: anywhere; }
 .exercise-detail__photo { flex-shrink: 0; }
 .exercise-detail__photo-img { object-fit: contain; }
-.exercise-detail .exercise-detail__photo--photo .exercise-detail__photo-img { object-fit: contain; }
 .exercise-detail .dialog__actions .btn { white-space: normal; line-height: 1.4; }
 @keyframes exercise-sheet-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .exercise-overlay .exercise-detail { animation: none; } }
