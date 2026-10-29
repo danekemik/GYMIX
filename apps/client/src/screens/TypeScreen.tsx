@@ -44,12 +44,12 @@ export function TypeScreen({ initialType = 'Full Body', onSelect, onClose }: Typ
             />
           ))}
         </div>
+      </div>
 
-        <div className="screen__cta">
-          <Button variant="primary" className="vt-formats-cta" onClick={() => onSelect(selected)}>
-            Продолжить
-          </Button>
-        </div>
+      <div className="screen__cta">
+        <Button variant="primary" className="vt-formats-cta" onClick={() => onSelect(selected)}>
+          Продолжить
+        </Button>
       </div>
     </div>
   );

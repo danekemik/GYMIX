@@ -260,32 +260,31 @@ export function PreviewScreen({
           })}
         </ol>
 
-        <div className="screen__cta screen__cta--sticky">
-          {templateMode ? (
-            <>
-              <button className="btn btn--primary" onClick={onSaveTemplate} disabled={starting || savingTemplate || onSaveTemplate === undefined}>
-                {savingTemplate ? 'Сохраняем…' : 'Сохранить изменения'}
-              </button>
-              <button className="btn btn--ghost" onClick={onStart} disabled={starting || savingTemplate}>
-                {starting ? 'Открываем…' : 'Начать тренировку'}
-              </button>
-              {saveError !== undefined && saveError !== '' && <p className="body-error" role="alert">{saveError}</p>}
-            </>
-          ) : (
-            <>
-              <button className="btn btn--primary" onClick={onStart} disabled={starting}>
-                {starting ? 'Открываем…' : 'Начать тренировку'}
-              </button>
-              {regenerable && <details className="preview-options">
-                <summary>Изменить тренировку</summary>
-                <div className="preview-options__panel">
-                  {onEditParameters && <button className="btn btn--ghost" onClick={onEditParameters}>Формат и объём подбора</button>}
-                  <button className="btn btn--ghost" onClick={onRegenerate}>Подобрать заново</button>
-                </div>
-              </details>}
-            </>
-          )}
-        </div>
+        {!templateMode && regenerable && <details className="preview-options">
+          <summary>Изменить тренировку</summary>
+          <div className="preview-options__panel">
+            {onEditParameters && <button className="btn btn--ghost" onClick={onEditParameters}>Формат и объём подбора</button>}
+            <button className="btn btn--ghost" onClick={onRegenerate}>Подобрать заново</button>
+          </div>
+        </details>}
+      </div>
+
+      <div className="screen__cta">
+        {templateMode ? (
+          <>
+            <button className="btn btn--primary" onClick={onSaveTemplate} disabled={starting || savingTemplate || onSaveTemplate === undefined}>
+              {savingTemplate ? 'Сохраняем…' : 'Сохранить изменения'}
+            </button>
+            <button className="btn btn--ghost" onClick={onStart} disabled={starting || savingTemplate}>
+              {starting ? 'Открываем…' : 'Начать тренировку'}
+            </button>
+            {saveError !== undefined && saveError !== '' && <p className="body-error" role="alert">{saveError}</p>}
+          </>
+        ) : (
+          <button className="btn btn--primary" onClick={onStart} disabled={starting}>
+            {starting ? 'Открываем…' : 'Начать тренировку'}
+          </button>
+        )}
       </div>
 
       {replacing !== null && current !== undefined && (

@@ -71,13 +71,13 @@ export function VolumeScreen({ draft, onVolumeChange, onContinue, onManual, onBa
             );
           })}
         </div>
+      </div>
 
-        <div className="screen__cta">
-          <Button variant="primary" onClick={onContinue}>
-            {hasComposition ? 'К составу тренировки' : hasSelection ? 'Дополнить подбором' : 'Подобрать упражнения'}
-          </Button>
-          <button className="btn btn--ghost" onClick={onManual}>Выбрать упражнения вручную</button>
-        </div>
+      <div className="screen__cta">
+        <Button variant="primary" onClick={onContinue}>
+          {hasComposition ? 'К составу тренировки' : hasSelection ? 'Дополнить подбором' : 'Подобрать упражнения'}
+        </Button>
+        <button className="btn btn--ghost" onClick={onManual}>Выбрать упражнения вручную</button>
       </div>
     </div>
   );

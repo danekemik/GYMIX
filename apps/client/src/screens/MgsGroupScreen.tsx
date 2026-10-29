@@ -106,16 +106,16 @@ export function MgsGroupScreen({ selectedGroup, onGroupSelect, onBack }: MgsGrou
             </button>
           ))}
         </div>
+      </div>
 
-        <div className="screen__cta screen__cta--sticky">
-          <button
-            className="btn btn--primary"
-            disabled={pending === undefined}
-            onClick={() => { if (pending !== undefined) onGroupSelect(pending); }}
-          >
-            Продолжить
-          </button>
-        </div>
+      <div className="screen__cta">
+        <button
+          className="btn btn--primary"
+          disabled={pending === undefined}
+          onClick={() => { if (pending !== undefined) onGroupSelect(pending); }}
+        >
+          Продолжить
+        </button>
       </div>
     </div>
   );

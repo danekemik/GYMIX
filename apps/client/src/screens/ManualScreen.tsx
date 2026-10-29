@@ -241,14 +241,14 @@ export function ManualScreen({ draft, startSlotKey, templateTitle, onSlotChange,
               );
             })}
           </ul>
+        </div>
 
-          <div className="screen__cta screen__cta--sticky">
-            {filled === total ? (
-              <button className="btn btn--primary" onClick={onDone}>Посмотреть тренировку</button>
-            ) : (
-              <button className="btn btn--primary" onClick={onGenerate}>Заполнить оставшиеся</button>
-            )}
-          </div>
+        <div className="screen__cta">
+          {filled === total ? (
+            <button className="btn btn--primary" onClick={onDone}>Посмотреть тренировку</button>
+          ) : (
+            <button className="btn btn--primary" onClick={onGenerate}>Заполнить оставшиеся</button>
+          )}
         </div>
       </div>
     );

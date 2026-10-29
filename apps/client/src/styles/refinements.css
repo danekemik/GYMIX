@@ -44,7 +44,7 @@ button:disabled { cursor: default; }
 .hero__cta-arrow { flex-shrink: 0; }
 .hero__sub { font-family: var(--font-text); font-weight: 400; font-size: var(--step-0); }
 .preview-options > summary { cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 44px; color: var(--ink-2); border-radius: var(--radius-s); list-style: none; }
-.preview-options { position: relative; }
+.preview-options { position: relative; margin-top: var(--space-2xs); }
 .preview-options > summary::-webkit-details-marker { display: none; }
 .preview-options > summary:focus-visible { outline: 2px solid var(--accent); }
 .preview-options[open] > summary { color: var(--ink); }

@@ -272,26 +272,28 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
                 </ul>
               </>
             )}
-
-            <div className="screen__cta screen__cta--sticky">
-              {!editing ? (
-                <button className="btn btn--primary" onClick={startEdit}>
-                  Редактировать запись
-                </button>
-              ) : (
-                <>
-                  <button className="btn btn--primary" disabled={saving} onClick={() => void save()}>
-                    {saving ? 'Сохраняем…' : 'Сохранить'}
-                  </button>
-                  <button className="btn btn--ghost" disabled={saving} onClick={() => setEditing(false)}>
-                    Отмена
-                  </button>
-                </>
-              )}
-            </div>
           </>
         )}
       </div>
+
+      {record !== undefined && (
+        <div className="screen__cta">
+          {!editing ? (
+            <button className="btn btn--primary" onClick={startEdit}>
+              Редактировать запись
+            </button>
+          ) : (
+            <>
+              <button className="btn btn--primary" disabled={saving} onClick={() => void save()}>
+                {saving ? 'Сохраняем…' : 'Сохранить'}
+              </button>
+              <button className="btn btn--ghost" disabled={saving} onClick={() => setEditing(false)}>
+                Отмена
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

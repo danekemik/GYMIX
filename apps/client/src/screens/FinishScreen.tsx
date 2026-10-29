@@ -74,10 +74,15 @@ export function FinishScreen({ payload, onDone, onRetry, onOpenHistory, onOpenTe
   return (
     <div className="screen">
       <header className="topbar">
-        <h1 className="topbar__title topbar__title--step">Итог тренировки</h1>
+        <h1 className="topbar__title topbar__title--step" id="finish-title">Итог тренировки</h1>
       </header>
 
-      <div className="screen__body">
+      <div
+        className="screen__body"
+        role="region"
+        aria-labelledby="finish-title"
+        tabIndex={0}
+      >
         <div className="finish-hero">
           <span className="finish-hero__lead">{partial ? 'Результат сохранён' : 'Тренировка засчитана'}</span>
           <span className="finish-hero__score">
@@ -141,32 +146,32 @@ export function FinishScreen({ payload, onDone, onRetry, onOpenHistory, onOpenTe
             );
           })}
         </ul>
+      </div>
 
-        <div className="screen__cta">
-          {payload.saved === false ? (
-            <>
-              <button className="btn btn--primary" onClick={onRetry}>
-                Вернуться к тренировке
-              </button>
-              <button className="btn btn--ghost" onClick={() => void downloadBackup()} disabled={db === undefined}>
-                Скачать резервную копию
-              </button>
-              {backup !== undefined && <p className={backup.tone === 'error' ? 'body-error' : 'body-muted'} role={backup.tone === 'error' ? 'alert' : 'status'}>{backup.text}</p>}
-            </>
-          ) : (
-            <>
-              <button className="btn btn--primary" onClick={onDone}>
-                Готово
-              </button>
-              <button className="btn btn--ghost" onClick={() => setDialog('naming')}>
-                Сохранить как шаблон
-              </button>
-              <button className="text-action finish-history-link" onClick={onOpenHistory}>
-                Перейти в историю
-              </button>
-            </>
-          )}
-        </div>
+      <div className="screen__cta">
+        {payload.saved === false ? (
+          <>
+            <button className="btn btn--primary" onClick={onRetry}>
+              Вернуться к тренировке
+            </button>
+            <button className="btn btn--ghost" onClick={() => void downloadBackup()} disabled={db === undefined}>
+              Скачать резервную копию
+            </button>
+            {backup !== undefined && <p className={backup.tone === 'error' ? 'body-error' : 'body-muted'} role={backup.tone === 'error' ? 'alert' : 'status'}>{backup.text}</p>}
+          </>
+        ) : (
+          <>
+            <button className="btn btn--primary" onClick={onDone}>
+              Готово
+            </button>
+            <button className="btn btn--ghost" onClick={() => setDialog('naming')}>
+              Сохранить как шаблон
+            </button>
+            <button className="text-action finish-history-link" onClick={onOpenHistory}>
+              Перейти в историю
+            </button>
+          </>
+        )}
       </div>
 
       {dialog === 'naming' && (
