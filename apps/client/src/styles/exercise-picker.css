@@ -51,5 +51,15 @@
 .exercise-detail__photo { flex-shrink: 0; }
 .exercise-detail__photo-img { object-fit: contain; }
 .exercise-detail .dialog__actions .btn { white-space: normal; line-height: 1.4; }
+/* Действия закреплены под прокручиваемым телом: волосяная линия отделяет их
+ * от контента, который продолжается при прокрутке. */
+.exercise-detail .dialog__actions:not(:empty) {
+  border-top: var(--border);
+}
+/* На низких экранах отдаём листу больше высоты: тело прокручивается, а действия
+ * остаются закреплёнными внизу. */
+@media (max-height: 640px) {
+  .exercise-overlay .exercise-detail { max-height: calc(100% - 24px); }
+}
 @keyframes exercise-sheet-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) { .exercise-overlay .exercise-detail { animation: none; } }

@@ -575,6 +575,7 @@
   flex-direction: column;
   gap: var(--space-2xs);
   padding: var(--space-2xs) var(--space-m) var(--space-s);
+  border-bottom: var(--border);
 }
 
 .exec-progress__label {
@@ -585,7 +586,9 @@
 
 .exec-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: var(--space-s);
@@ -861,7 +864,7 @@
   align-items: stretch;
   gap: var(--space-2xs);
   min-width: 0;
-  padding: var(--space-s) var(--space-m) calc(var(--space-s) + env(safe-area-inset-bottom));
+  padding: var(--space-s) var(--space-m) calc(var(--space-s) + env(safe-area-inset-bottom) + var(--phone-bottom-inset, 0px));
   border-top: var(--border);
   background: var(--base);
 }

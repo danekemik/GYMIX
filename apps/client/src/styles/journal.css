@@ -50,7 +50,6 @@
 .history-row { width: 100%; }
 button, summary { -webkit-tap-highlight-color: transparent; }
 button:active:not(:disabled) { filter: brightness(.9); }
-.exec-body { display: flex; overflow: visible; }
 .exec-card { padding: 0; }
 .exec-card:has(.exec-card__toggle[aria-expanded='true']) { border-color: var(--select-line); }
 .exec-card__heading { margin: 0; font: inherit; }
