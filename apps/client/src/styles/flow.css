@@ -43,7 +43,7 @@
 
 .gen-step__label {
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 450;
   color: var(--ink-3);
 }
 
@@ -89,13 +89,13 @@
 .gen-result__count {
   font-family: var(--font-display);
   font-size: var(--step-3);
-  font-weight: 600;
+  font-weight: 550;
   text-transform: uppercase;
 }
 
 .gen-result__hint {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
@@ -105,7 +105,7 @@
 
 .note__title {
   font-family: var(--font-display);
-  font-weight: 600;
+  font-weight: 550;
   color: var(--ink);
   margin-bottom: var(--space-4xs);
 }
@@ -121,140 +121,265 @@
   flex-direction: column;
   gap: var(--space-4xs);
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
 }
 
 .note__group {
-  font-weight: 600;
+  font-weight: 550;
   color: var(--ink);
 }
 
 /* --- S08: список сборки --- */
 
-.plan {
-  list-style: none;
-}
-
-.plan__row {
-  display: flex;
-  flex-direction: column;
+/* Компактная сводка: один заголовок и факты, без «плаката». */
+.plan-summary {
+  display: grid;
   gap: var(--space-2xs);
-  padding: var(--space-s) 0;
-  border-bottom: var(--border);
+  padding: var(--space-s);
+  border: var(--border);
+  border-radius: var(--radius-l);
+  background: var(--surface);
+  margin-bottom: var(--space-s);
 }
 
-.plan__row--dragging {
-  opacity: 0.6;
+.plan-summary__title {
+  max-width: 100%;
+  font-family: var(--font-display);
+  font-size: var(--step-1);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--ink);
+  overflow-wrap: anywhere;
 }
 
-.plan__main {
+.plan-summary__meta {
   display: flex;
   align-items: center;
-  gap: var(--space-s);
+  flex-wrap: wrap;
+  gap: var(--space-3xs);
+  font-size: var(--step--1);
+  color: var(--ink-2);
 }
 
-.plan__handle {
-  flex-shrink: 0;
-  display: inline-flex;
+.plan-summary__type {
+  font-size: var(--step--2);
+  color: var(--accent);
+  font-weight: 550;
+}
+
+.plan-summary__dot {
   color: var(--ink-3);
-  cursor: grab;
 }
 
-.plan__handle svg {
-  width: 16px;
-  height: 16px;
+.plan {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2xs);
+  min-width: 0;
 }
 
-.plan__row:not([draggable='true']) .plan__handle {
-  opacity: 0.3;
-  cursor: default;
+.plan__card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-2xs) var(--space-2xs) var(--space-2xs) var(--space-xs);
+  border: var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+  min-width: 0;
+  transition: border-color var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
 }
 
-.plan__row[draggable='true']:active .plan__handle {
-  cursor: grabbing;
+.plan__card[draggable='true'] { cursor: grab; }
+.plan__card[draggable='true']:active { cursor: grabbing; }
+.plan__card--dragging { opacity: 0.55; border-color: var(--accent); }
+
+.plan__card:has(.action-menu__panel) { z-index: 30; }
+
+/* Исключённое упражнение приглушаем внутри карточки, чтобы меню действий
+ * не наследовало прозрачность и оставалось читаемым. */
+.plan__card--muted .plan__open { opacity: 0.55; }
+
+.plan__open {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-3xs) 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  border-radius: var(--radius-s);
 }
 
-.plan__index {
+.plan__open:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.plan__order {
   flex-shrink: 0;
+  display: grid;
+  place-items: center;
   width: 20px;
-  text-align: center;
   font-family: var(--font-text);
   font-size: var(--step--2);
-  font-weight: 450;
+  font-weight: 550;
   color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
 
-.plan__body {
-  flex: 1;
+.plan__thumb {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-s);
+  background: var(--surface-2);
+  border: var(--border);
+  overflow: hidden;
+}
+
+.plan__thumb-art { width: auto; height: auto; max-width: 80%; max-height: 80%; }
+.plan__thumb--art { background: var(--art-tile); }
+.plan__thumb-img { width: 84%; height: 84%; object-fit: contain; }
+
+.plan__info {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4xs);
+  flex: 1;
 }
 
-.plan__exercise {
-  font-size: var(--step-0);
-  font-weight: 550;
+.plan__name {
+  font-size: var(--step--1);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  overflow-wrap: anywhere;
 }
 
+/* Группа — служебная подпись внутри строки, а не отдельная секция. */
 .plan__group {
   font-size: var(--step--2);
-  font-weight: 450;
+  line-height: 1.35;
   color: var(--ink-3);
+  overflow-wrap: anywhere;
 }
 
-.plan__equip {
-  font-size: var(--step--2);
-  font-weight: 450;
-  color: var(--ink-3);
-  opacity: 0.8;
+.plan__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3xs);
 }
 
 .plan__badge {
   flex-shrink: 0;
-  padding: var(--space-4xs) var(--space-2xs);
-  border-radius: var(--radius-s);
-  background: var(--surface-2);
-  color: var(--ink-2);
+  padding: 1px var(--space-2xs);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-soft-ink);
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 550;
 }
 
-.plan__controls {
+.plan__badge--muted {
+  background: var(--surface-3);
+  color: var(--ink-2);
+}
+
+.plan__more {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.plan__more > summary {
+  list-style: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-s);
+  color: var(--ink-2);
+  transition: color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+
+.plan__more > summary::-webkit-details-marker { display: none; }
+.plan__more > summary:hover { color: var(--ink); background: var(--surface-2); }
+.plan__more > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.plan__more[open] > summary { background: var(--surface-2); color: var(--ink); }
+.plan__more-icon { width: 18px; height: 18px; }
+
+.plan__menu {
+  position: absolute;
+  top: calc(100% + var(--space-3xs));
+  right: 0;
+  z-index: 20;
+  display: grid;
+  gap: 2px;
+  min-width: 210px;
+  padding: var(--space-3xs);
+  border: var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface-3);
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.6);
+}
+
+.plan__menu-item,
+.plan__move-btn {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: var(--space-2xs);
-  padding-left: calc(16px + var(--space-s) + 20px + var(--space-s));
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--space-xs);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--step--1);
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan__menu-item:hover,
+.plan__move-btn:not(:disabled):hover {
+  background: var(--surface-2);
+}
+
+.plan__menu-item:focus-visible,
+.plan__move-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .plan__move {
-  display: inline-flex;
-  flex-shrink: 0;
+  display: grid;
   gap: 2px;
-  margin-right: var(--space-3xs);
-}
-
-.plan__move-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-s);
-  border: var(--border);
-  background: var(--surface-2);
-  color: var(--ink-2);
+  padding-top: 2px;
+  margin-top: 2px;
+  border-top: var(--border);
 }
 
 .plan__move-btn svg {
   width: 16px;
   height: 16px;
+  flex-shrink: 0;
+  color: var(--ink-2);
 }
 
 .plan__move-btn:disabled {
-  opacity: 0.3;
+  opacity: 0.35;
+  cursor: default;
 }
 
 /* --- S09: замена упражнения --- */
@@ -288,8 +413,8 @@
 }
 
 .dialog__sub {
-  font-family: var(--font-display);
-  font-weight: 600;
+  font-family: var(--font-text);
+  font-weight: 500;
   margin-top: var(--space-3xs);
   font-size: var(--step--1);
   color: var(--ink-3);
@@ -337,17 +462,18 @@
   height: auto;
 }
 
-/* Иллюстрация упражнения (Everkinetic) — чёрная линия на светлой плитке. */
+/* Иллюстрация упражнения (Open Exercise Art) — чёрная линия на светлой плитке. */
 .exercise-detail__photo--art {
   flex: 0 0 auto;
   height: 180px;
   padding: var(--space-2xs);
-  background: #eef1f2;
+  background: var(--art-tile);
 }
 
 .exercise-detail__photo-img {
   max-width: 100%;
   max-height: 100%;
+  object-fit: contain;
 }
 
 .exercise-detail__facts {
@@ -368,7 +494,7 @@
 .exercise-detail__fact dt {
   flex-shrink: 0;
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 450;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--ink-3);
@@ -378,7 +504,7 @@
   margin: 0;
   text-align: right;
   font-size: var(--step--1);
-  font-weight: 500;
+  font-weight: 450;
   color: var(--ink);
 }
 
@@ -390,15 +516,18 @@
   list-style: none;
   display: flex;
   flex-direction: column;
+  gap: var(--space-2xs);
   overflow-y: auto;
   max-height: 42vh;
+  padding: var(--space-2xs) 0 var(--space-s);
 }
 
 .replace__row {
   display: flex;
   align-items: center;
-  gap: var(--space-2xs);
-  border-top: var(--border);
+  border: var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
 }
 
 .replace__pick {
@@ -407,46 +536,34 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4xs);
-  padding: var(--space-xs) 0;
+  padding: var(--space-xs) var(--space-s);
   background: none;
   border: 0;
+  border-radius: var(--radius-m);
   color: var(--ink);
   text-align: left;
   cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
+
+.replace__row:hover { border-color: var(--ink-3); }
+.replace__pick:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 .replace__name {
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .replace__meta {
   font-size: var(--step--2);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
-}
-
-.replace__exclude {
-  flex-shrink: 0;
-  padding: var(--space-3xs) var(--space-2xs);
-  border: 0;
-  border-radius: var(--radius-s);
-  background: var(--surface-2);
-  color: var(--ink-2);
-  font-size: var(--step--2);
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.replace__exclude:disabled {
-  opacity: 0.45;
-  cursor: default;
 }
 
 .replace__empty {
   padding: var(--space-s) 0;
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
   text-align: center;
 }
@@ -458,17 +575,20 @@
   flex-direction: column;
   gap: var(--space-2xs);
   padding: var(--space-2xs) var(--space-m) var(--space-s);
+  border-bottom: var(--border);
 }
 
 .exec-progress__label {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
 .exec-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: var(--space-s);
@@ -483,18 +603,27 @@
 }
 
 .exec-card--done {
-  border-color: var(--accent);
+  border-color: var(--select-line);
 }
 
 .exec-card--skipped {
   border-style: dashed;
-  opacity: 0.68;
+  background: transparent;
+}
+
+/* Пропущенная карточка: приглушаем осознанно, сохраняя контраст ≥ 4.5:1. */
+.exec-card--skipped .exec-card__group {
+  color: var(--ink-3);
+}
+
+.exec-card--skipped .exec-card__name {
+  color: var(--ink-2);
 }
 
 .exec-card__tag {
   align-self: flex-start;
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 450;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--ink-3);
@@ -508,8 +637,18 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-xs) var(--space-s);
-  margin-top: var(--space-s);
+  gap: var(--space-3xs) var(--space-s);
+  margin-top: var(--space-2xs);
+}
+
+/* Действия внутри карточки — текстовые кнопки: сохраняем вид ссылок,
+ * но даём полноценную зону нажатия 44px (важно во время тренировки). */
+.exec-card__add,
+.exec-card__next,
+.exec-card__skip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 .exec-card__actions .exec-card__add {
@@ -518,62 +657,23 @@
 
 .exec-card__skip {
   font-size: var(--step--1);
-  font-weight: 600;
-  color: var(--ink-3);
+  font-weight: 500;
+  color: var(--danger);
   transition: color var(--dur-fast) var(--ease);
 }
 
 .exec-card__skip:hover {
-  color: var(--danger);
+  opacity: 0.8;
 }
 
-/* --- тост автосохранения (S16) --- */
-
-.autosave-toast {
-  position: fixed;
-  left: 50%;
-  bottom: calc(92px + env(safe-area-inset-bottom));
-  transform: translateX(-50%);
-  z-index: 45;
+/* Пропуск необратим для подхода, поэтому живёт отдельно от безопасных действий. */
+.exec-card__danger {
   display: flex;
-  align-items: center;
-  gap: var(--space-s);
-  padding: var(--space-2xs) var(--space-s);
-  border: var(--border);
-  border-radius: 999px;
-  background: var(--surface-2);
-  box-shadow: var(--shadow-s);
-  font-size: var(--step--1);
-  font-weight: 450;
-  color: var(--ink-2);
-  animation: toast-in var(--dur) var(--ease-out);
-}
-
-.autosave-toast--error {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-
-.autosave-toast__retry {
-  font-weight: 600;
-  color: var(--accent);
-}
-
-@keyframes toast-in {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 6px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .autosave-toast {
-    animation: none;
-  }
+  flex-wrap: wrap;
+  gap: var(--space-3xs) var(--space-s);
+  margin-top: var(--space-xs);
+  padding-top: var(--space-xs);
+  border-top: var(--border);
 }
 
 .exec-card__head {
@@ -581,25 +681,28 @@
   flex-direction: column;
   gap: var(--space-4xs);
   margin-bottom: var(--space-s);
+  min-width: 0;
 }
 
 .exec-card__group {
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 450;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--accent);
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
 }
 
 .exec-card__name {
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 .exec-card__add {
   margin-top: var(--space-s);
   font-size: var(--step--1);
-  font-weight: 600;
+  font-weight: 550;
   color: var(--ink-2);
   transition: color var(--dur-fast) var(--ease);
 }
@@ -610,9 +713,9 @@
 
 .exec-card__next {
   font-size: var(--step--1);
-  font-weight: 600;
-  color: var(--accent);
-  transition: opacity var(--dur-fast) var(--ease);
+  font-weight: 550;
+  color: var(--ink-2);
+  transition: color var(--dur-fast) var(--ease);
 }
 
 .exec-card__next:hover {
@@ -620,14 +723,24 @@
 }
 
 .exec-top {
+  position: sticky;
+  top: 0;
+  z-index: 25;
   background: var(--base);
+  border-bottom: 1px solid transparent;
+  gap: var(--space-2xs);
+  padding-inline: var(--space-s);
 }
 
+/* Таймер — крупная цифра, но с потолком размера: на узком экране при 200%
+ * текста он не должен выталкивать кнопки за край. */
 .exec-clock {
   font-family: var(--font-display);
-  font-size: var(--step-2);
+  font-size: clamp(20px, 1.5625rem, 24px);
   letter-spacing: 0;
   font-variant-numeric: tabular-nums;
+  min-width: 0;
+  text-align: center;
 }
 
 .exec-pause--off {
@@ -655,7 +768,7 @@
   text-align: center;
   font-family: var(--font-text);
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 450;
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
@@ -681,7 +794,7 @@
 .set-field__label {
   flex-shrink: 0;
   font-size: var(--step--2);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
@@ -694,7 +807,7 @@
   color: var(--ink);
   font-family: var(--font-text);
   font-size: var(--step-0);
-  font-weight: 600;
+  font-weight: 550;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -703,42 +816,20 @@
   outline: none;
 }
 
-.set-check {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border: var(--border);
-  border-radius: var(--radius-s);
-  color: var(--ink-3);
-  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
-    color var(--dur-fast) var(--ease);
-}
-
-.set-check svg {
-  width: 18px;
-  height: 18px;
-}
-
-.set-check--on {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
 .exec-footer {
   display: flex;
-  align-items: center;
-  gap: var(--space-s);
-  padding: var(--space-s) var(--space-m) calc(var(--space-s) + env(safe-area-inset-bottom));
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2xs);
+  min-width: 0;
+  padding: var(--space-s) var(--space-m) calc(var(--space-s) + env(safe-area-inset-bottom) + var(--phone-bottom-inset, 0px));
   border-top: var(--border);
   background: var(--base);
 }
 
 .exec-footer__hint {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
 }
 
@@ -755,7 +846,7 @@
   display: grid;
   place-items: center;
   padding: var(--space-m);
-  background: rgba(6, 9, 7, 0.72);
+  background: var(--scrim);
 }
 
 .dialog {
@@ -774,12 +865,12 @@
 .dialog__title {
   font-family: var(--font-display);
   font-size: var(--step-1);
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .dialog__text {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
@@ -804,7 +895,36 @@
 .field__label {
   font-size: var(--step--2);
   color: var(--ink-2);
-  font-weight: 500;
+  font-weight: 450;
+}
+
+.field__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-s);
+}
+
+.field__toggle {
+  min-height: 44px;
+  margin-block: calc(-1 * var(--space-2xs));
+  font-size: var(--step--2);
+}
+
+.auth-alt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding-top: var(--space-2xs);
+}
+
+.auth-alt .btn {
+  width: 100%;
+}
+
+.auth-alt__back {
+  align-self: center;
 }
 
 .field__input {
@@ -825,6 +945,18 @@
   border-color: var(--accent);
 }
 
+/* Ошибка важнее фокуса: поле остаётся красным, пока значение не исправят. */
+.field__input[aria-invalid='true'],
+.field__input[aria-invalid='true']:focus-visible {
+  border-color: var(--danger);
+}
+
+.field__hint {
+  font-size: var(--step--2);
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+
 /* --- S12: итог тренировки --- */
 
 .finish-hero {
@@ -832,31 +964,45 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-3xs);
-  padding: var(--space-m) 0;
+  padding: var(--space-m) 0 var(--space-s);
   text-align: center;
 }
 
+.finish-hero__lead {
+  font-size: var(--step--2);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
 .finish-hero__score {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2xs);
   font-family: var(--font-display);
   font-size: var(--step-5);
   font-weight: 600;
-  text-transform: uppercase;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
-.finish-hero__total {
-  color: var(--ink-3);
+.finish-hero__unit {
+  font-family: var(--font-text);
+  font-size: var(--step--1);
+  font-weight: 500;
+  color: var(--ink-2);
 }
 
 .finish-hero__caption {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
 .finish-hero__meta {
   font-size: var(--step--2);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
 }
 
@@ -878,13 +1024,13 @@
 
 .finish-ex__name {
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .finish-ex__group {
   display: block;
   font-size: var(--step--2);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
   margin-top: var(--space-4xs);
 }
@@ -892,14 +1038,20 @@
 .finish-tag {
   flex-shrink: 0;
   padding: var(--space-4xs) var(--space-2xs);
-  border-radius: var(--radius-s);
+  border-radius: 999px;
   font-size: var(--step--2);
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .finish-tag--done {
   background: var(--accent-soft);
   color: var(--accent);
+}
+
+.finish-tag--partial {
+  background: var(--surface-2);
+  color: var(--ink-2);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .finish-tag--skip {
@@ -921,7 +1073,7 @@
   border-radius: var(--radius-s);
   font-family: var(--font-text);
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
   text-align: center;
   font-variant-numeric: tabular-nums;
@@ -930,5 +1082,9 @@
 .finish-set--done {
   border-color: var(--accent);
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 550;
+}
+
+.finish-history-link {
+  align-self: center;
 }

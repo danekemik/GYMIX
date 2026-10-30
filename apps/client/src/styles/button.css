@@ -1,5 +1,4 @@
 :root {
-  --btn-pad: 15px;
   --btn-radius: var(--radius-m);
   --btn-h: 50px;
 }
@@ -13,7 +12,10 @@
   border-radius: var(--btn-radius);
   font-family: var(--font-text);
   font-size: var(--step-0);
-  font-weight: 600;
+  font-weight: 550;
+  text-align: center;
+  /* Крупный текст переносится внутри кнопки, а не вылезает за экран. */
+  overflow-wrap: anywhere;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
     transform var(--dur-fast) var(--ease);
 }
@@ -29,7 +31,13 @@
 }
 
 .btn--primary:hover {
-  background: #b8f04a;
+  background: var(--accent-hover);
+}
+
+/* Лаймовая кнопка: обычный лаймовый ореол на ней не виден — затемняем изнутри. */
+.btn--primary:focus-visible {
+  outline: 3px solid var(--accent-ink);
+  outline-offset: -3px;
 }
 
 .btn--ghost {
@@ -42,8 +50,25 @@
   border-color: var(--ink-3);
 }
 
+/* Опасное действие: не маскируем его лаймовым primary. */
+.btn--danger {
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+
+.btn--danger:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: rgba(255, 122, 107, 0.08);
+}
+
+/* Выключенная кнопка не должна выглядеть грязно-оливковой: это нейтральная
+ * плашка, а не приглушённый лайм. */
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 1;
+  border-color: var(--line);
+  background: var(--surface-2);
+  color: var(--ink-3);
   box-shadow: none;
   cursor: default;
   pointer-events: none;

@@ -211,10 +211,15 @@ export const devices = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     label: text('label').notNull(),
+    installationId: uuid('installation_id').notNull().defaultRandom(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('devices_user_idx').on(t.userId)],
+  (t) => [
+    index('devices_user_idx').on(t.userId),
+    uniqueIndex('devices_user_installation_uq').on(t.userId, t.installationId),
+  ],
 );
 
 /**
@@ -239,6 +244,7 @@ export const authSessions = pgTable(
   (t) => [
     index('auth_sessions_user_idx').on(t.userId),
     index('auth_sessions_expires_idx').on(t.expiresAt),
+    uniqueIndex('auth_sessions_refresh_hash_uq').on(t.refreshHash),
   ],
 );
 
@@ -256,6 +262,7 @@ export const emailCodes = pgTable(
     email: text('email').notNull(),
     purpose: emailPurposeEnum('purpose').notNull(),
     codeHash: text('code_hash').notNull(),
+    pendingPasswordHash: text('pending_password_hash'),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     consumedAt: timestamp('consumed_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -507,3 +514,12 @@ export const syncOperations = pgTable(
     index('sync_operations_session_idx').on(t.sessionId),
   ],
 );
+
+/** Applied account-sync requests survive record deletion and lost responses. */
+export const syncReceipts = pgTable('sync_receipts', {
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  operationId: uuid('operation_id').notNull(),
+  requestHash: text('request_hash').notNull(),
+  response: jsonb('response').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.userId, t.operationId] })]);

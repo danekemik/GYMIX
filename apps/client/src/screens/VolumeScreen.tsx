@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { typeLabel } from '../lib/workoutTypes';
 import { VOLUME_LEVELS, type VolumeLevel } from '@gymix/structures';
 import { Button } from '../components/Button';
 import { exerciseCount, plural, type Draft } from '../lib/draft';
@@ -8,14 +8,16 @@ interface VolumeScreenProps {
   draft: Draft;
   onVolumeChange: (volume: VolumeLevel) => void;
   onContinue: () => void;
+  onManual: () => void;
   onBack: () => void;
+  hasComposition?: boolean;
+  hasSelection?: boolean;
 }
 
-export function VolumeScreen({ draft, onVolumeChange, onContinue, onBack }: VolumeScreenProps) {
-  const [volume, setVolume] = useState<VolumeLevel>(draft.volume);
+export function VolumeScreen({ draft, onVolumeChange, onContinue, onManual, onBack, hasComposition, hasSelection }: VolumeScreenProps) {
+  const volume = draft.volume;
 
   const select = (value: VolumeLevel) => {
-    setVolume(value);
     onVolumeChange(value);
   };
 
@@ -32,7 +34,7 @@ export function VolumeScreen({ draft, onVolumeChange, onContinue, onBack }: Volu
 
       <div className="screen__body">
         <div className="volume-head">
-          <span className="context__type">{draft.type}</span>
+          <span className="context__type">{typeLabel(draft.type)}</span>
           {isMgs(draft.type) && draft.mgsGroup && (
             <span className="volume-head__group">{draft.mgsGroup}</span>
           )}
@@ -63,17 +65,19 @@ export function VolumeScreen({ draft, onVolumeChange, onContinue, onBack }: Volu
                   <span className="volume-card__count">
                     {plural(count, ['упражнение', 'упражнения', 'упражнений'])}
                   </span>
+                  <span className="volume-card__sets">{plural(count * 3, ['подход', 'подхода', 'подходов'])}</span>
                 </span>
               </button>
             );
           })}
         </div>
+      </div>
 
-        <div className="screen__cta">
-          <Button variant="primary" onClick={onContinue}>
-            Продолжить
-          </Button>
-        </div>
+      <div className="screen__cta">
+        <Button variant="primary" onClick={onContinue}>
+          {hasComposition ? 'К составу тренировки' : hasSelection ? 'Дополнить подбором' : 'Подобрать упражнения'}
+        </Button>
+        <button className="btn btn--ghost" onClick={onManual}>Выбрать упражнения вручную</button>
       </div>
     </div>
   );

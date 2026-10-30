@@ -34,3 +34,5 @@ pnpm --filter @gymix/db migrations:generate
 pnpm --filter @gymix/db typecheck
 pnpm --filter @gymix/db test
 ```
+
+Постоянные UUID справочников: `src/reference-ids.ts`; сохраняйте идентичность при переименованиях. `migrateBrowser()` применяет версионированные SQL-миграции в браузере с журналом и откатом ошибок, без сброса пользовательских данных.

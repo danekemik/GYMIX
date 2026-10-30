@@ -41,7 +41,7 @@
 }
 
 .topbar__icon-btn:hover {
-  background: #262b2f;
+  background: var(--surface-3);
 }
 
 .topbar__icon-btn:active {
@@ -55,19 +55,22 @@
 
 .topbar__title {
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(1.875rem, 10vw, 2.25rem);
-  line-height: 1;
+  font-weight: 600;
+  font-size: clamp(1.375rem, 4.6vw, 1.625rem);
+  line-height: 1.1;
   letter-spacing: -0.02em;
-  white-space: nowrap;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .topbar__title--step {
-  font-size: clamp(1.5rem, 7.2vw, 1.8rem);
+  font-size: clamp(1.125rem, 4.4vw, 1.5rem);
   line-height: 1.05;
   min-width: 0;
   white-space: normal;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 /* Заголовок шага: по центру всей ширины бара (кнопка «назад» слева). */
@@ -85,12 +88,11 @@
   text-align: center;
 }
 
-/* Приветствие с именем: чуть меньше, чтобы длинные имена помещались. */
+/* Приветствие с именем: переносится, а не обрезается при крупном тексте. */
 .topbar__title--greeting {
-  font-size: clamp(1.5rem, 7.2vw, 1.8rem);
+  font-size: clamp(1.125rem, 4.4vw, 1.5rem);
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 .topbar__right {
@@ -105,7 +107,7 @@
   border: var(--border);
   background: var(--surface-2);
   color: var(--ink-2);
-  font-weight: 600;
+  font-weight: 550;
   transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 

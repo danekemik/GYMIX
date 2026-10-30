@@ -53,7 +53,7 @@ export function previewGroups(card: WorkoutTypeCard): readonly string[] {
 
 /** Человекочитаемые названия типов для списков (история, главная). */
 const TYPE_LABEL: Record<WorkoutType, string> = {
-  'Full Body': 'Full Body',
+  'Full Body': 'Всё тело',
   'Upper Body': 'Верх тела',
   'Lower Body': 'Низ тела',
   Push: 'Жимы',

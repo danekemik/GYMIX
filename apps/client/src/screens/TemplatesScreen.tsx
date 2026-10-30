@@ -1,17 +1,20 @@
-import { useCallback, useEffect, useState } from 'react';
+import { typeLabel } from '../lib/workoutTypes';
+import { plural } from '../lib/draft';
+import { useLocalRead } from '../hooks/useLocalRead';
+import { useEffect, useRef, useState } from 'react';
 import { useDb } from '../hooks/useDb';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 import { formatDay } from '../lib/format';
-import { IconDots, IconTorso } from '../lib/icons';
+import { ActionMenu } from '../components/ActionMenu';
+import { IconTorso } from '../lib/icons';
 import {
   copyTemplate,
   deleteTemplate,
   renameTemplate,
-  templatesFor,
   type TemplateCard,
 } from '../lib/templates';
 
 interface TemplatesScreenProps {
-  onBack: () => void;
   onOpenTemplate: (templateId: string) => void;
   onEditTemplate: (templateId: string) => void;
   onCreate: () => void;
@@ -19,54 +22,62 @@ interface TemplatesScreenProps {
 
 type MenuTarget = TemplateCard | null;
 
-/** «Мои тренировки» — сохранённые шаблоны, вынесены с главного экрана. */
+/** Сохранённые шаблоны тренировок, вынесены с главного экрана. */
 export function TemplatesScreen({
-  onBack,
   onOpenTemplate,
   onEditTemplate,
   onCreate,
 }: TemplatesScreenProps) {
   const { db } = useDb();
-  const [templates, setTemplates] = useState<TemplateCard[] | 'loading'>('loading');
-  const [menuFor, setMenuFor] = useState<MenuTarget>(null);
+  const { data, error: loadError, reload } = useLocalRead<TemplateCard[]>('templates');
+  const templates = data ?? 'loading';
   const [renameFor, setRenameFor] = useState<MenuTarget>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [renameError, setRenameError] = useState('');
   const [removeFor, setRemoveFor] = useState<MenuTarget>(null);
   const [busy, setBusy] = useState(false);
-
-  const reload = useCallback(async () => {
-    if (db === undefined) return;
-    try {
-      setTemplates(await templatesFor(db));
-    } catch {
-      setTemplates([]);
-    }
-  }, [db]);
+  const [feedback, setFeedback] = useState('');
+  const [actionError, setActionError] = useState('');
+  const renameDialog = useRef<HTMLDivElement>(null);
+  const removeDialog = useRef<HTMLDivElement>(null);
+  useDialogFocus(renameDialog, renameFor !== null, () => { if (!busy) setRenameFor(null); });
+  useDialogFocus(removeDialog, removeFor !== null, () => { if (!busy) setRemoveFor(null); });
 
   useEffect(() => {
-    void reload();
-  }, [reload]);
+    if (feedback === '') return;
+    const timer = window.setTimeout(() => setFeedback(''), 4000);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
 
   const doRename = async () => {
     const title = renameValue.trim();
-    if (title === '' || db === undefined || renameFor === null) return;
-    setBusy(true);
+    if (db === undefined || renameFor === null) return;
+    if (title === '') {
+      setRenameError('Название не может быть пустым.');
+      return;
+    }
+    setBusy(true); setActionError(''); setRenameError('');
     try {
-      await renameTemplate(db, renameFor.id, title);
+      if (title !== renameFor.title) await renameTemplate(db, renameFor.id, title, renameFor.title);
       setRenameFor(null);
       await reload();
+      if (title !== renameFor.title) setFeedback('Шаблон переименован.');
+    } catch (error) {
+      setRenameError(error instanceof Error ? error.message : 'Не удалось переименовать шаблон.');
     } finally {
       setBusy(false);
     }
   };
 
-  const doCopy = async () => {
-    if (db === undefined || menuFor === null) return;
-    setBusy(true);
+  const doCopy = async (template: TemplateCard) => {
+    if (db === undefined) return;
+    setBusy(true); setActionError(''); setFeedback('');
     try {
-      await copyTemplate(db, menuFor.id);
-      setMenuFor(null);
+      await copyTemplate(db, template.id);
       await reload();
+      setFeedback('Копия шаблона создана.');
+    } catch {
+      setActionError('Не удалось скопировать шаблон. Попробуй ещё раз.');
     } finally {
       setBusy(false);
     }
@@ -74,37 +85,32 @@ export function TemplatesScreen({
 
   const doDelete = async () => {
     if (db === undefined || removeFor === null) return;
-    setBusy(true);
+    setBusy(true); setActionError('');
     try {
       await deleteTemplate(db, removeFor.id);
       setRemoveFor(null);
       await reload();
+      setFeedback('Шаблон удалён.');
+    } catch {
+      setActionError('Не удалось удалить шаблон. Попробуй ещё раз.');
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <div className="screen">
-      <header className="topbar">
-        <button className="topbar__back" aria-label="Назад" onClick={onBack}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        <h1 className="topbar__title topbar__title--step">Мои тренировки</h1>
-      </header>
-
+    <div className="library__content">
       <div className="screen__body">
-        <section className="mine" aria-label="Мои тренировки">
-          {templates === 'loading' ? (
-            <p className="body-muted">Загружаем шаблоны…</p>
+        {actionError && <p className="body-error" role="alert">{actionError}</p>}
+        {feedback && <p className="note" role="status">{feedback}</p>}
+        <section className="mine" aria-label="Сохранённые шаблоны">
+          {loadError && data === undefined ? <div className="note note--error" role="alert">Не удалось загрузить сохранённые тренировки.<button className="text-action" onClick={() => void reload()}>Повторить</button></div> : templates === 'loading' ? (
+            <p className="body-muted">Загружаем тренировки…</p>
           ) : templates.length === 0 ? (
             <div className="empty-train">
-              <p className="empty-train__title">Пока пусто</p>
+              <p className="empty-train__title">Твои привычные тренировки</p>
               <p className="empty-train__text">
-                Сохрани завершённую тренировку как шаблон, чтобы повторить её в
-                один тап.
+                Собери первую тренировку. После занятия сохрани её состав — он будет здесь для быстрого старта.
               </p>
               <button className="btn btn--primary" onClick={onCreate}>
                 Создать тренировку
@@ -125,22 +131,38 @@ export function TemplatesScreen({
                     <span className="wk-card__body">
                       <span className="wk-card__title">{template.title}</span>
                       <span className="wk-card__meta">
-                        {template.type} <span className="wk-card__dot">·</span>{' '}
+                        {typeLabel(template.type)} <span className="wk-card__dot">·</span>{' '}
                         {template.volume}
                       </span>
                       <span className="wk-card__tags">
-                        <span className="wk-card__tag">{template.exerciseCount} упражнений</span>
+                        <span className="wk-card__tag">{plural(template.exerciseCount, ['упражнение', 'упражнения', 'упражнений'])}</span>
                         <span className="wk-card__date">{formatDay(template.createdAt)}</span>
                       </span>
                     </span>
                   </button>
-                  <button
-                    className="wk-card__menu"
-                    aria-label="Меню шаблона"
-                    onClick={() => setMenuFor(template)}
-                  >
-                    <IconDots />
-                  </button>
+                  <ActionMenu label={`Меню шаблона «${template.title}»`} disabled={busy}>
+                    {(close) => (
+                      <>
+                        <button className="action-menu__item" role="menuitem" onClick={() => { close(); onOpenTemplate(template.id); }}>
+                          Открыть
+                        </button>
+                        <button className="action-menu__item" role="menuitem" onClick={() => { close(); onEditTemplate(template.id); }}>
+                          Редактировать состав
+                        </button>
+                        <button className="action-menu__item" role="menuitem" disabled={busy} onClick={() => { close(); void doCopy(template); }}>
+                          Копировать
+                        </button>
+                        <button className="action-menu__item" role="menuitem" onClick={() => { close(); setRenameValue(template.title); setRenameError(''); setRenameFor(template); }}>
+                          Переименовать
+                        </button>
+                        <span className="action-menu__group">
+                          <button className="action-menu__item action-menu__item--danger" role="menuitem" onClick={() => { close(); setRemoveFor(template); }}>
+                            Удалить
+                          </button>
+                        </span>
+                      </>
+                    )}
+                  </ActionMenu>
                 </article>
               ))}
             </div>
@@ -148,68 +170,9 @@ export function TemplatesScreen({
         </section>
       </div>
 
-      {menuFor !== null && (
-        <div className="overlay">
-          <div className="dialog menu-dialog" role="dialog" aria-modal="true" aria-labelledby="menu-title">
-            <h2 id="menu-title" className="dialog__title">
-              {menuFor.title}
-            </h2>
-            <div className="menu-list" role="menu">
-              <button
-                className="menu-action"
-                role="menuitem"
-                onClick={() => {
-                  onOpenTemplate(menuFor.id);
-                  setMenuFor(null);
-                }}
-              >
-                Открыть
-              </button>
-              <button
-                className="menu-action"
-                role="menuitem"
-                onClick={() => {
-                  onEditTemplate(menuFor.id);
-                  setMenuFor(null);
-                }}
-              >
-                Изменить
-              </button>
-              <button className="menu-action" role="menuitem" onClick={() => void doCopy()} disabled={busy}>
-                Копировать
-              </button>
-              <button
-                className="menu-action"
-                role="menuitem"
-                onClick={() => {
-                  setRenameValue(menuFor.title);
-                  setRenameFor(menuFor);
-                  setMenuFor(null);
-                }}
-              >
-                Переименовать
-              </button>
-              <button
-                className="menu-action menu-action--danger"
-                role="menuitem"
-                onClick={() => {
-                  setRemoveFor(menuFor);
-                  setMenuFor(null);
-                }}
-              >
-                Удалить
-              </button>
-            </div>
-            <button className="btn btn--ghost" onClick={() => setMenuFor(null)}>
-              Отмена
-            </button>
-          </div>
-        </div>
-      )}
-
       {renameFor !== null && (
         <div className="overlay">
-          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="rename-title">
+          <div ref={renameDialog} className="dialog" role="dialog" aria-modal="true" aria-labelledby="rename-title">
             <h2 id="rename-title" className="dialog__title">
               Переименовать шаблон
             </h2>
@@ -219,19 +182,29 @@ export function TemplatesScreen({
                 className="field__input"
                 type="text"
                 value={renameValue}
-                onChange={(event) => setRenameValue(event.target.value)}
+                onChange={(event) => {
+                  setRenameValue(event.target.value);
+                  if (renameError !== '') setRenameError('');
+                }}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') void doRename();
                 }}
+                aria-invalid={renameError !== ''}
+                aria-describedby={renameError !== '' ? 'rename-error' : undefined}
                 autoFocus
                 maxLength={60}
               />
             </label>
+            {renameError !== '' && (
+              <p className="body-error" id="rename-error" role="alert">
+                {renameError}
+              </p>
+            )}
             <div className="dialog__actions">
-              <button className="btn btn--primary" onClick={() => void doRename()} disabled={busy}>
-                Сохранить
+              <button className="btn btn--primary" onClick={() => void doRename()} disabled={busy || renameValue.trim() === ''}>
+                {busy ? 'Сохраняем…' : 'Сохранить'}
               </button>
-              <button className="btn btn--ghost" onClick={() => setRenameFor(null)}>
+              <button className="btn btn--ghost" onClick={() => setRenameFor(null)} disabled={busy}>
                 Отмена
               </button>
             </div>
@@ -241,7 +214,7 @@ export function TemplatesScreen({
 
       {removeFor !== null && (
         <div className="overlay">
-          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="remove-title">
+          <div ref={removeDialog} className="dialog" role="dialog" aria-modal="true" aria-labelledby="remove-title">
             <h2 id="remove-title" className="dialog__title">
               Удалить шаблон?
             </h2>
@@ -250,10 +223,10 @@ export function TemplatesScreen({
               тренировок не изменится.
             </p>
             <div className="dialog__actions">
-              <button className="btn btn--primary" onClick={() => void doDelete()} disabled={busy}>
-                Удалить
+              <button className="btn btn--danger" onClick={() => void doDelete()} disabled={busy}>
+                {busy ? 'Удаляем…' : 'Удалить'}
               </button>
-              <button className="btn btn--ghost" onClick={() => setRemoveFor(null)}>
+              <button className="btn btn--ghost" onClick={() => setRemoveFor(null)} disabled={busy} autoFocus>
                 Отмена
               </button>
             </div>

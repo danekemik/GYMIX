@@ -1,4 +1,7 @@
 import { z } from 'zod';
+import { fileURLToPath } from 'node:url';
+
+const DEV_SECRET = 'dev-only-secret-change-me-in-production-0000';
 
 /**
  * Конфигурация из переменных окружения. `parseEnv` падает при старте,
@@ -20,7 +23,7 @@ const envSchema = z.object({
   DATABASE_URL: z
     .string()
     .min(1)
-    .default('postgres://localhost:5432/gymix'),
+    .default('postgres://gymix:gymix@localhost:55432/gymix'),
   APP_ORIGINS: z
     .string()
     .default('http://localhost:5173')
@@ -41,11 +44,19 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   MAIL_FROM: z.string().default('Gymix <no-reply@gymix.app>'),
-  JWT_SECRET: z.string().min(32).default('dev-only-secret-change-me-in-production-0000'),
+  JWT_SECRET: z.string().min(32).default(DEV_SECRET),
   ACCESS_TTL_MINUTES: z.coerce.number().int().positive().default(15),
   REFRESH_TTL_DAYS: z.coerce.number().int().positive().default(30),
   JOB_INTERVAL_MS: z.coerce.number().int().positive().default(60_000),
   TRUST_PROXY: booleanFromString('false'),
+}).superRefine((config, ctx) => {
+  if (config.NODE_ENV !== 'production') return;
+  if (config.JWT_SECRET === DEV_SECRET) {
+    ctx.addIssue({ code: 'custom', path: ['JWT_SECRET'], message: 'В production требуется собственный JWT_SECRET' });
+  }
+  if (config.EMAIL_MODE !== 'smtp' || !config.SMTP_HOST) {
+    ctx.addIssue({ code: 'custom', path: ['EMAIL_MODE'], message: 'В production требуется настроенный SMTP' });
+  }
 });
 
 export type Config = z.infer<typeof envSchema>;
@@ -86,8 +97,8 @@ export function parseConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: parsed.PORT,
     databaseUrl: parsed.DATABASE_URL,
     origins: parsed.APP_ORIGINS,
-    migrationsDir: parsed.MIGRATIONS_DIR ?? null,
-    referenceDir: parsed.REFERENCE_DIR ?? null,
+    migrationsDir: parsed.MIGRATIONS_DIR ?? fileURLToPath(new URL('../../../packages/db/drizzle', import.meta.url)),
+    referenceDir: parsed.REFERENCE_DIR ?? fileURLToPath(new URL('../../../reference', import.meta.url)),
     runMigrations: parsed.APP_MIGRATE,
     runSeed: parsed.APP_SEED,
     emailMode: parsed.EMAIL_MODE,

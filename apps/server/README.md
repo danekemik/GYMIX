@@ -12,8 +12,10 @@ pnpm install
 pnpm --filter @gymix/server dev        # tsx watch, http://localhost:3000
 ```
 
+Локальная PostgreSQL: `pnpm db:up` из корня, порт 55432. Подготовка схемы: `pnpm db:prepare`.
+
 Для разработки достаточно локального PostgreSQL: скопируйте
-`apps/server/.env.example` в `.env` и задайте `DATABASE_URL`. Миграции и посев
+`apps/server/.env.example` в `apps/server/.env` и задайте `DATABASE_URL`. Миграции и посев
 референсных справочников выполняются на старте (`APP_MIGRATE`, `APP_SEED`),
 если заданы `MIGRATIONS_DIR` и `REFERENCE_DIR`. В режиме `EMAIL_MODE=console`
 коды подтверждения печатаются в лог.
@@ -41,6 +43,7 @@ pnpm --filter @gymix/server start       # node dist/index.js (после build)
 | `src/auth/` | Логика аккаунта и токенов, `src/routes/auth.ts` |
 | `src/sync/ops.ts` | Движок идемпотентных операций тренировки |
 | `src/sync/snapshot.ts` | Снимок тренировки для клиента |
+| `src/sync/account.ts` | Версии снимков аккаунта, владение, конфликты и квитанции повторов |
 | `src/routes/` | REST-роуты (workouts, templates, exclusions, …) |
 | `src/jobs.ts` | Фоновая очистка сессий, кодов, stale-тренировок и удалённых аккаунтов |
 
@@ -63,6 +66,7 @@ pnpm --filter @gymix/server start       # node dist/index.js (после build)
 - **Исключения** — `GET/PUT /exclusions`
 - **Вес тела** — `GET/POST /body-weight`
 - **Прогресс** — `GET /progress`
+- **Офлайн-синхронизация** — `GET /sync/snapshot`, `POST /sync/change`; контракт и ограничения — в `docs/backend.md`
 
 ## Модель доступа
 
@@ -78,7 +82,8 @@ refresh он ротируется, а повторное использован�
 ### Docker Compose
 
 ```bash
-JWT_SECRET="$(openssl rand -base64 48)" docker compose up --build
+# Задайте POSTGRES_PASSWORD, JWT_SECRET, APP_ORIGINS и SMTP_HOST
+docker compose up --build
 ```
 
 Поднимаются PostgreSQL и сервер. `docker-compose.yml` ждёт готовности БД,
@@ -90,3 +95,5 @@ JWT_SECRET="$(openssl rand -base64 48)" docker compose up --build
 Полный список с пояснениями — в [`.env.example`](./.env.example). Ключевые:
 `DATABASE_URL`, `JWT_SECRET` (≥32 символа), `APP_ORIGINS`, `EMAIL_MODE`,
 `MIGRATIONS_DIR`, `REFERENCE_DIR`.
+
+Подробности реализации и оставшаяся работа: [docs/backend.md](../../docs/backend.md).

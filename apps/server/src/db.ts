@@ -35,19 +35,27 @@ export async function connectDb(config: AppConfig, logger: Logger): Promise<DbCo
     logger.error({ error: error.message }, 'простаивающий клиент пула упал');
   });
 
-  if (config.runMigrations && config.migrationsDir) {
-    await migrate(pgDb, { migrationsFolder: config.migrationsDir });
-  } else {
-    logger.info('миграции пропущены: APP_MIGRATE=false или MIGRATIONS_DIR не задан');
+  try {
+    if (config.runMigrations && config.migrationsDir) {
+      // Session lock is paired with unlock on this same reserved connection.
+      const client = await pool.connect();
+      try {
+        await client.query("SELECT pg_advisory_lock(hashtext('gymix:migrate'))");
+        await migrate(drizzle(client), { migrationsFolder: config.migrationsDir });
+      } finally {
+        try { await client.query("SELECT pg_advisory_unlock(hashtext('gymix:migrate'))"); }
+        finally { client.release(); }
+      }
+    } else {
+      logger.info('миграции пропущены: APP_MIGRATE=false или MIGRATIONS_DIR не задан');
+    }
+    const db = pgDb as unknown as Db;
+    if (config.runSeed) await seedIfEmpty(db, config, logger);
+    return { db, close: async () => pool.end() };
+  } catch (error) {
+    await pool.end();
+    throw error;
   }
-
-  const db = pgDb as unknown as Db;
-
-  if (config.runSeed) {
-    await seedIfEmpty(db, config, logger);
-  }
-
-  return { db, close: async () => pool.end() };
 }
 
 /** Проверка живости БД для /healthz. */
@@ -76,25 +84,18 @@ export async function seedIfEmpty(
   }
 
   const seeded = await db.transaction(async (tx) => {
-    const res = (await tx.execute(
-      sql`select pg_try_advisory_lock(hashtext('gymix:seed')) as locked`,
-    )) as { rows: Array<{ locked: boolean }> };
-    if (!(res.rows[0]?.locked ?? false)) return false;
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('gymix:seed'))`);
 
-    try {
-      const [row] = await tx.select({ n: sql<number>`count(*)::int` }).from(exercises);
-      if ((row?.n ?? 0) > 0) return false;
+    const [row] = await tx.select({ n: sql<number>`count(*)::int` }).from(exercises);
+    if ((row?.n ?? 0) > 0) return false;
 
-      const catalog = parseCatalogFile(join(referenceDir, 'exercise_catalog_v1.md'));
-      const reference = parseReference(
-        readFileSync(join(referenceDir, 'exercise_database.md'), 'utf8'),
-      );
-      const counts = await seedFromData(tx, catalog, reference);
-      logger.info({ counts }, 'референсные справочники посеяны');
-      return true;
-    } finally {
-      await tx.execute(sql`select pg_advisory_unlock(hashtext('gymix:seed'))`);
-    }
+    const catalog = parseCatalogFile(join(referenceDir, 'exercise_catalog_v1.md'));
+    const reference = parseReference(
+      readFileSync(join(referenceDir, 'exercise_database.md'), 'utf8'),
+    );
+    const counts = await seedFromData(tx, catalog, reference);
+    logger.info({ counts }, 'референсные справочники посеяны');
+    return true;
   });
 
   return seeded;

@@ -1,4 +1,7 @@
-import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
+import { localChange, workoutReadOnly } from '../data/sync/store';
+import { runSessionCommand } from '../data/local/read-rpc';
+import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
+import { repsValue, validSetInput, weightValue } from '../domain/setInput';
 import type { GeneratedWorkout } from '@gymix/generator';
 import {
   devices,
@@ -11,17 +14,9 @@ import {
   workoutTypes,
   workoutVolumes,
 } from '@gymix/db/schema';
-import type { SessionSnapshot, SetEntry } from '../screens/ExecuteScreen';
+import type { SessionSnapshot, SetEntry } from '../domain/session';
 import type { GymixDb } from './db';
 import { buildWorkoutFromEntries } from './reconstruct';
-
-/**
- * Сессии в PGlite хранятся под локальным владельцем: у приложения пока нет
- * аутентификации, а `workout_sessions` требует пользователя и устройство.
- * Владелец создаётся один раз на первую запись.
- */
-const LOCAL_EMAIL = 'local@offline.gymix';
-const LOCAL_DEVICE_LABEL = 'Этот телефон';
 
 export interface HistoryItem {
   readonly id: string;
@@ -34,105 +29,107 @@ export interface HistoryItem {
   readonly total: number;
 }
 
-let ownerCache: { userId: string; deviceId: string } | undefined;
 
 /**
  * Снимок завершённой тренировки в историю. Пустая сессия сюда не доходит —
  * LOCKED (2026-10-05) блокирует финиш при 0 выполненных упражнений.
  */
-export async function saveSession(db: GymixDb, payload: SessionSnapshot): Promise<void> {
+async function _saveSession(db: GymixDb, payload: SessionSnapshot): Promise<string> {
   const owner = await ensureLocalOwner(db);
 
-  const typeId = (
-    await db.db
-      .select({ id: workoutTypes.id })
-      .from(workoutTypes)
-      .where(eq(workoutTypes.key, payload.workout.type))
-      .limit(1)
-  )[0]?.id;
-  const volumeId = (
-    await db.db
-      .select({ id: workoutVolumes.id })
-      .from(workoutVolumes)
-      .where(eq(workoutVolumes.key, payload.workout.volume))
-      .limit(1)
-  )[0]?.id;
-  if (typeId === undefined || volumeId === undefined) {
-    throw new Error(`нет справочника тип/объём для ${payload.workout.type} · ${payload.workout.volume}`);
-  }
+  return db.db.transaction(async (tx) => {
+    const typeId = (
+      await tx
+        .select({ id: workoutTypes.id })
+        .from(workoutTypes)
+        .where(eq(workoutTypes.key, payload.workout.type))
+        .limit(1)
+    )[0]?.id;
+    const volumeId = (
+      await tx
+        .select({ id: workoutVolumes.id })
+        .from(workoutVolumes)
+        .where(eq(workoutVolumes.key, payload.workout.volume))
+        .limit(1)
+    )[0]?.id;
+    if (typeId === undefined || volumeId === undefined) {
+      throw new Error(`нет справочника тип/объём для ${payload.workout.type} · ${payload.workout.volume}`);
+    }
 
-  const endedAt = new Date(payload.endedAt);
-  const [session] = await db.db
-    .insert(workoutSessions)
-    .values({
-      userId: owner.userId,
-      owningDeviceId: owner.deviceId,
-      typeId,
-      volumeId,
-      startedAt: new Date(payload.startedAt),
-      completedAt: endedAt,
-      status: 'completed',
-    })
-    .returning({ id: workoutSessions.id });
-  if (session === undefined) throw new Error('сессия не создана');
-
-  const exerciseRows = await db.db
-    .select({ id: exercises.id, name: exercises.canonicalNameRu })
-    .from(exercises);
-  const exerciseId = new Map(exerciseRows.map((r) => [r.name, r.id]));
-
-  const exerciseValues = payload.workout.entries.map((entry, index) => {
-    const group = payload.sets[index] ?? [];
-    const done = group.length > 0 && group.every((s) => s.done);
-    const isSkipped = payload.skippedExercises?.[index] === true;
-    return {
-      sessionId: session.id,
-      exerciseId: exerciseId.get(entry.exercise.name),
-      exerciseNameSnapshot: entry.exercise.name,
-      position: index + 1,
-      status: (done && !isSkipped ? 'completed' : 'skipped') as 'completed' | 'skipped',
-    };
-  });
-  const exerciseRowsInserted = await db.db
-    .insert(sessionExercises)
-    .values(exerciseValues)
-    .returning({ id: sessionExercises.id, position: sessionExercises.position });
-  const byPosition = new Map(exerciseRowsInserted.map((r) => [r.position, r.id]));
-
-  const setValues: Array<{
-    sessionExerciseId: string;
-    setNumber: number;
-    weight: string | null;
-    reps: number | null;
-    completedAt: Date;
-  }> = [];
-  payload.sets.forEach((group, index) => {
-    if (payload.skippedExercises?.[index] === true) return;
-    const sessionExerciseId = byPosition.get(index + 1);
-    if (sessionExerciseId === undefined) return;
-    group.forEach((set, setIndex) => {
-      if (!set.done) return;
-      setValues.push({
-        sessionExerciseId,
-        setNumber: setIndex + 1,
-        weight: parseWeight(set.weight),
-        reps: parseReps(set.reps),
+    const endedAt = new Date(payload.endedAt);
+    const [session] = await tx
+      .insert(workoutSessions)
+      .values({
+        userId: owner.userId,
+        owningDeviceId: owner.deviceId,
+        typeId,
+        volumeId,
+        startedAt: new Date(payload.startedAt),
         completedAt: endedAt,
+        status: 'completed',
+      })
+      .returning({ id: workoutSessions.id });
+    if (session === undefined) throw new Error('сессия не создана');
+
+    const exerciseRows = await tx
+      .select({ id: exercises.id, name: exercises.canonicalNameRu })
+      .from(exercises);
+    const exerciseId = new Map(exerciseRows.map((r) => [r.name, r.id]));
+
+    const exerciseValues = payload.workout.entries.map((entry, index) => {
+      const group = payload.sets[index] ?? [];
+      const done = group.length > 0 && group.every((s) => s.done);
+      const isSkipped = payload.skippedExercises?.[index] === true;
+      return {
+        sessionId: session.id,
+        exerciseId: exerciseId.get(entry.exercise.name),
+        exerciseNameSnapshot: entry.exercise.name,
+        position: index + 1,
+        status: (done && !isSkipped ? 'completed' : 'skipped') as 'completed' | 'skipped',
+      };
+    });
+    const exerciseRowsInserted = await tx
+      .insert(sessionExercises)
+      .values(exerciseValues)
+      .returning({ id: sessionExercises.id, position: sessionExercises.position });
+    const byPosition = new Map(exerciseRowsInserted.map((r) => [r.position, r.id]));
+
+    const setValues: Array<{
+      sessionExerciseId: string;
+      setNumber: number;
+      weight: string | null;
+      reps: number | null;
+      completedAt: Date;
+    }> = [];
+    payload.sets.forEach((group, index) => {
+      if (payload.skippedExercises?.[index] === true) return;
+      const sessionExerciseId = byPosition.get(index + 1);
+      if (sessionExerciseId === undefined) return;
+      group.forEach((set, setIndex) => {
+        if (!set.done) return;
+        setValues.push({
+          sessionExerciseId,
+          setNumber: setIndex + 1,
+          weight: parseWeight(set.weight),
+          reps: parseReps(set.reps),
+          completedAt: endedAt,
+        });
       });
     });
-  });
-  if (setValues.length > 0) await db.db.insert(sessionSets).values(setValues);
+    if (setValues.length > 0) await tx.insert(sessionSets).values(setValues);
 
-  // Длительность — сумма активных интервалов (LOCKED): храним один закрытый
-  // интервал на завершённую сессию, чтобы история считала время без пауз.
-  const durationMs = Math.max(0, payload.durationMs ?? endedAt.getTime() - new Date(payload.startedAt).getTime());
-  if (durationMs > 0) {
-    await db.db.insert(sessionIntervals).values({
-      sessionId: session.id,
-      startedAt: new Date(endedAt.getTime() - durationMs),
-      endedAt,
-    });
-  }
+    // Длительность — сумма активных интервалов (LOCKED): храним один закрытый
+    // интервал на завершённую сессию, чтобы история считала время без пауз.
+    const durationMs = Math.max(0, payload.durationMs ?? endedAt.getTime() - new Date(payload.startedAt).getTime());
+    if (durationMs > 0) {
+      await tx.insert(sessionIntervals).values({
+        sessionId: session.id,
+        startedAt: new Date(endedAt.getTime() - durationMs),
+        endedAt,
+      });
+    }
+    return session.id;
+  });
 }
 
 /** Завершённые сессии от новых к старым (вкладка «История», S13). */
@@ -211,6 +208,7 @@ export async function recentSessions(db: GymixDb, limit = 3): Promise<HistoryIte
 
 export interface DraftSummary {
   readonly sessionId: string;
+  readonly readOnly: boolean;
   readonly type: string;
   readonly volume: string;
   readonly startedAt: Date;
@@ -242,22 +240,30 @@ export interface ResumedSession extends DraftSession {
 
 /** Создать черновик: один активный на пользователя, старый вытесняется. */
 /** Гарантия единственного активного черновика при повторном вызове (StrictMode). */
-let creatingDraft: Promise<unknown> | undefined;
 
-/** Создать черновик сессии. Удаляет предыдущий активный (S11: один на пользователя). */
+const draftRequests = new WeakMap<GymixDb, WeakMap<GeneratedWorkout, Promise<DraftSession>>>();
 export function createDraft(db: GymixDb, workout: GeneratedWorkout): Promise<DraftSession> {
-  const task = (creatingDraft ?? Promise.resolve()).then(() => doCreateDraft(db, workout));
-  creatingDraft = task.catch(() => undefined);
-  return task;
+  let requests = draftRequests.get(db);
+  if (!requests) { requests = new WeakMap(); draftRequests.set(db, requests); }
+  let pending = requests.get(workout);
+  if (!pending) {
+    const remote = runSessionCommand(db, { kind: 'create', workout });
+    pending = remote ? remote.then(value => {
+      if (!value || typeof value === 'string') throw new Error('Не удалось создать тренировку');
+      return value;
+    }) : localChange(db, result => `workout:${result.sessionId}`, scoped => doCreateDraft(scoped, workout));
+    requests.set(workout, pending);
+    void pending.then(() => requests!.delete(workout), () => requests!.delete(workout));
+  }
+  return pending;
 }
 
 async function doCreateDraft(db: GymixDb, workout: GeneratedWorkout): Promise<DraftSession> {
   const owner = await ensureLocalOwner(db);
   const ids = await resolveTypeVolume(db, workout.type, workout.volume);
 
-  await db.db
-    .delete(workoutSessions)
-    .where(and(eq(workoutSessions.userId, owner.userId), eq(workoutSessions.status, 'active')));
+  const active = await activeDraft(db);
+  if (active) throw new Error('Сначала завершите или удалите текущую тренировку');
 
   const [session] = await db.db
     .insert(workoutSessions)
@@ -297,46 +303,40 @@ async function doCreateDraft(db: GymixDb, workout: GeneratedWorkout): Promise<Dr
 }
 
 /** Записать текущее состояние подходов в черновик (upsert по номеру подхода). */
-export async function persistDraft(
+async function _persistDraft(
   db: GymixDb,
   sessionId: string,
   byPosition: ReadonlyMap<number, string>,
   sets: readonly (readonly SetEntry[])[],
   skipped: readonly boolean[] = [],
 ): Promise<void> {
-  await Promise.all(
-    sets.map(async (group, index) => {
-      const sessionExerciseId = byPosition.get(index + 1);
-      if (sessionExerciseId === undefined) return;
-      const isSkipped = skipped[index] === true;
-      const values = group.map((set, setIndex) => ({
-        sessionExerciseId,
-        setNumber: setIndex + 1,
-        weight: parseWeight(set.weight),
-        reps: parseReps(set.reps),
-        // Пропущенное упражнение не засчитывается, но ввод сохраняем для возврата.
-        completedAt: set.done && !isSkipped ? new Date() : null,
-      }));
-      if (values.length > 0) {
-        await db.db
-          .insert(sessionSets)
-          .values(values)
-          .onConflictDoUpdate({
-            target: [sessionSets.sessionExerciseId, sessionSets.setNumber],
-            set: {
-              weight: sql`excluded.weight`,
-              reps: sql`excluded.reps`,
-              completedAt: sql`excluded.completed_at`,
-            },
-          });
-      }
-      const done = group.length > 0 && group.every((s) => s.done);
-      await db.db
-        .update(sessionExercises)
-        .set({ status: isSkipped ? 'skipped' : done ? 'completed' : 'pending' })
-        .where(eq(sessionExercises.id, sessionExerciseId));
-    }),
-  );
+  sets.forEach((group, index) => {
+    if (!skipped[index] && group.some(set => set.done && !validSetInput(set))) throw new Error('Проверь вес и повторения отмеченных подходов.');
+  });
+  const entries = sets.flatMap((group, index) => {
+    const id = byPosition.get(index + 1);
+    if (!id) return [];
+    const isSkipped = skipped[index] === true;
+    const done = group.length > 0 && group.every(set => set.done);
+    return [{
+      id, status: isSkipped ? 'skipped' : done ? 'completed' : 'pending',
+      values: group.map((set, setIndex) => ({
+        sessionExerciseId: id, setNumber: setIndex + 1,
+        weight: parseWeight(set.weight), reps: parseReps(set.reps), completedAt: set.done && !isSkipped ? new Date() : null
+      }))
+    }];
+  });
+  const values = entries.flatMap(entry => entry.values);
+  if (entries.length) await db.db.delete(sessionSets).where(or(...entries.map(entry => and(
+    eq(sessionSets.sessionExerciseId, entry.id), gt(sessionSets.setNumber, entry.values.length),
+  ))));
+  if (values.length) await db.db.insert(sessionSets).values(values).onConflictDoUpdate({
+    target: [sessionSets.sessionExerciseId, sessionSets.setNumber],
+    set: { weight: sql`excluded.weight`, reps: sql`excluded.reps`, completedAt: sql`excluded.completed_at` },
+  });
+  if (entries.length) await db.db.update(sessionExercises).set({
+    status: sql`CASE ${sql.join(entries.map(entry => sql`WHEN ${sessionExercises.id}=${entry.id}::uuid THEN ${entry.status}`), sql` `)} ELSE ${sessionExercises.status} END`,
+  }).where(inArray(sessionExercises.id, entries.map(entry => entry.id)));
 }
 
 /**
@@ -344,10 +344,11 @@ export async function persistDraft(
  * интервал, продолжение открывает новый — паузы в длительность не попадают.
  * Одновременно открыт не более одного интервала (частичный unique-индекс).
  */
-export async function setDraftRunning(
+async function _setDraftRunning(
   db: GymixDb,
   sessionId: string,
   running: boolean,
+  at: number,
 ): Promise<void> {
   const open = await db.db
     .select({ id: sessionIntervals.id })
@@ -356,12 +357,12 @@ export async function setDraftRunning(
     .limit(1);
   if (running) {
     if (open[0] === undefined) {
-      await db.db.insert(sessionIntervals).values({ sessionId, startedAt: new Date() });
+      await db.db.insert(sessionIntervals).values({ sessionId, startedAt: new Date(at) });
     }
   } else if (open[0] !== undefined) {
     await db.db
       .update(sessionIntervals)
-      .set({ endedAt: new Date() })
+      .set({ endedAt: new Date(at) })
       .where(eq(sessionIntervals.id, open[0].id));
   }
 }
@@ -372,6 +373,7 @@ export async function activeDraft(db: GymixDb): Promise<DraftSummary | null> {
   const rows = await db.db
     .select({
       id: workoutSessions.id,
+      owningDeviceId: workoutSessions.owningDeviceId,
       type: workoutTypes.key,
       volume: workoutVolumes.key,
       startedAt: workoutSessions.startedAt,
@@ -396,6 +398,7 @@ export async function activeDraft(db: GymixDb): Promise<DraftSummary | null> {
 
   return {
     sessionId: row.id,
+    readOnly: await workoutReadOnly(db, `workout:${row.id}`),
     type: row.type,
     volume: row.volume,
     startedAt: row.startedAt,
@@ -457,10 +460,10 @@ export async function resumeDraft(db: GymixDb, sessionId: string): Promise<Resum
     const own = byExercise.get(exRow.id) ?? [];
     return own.length > 0
       ? own.map((set) => ({
-          weight: set.weight != null ? String(Number(set.weight)) : '',
-          reps: set.reps?.toString() ?? '',
-          done: set.completedAt !== null,
-        }))
+        weight: set.weight != null ? String(Number(set.weight)) : '',
+        reps: set.reps?.toString() ?? '',
+        done: set.completedAt !== null,
+      }))
       : Array.from({ length: 3 }, () => ({ weight: '', reps: '', done: false }));
   });
 
@@ -499,7 +502,7 @@ export async function resumeDraft(db: GymixDb, sessionId: string): Promise<Resum
 }
 
 /** Удалить черновик (каскадно: упражнения и подходы). */
-export async function deleteDraft(db: GymixDb, sessionId: string): Promise<void> {
+async function _deleteDraft(db: GymixDb, sessionId: string): Promise<void> {
   await db.db.delete(workoutSessions).where(eq(workoutSessions.id, sessionId));
 }
 
@@ -507,7 +510,7 @@ async function resolveTypeVolume(
   db: GymixDb,
   type: string,
   volume: string,
-): Promise<{ typeId: string; volumeId: string }> {
+): Promise<{ typeId: string; volumeId: string; }> {
   const typeId = (
     await db.db.select({ id: workoutTypes.id }).from(workoutTypes).where(eq(workoutTypes.key, type)).limit(1)
   )[0]?.id;
@@ -520,56 +523,36 @@ async function resolveTypeVolume(
   return { typeId, volumeId };
 }
 
-export async function ensureLocalOwner(db: GymixDb): Promise<{ userId: string; deviceId: string }> {
-  if (ownerCache !== undefined) return ownerCache;
-
-  const existing = await db.db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, LOCAL_EMAIL))
-    .limit(1);
-
-  let userId: string;
-  if (existing[0] !== undefined) {
-    userId = existing[0].id;
-  } else {
-    const inserted = await db.db
-      .insert(users)
-      .values({ email: LOCAL_EMAIL, passwordHash: 'local-offline' })
-      .returning({ id: users.id });
-    if (inserted[0] === undefined) throw new Error('локальный пользователь не создан');
-    userId = inserted[0].id;
-  }
-
-  const devicesForUser = await db.db
-    .select({ id: devices.id })
-    .from(devices)
-    .where(eq(devices.userId, userId))
-    .limit(1);
-  let deviceId = devicesForUser[0]?.id;
-  if (deviceId === undefined) {
-    const inserted = await db.db
-      .insert(devices)
-      .values({ userId, label: LOCAL_DEVICE_LABEL })
-      .returning({ id: devices.id });
-    if (inserted[0] === undefined) throw new Error('устройство не создано');
-    deviceId = inserted[0].id;
-  }
-
-  ownerCache = { userId, deviceId };
-  return ownerCache;
+export async function ensureLocalOwner(db: GymixDb): Promise<{ userId: string; deviceId: string; }> {
+  return { userId: db.account.userId, deviceId: db.account.deviceId };
 }
 
 /** Запятые из ввода приводим к десятичной точке, мусор отбрасываем. */
 function parseWeight(value: string | undefined): string | null {
-  if (value === undefined || value === '') return null;
-  const clean = value.trim().replace(',', '.');
-  if (!/^\d+(\.\d{1,2})?$/.test(clean)) return null;
-  return clean;
+  return value === undefined ? null : weightValue(value);
 }
 
 function parseReps(value: string | undefined): number | null {
-  if (value === undefined || value === '') return null;
-  const reps = Number.parseInt(value, 10);
-  return Number.isInteger(reps) && reps > 0 ? reps : null;
+  return value === undefined ? null : repsValue(value);
+}
+export const saveSession = (db: GymixDb, payload: SessionSnapshot) => localChange(db, id => `workout:${id}`, scoped => _saveSession(scoped, payload));
+export const persistDraft = async (db: GymixDb, id: string, byPosition: ReadonlyMap<number, string>, sets: readonly (readonly SetEntry[])[], skipped: readonly boolean[] = []): Promise<void> => {
+  await (runSessionCommand(db, { kind: 'persist', draft: { sessionId: id, byPosition }, sets, skipped }) ?? localChange(db, `workout:${id}`, scoped => _persistDraft(scoped, id, byPosition, sets, skipped)));
+};
+export const setDraftRunning = async (db: GymixDb, id: string, running: boolean, at = Date.now()): Promise<void> => {
+  await (runSessionCommand(db, { kind: 'running', sessionId: id, running, at }) ?? localChange(db, `workout:${id}`, scoped => _setDraftRunning(scoped, id, running, at)));
+};
+export const deleteDraft = async (db: GymixDb, id: string): Promise<void> => {
+  await (runSessionCommand(db, { kind: 'delete', sessionId: id }) ?? localChange(db, `workout:${id}`, scoped => _deleteDraft(scoped, id)));
+};
+export async function finishDraft(db: GymixDb, draft: DraftSession, payload: SessionSnapshot): Promise<void> {
+  const remote = runSessionCommand(db, { kind: 'finish', draft, payload });
+  if (remote) { await remote; return; }
+  await localChange(db, `workout:${draft.sessionId}`, async scoped => {
+    await _persistDraft(scoped, draft.sessionId, draft.byPosition, payload.sets, payload.skippedExercises);
+    await scoped.db.update(sessionIntervals).set({ endedAt: new Date(payload.endedAt) })
+      .where(and(eq(sessionIntervals.sessionId, draft.sessionId), isNull(sessionIntervals.endedAt)));
+    await scoped.db.update(workoutSessions).set({ status: 'completed', completedAt: new Date(payload.endedAt), updatedAt: new Date(), revision: sql`${workoutSessions.revision} + 1` })
+      .where(eq(workoutSessions.id, draft.sessionId));
+  });
 }

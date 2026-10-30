@@ -1,7 +1,10 @@
+import { typeLabel } from '../lib/workoutTypes';
+import { repsValue, weightValue } from '../domain/setInput';
+import { useLocalRead } from '../hooks/useLocalRead';
 import { useEffect, useMemo, useState } from 'react';
 import { useDb } from '../hooks/useDb';
 import { formatDate, formatDurationMs } from '../lib/format';
-import { loadRecord, saveRecord, type RecordExercise, type RecordSnapshot } from '../lib/record';
+import { saveRecord, type RecordExercise, type RecordSnapshot } from '../lib/record';
 
 interface RecordScreenProps {
   sessionId: string;
@@ -17,9 +20,15 @@ interface EditSet {
 interface EditExercise {
   id: string;
   name: string;
-  status: 'completed' | 'skipped';
+  status: 'completed' | 'skipped' | 'pending';
   sets: EditSet[];
 }
+
+const STATUS_LABELS: Record<EditExercise['status'], string> = {
+  completed: 'Выполнено',
+  skipped: 'Пропущено',
+  pending: 'Не завершено',
+};
 
 function toEditable(snapshot: RecordSnapshot): EditExercise[] {
   return snapshot.exercises.map((e) => ({
@@ -36,28 +45,18 @@ function toEditable(snapshot: RecordSnapshot): EditExercise[] {
 
 export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
   const { db } = useDb();
-  const [record, setRecord] = useState<RecordSnapshot | undefined>(undefined);
-  const [error, setError] = useState<string | undefined>(undefined);
+  const { data: loaded, error: readError, reload } = useLocalRead<RecordSnapshot>(`record:${sessionId}`);
+  const [record, setRecord] = useState<RecordSnapshot | undefined>(loaded);
+  const error = readError?.message;
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<EditExercise[]>([]);
   const [date, setDate] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | undefined>(undefined);
 
-  const reload = async () => {
-    if (db === undefined) return;
-    try {
-      setRecord(await loadRecord(db, sessionId));
-      setError(undefined);
-    } catch (e: unknown) {
-      setError(String(e));
-    }
-  };
-
-  useEffect(() => {
-    void reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db, sessionId]);
+  // Keep the revision from which an edit started. Background refresh must not
+  // make an old form silently overwrite changes from another device.
+  useEffect(() => { if (!editing) setRecord(loaded); }, [loaded, editing]);
 
   const done = useMemo(
     () => record?.exercises.filter((e) => e.status === 'completed').length ?? 0,
@@ -68,7 +67,7 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
   const startEdit = () => {
     if (record === undefined) return;
     setDraft(toEditable(record));
-    setDate(record.startedAt.toISOString().slice(0, 10));
+    setDate(formatDateInput(new Date(record.startedAt)));
     setSaveError(undefined);
     setEditing(true);
   };
@@ -84,8 +83,16 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
     });
   };
 
-  const setStatus = (id: string, status: 'completed' | 'skipped') =>
-    setDraft((prev) => prev.map((e) => (e.id === id ? { ...e, status } : e)));
+  const setStatus = (id: string) =>
+    setDraft((prev) => prev.map((e) => {
+      if (e.id !== id) return e;
+      const next: EditExercise['status'] = e.status === 'completed'
+        ? 'skipped'
+        : e.status === 'skipped'
+          ? 'pending'
+          : 'completed';
+      return { ...e, status: next };
+    }));
 
   const setSet = (exerciseId: string, setId: string, field: 'weight' | 'reps', value: string) =>
     setDraft((prev) =>
@@ -98,10 +105,19 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
 
   const save = async () => {
     if (db === undefined || record === undefined) return;
-    const day = new Date(`${date}T00:00:00`);
+    const day = parseDateInput(date);
+    if (day === undefined) { setSaveError('Введи дату в формате ДД.ММ.ГГГГ, например 27.10.2026.'); return; }
+    const invalid = draft.find(exercise => exercise.sets.some(set =>
+      (set.weight.trim() !== '' && weightValue(set.weight) === null) ||
+      (set.reps.trim() !== '' && repsValue(set.reps) === null) ||
+      (exercise.status === 'completed' && repsValue(set.reps) === null)
+    ));
+    if (invalid) { setSaveError(`Проверь вес и повторения: «${invalid.name}».`); return; }
     const started = new Date(record.startedAt);
     const completed = new Date(record.completedAt);
-    const delta = day.getTime() - new Date(record.startedAt.toISOString().slice(0, 10) + 'T00:00:00').getTime();
+    const baseDay = new Date(record.startedAt);
+    baseDay.setHours(0, 0, 0, 0);
+    const delta = day.getTime() - baseDay.getTime();
     started.setTime(started.getTime() + delta);
     completed.setTime(completed.getTime() + delta);
 
@@ -109,6 +125,7 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
     setSaveError(undefined);
     try {
       await saveRecord(db, sessionId, {
+        baseRevision: record.revision,
         startedAt: started,
         completedAt: completed,
         exercises: draft.map((e) => ({
@@ -120,7 +137,10 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
       await reload();
       setEditing(false);
     } catch (e: unknown) {
-      setSaveError(String(e));
+      const message = e instanceof Error ? e.message : '';
+      setSaveError(message.includes('обновилась')
+        ? message
+        : 'Не удалось сохранить изменения. Проверь соединение и повтори попытку.');
     } finally {
       setSaving(false);
     }
@@ -139,19 +159,20 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
 
       <div className="screen__body">
         {error !== undefined && (
-          <p className="body-error" role="alert">
-            Не удалось загрузить запись: {error}
-          </p>
+          <div className="note note--error" role="alert">
+            Не удалось загрузить запись.
+            <button className="text-action" onClick={() => void reload()}>Повторить</button>
+          </div>
         )}
 
         {error === undefined && record === undefined && <p className="body-muted">Загружаем запись…</p>}
 
-        {error === undefined && record !== undefined && (
+        {record !== undefined && (
           <>
-            <aside className="note">
-              <span className="context__type">{record.type}</span>
+            <aside className="note record-context">
+              <span className="context__type">{typeLabel(record.type)}</span>
               <span className="volume-head__meta">
-                {record.volume} · {done}/{total} · {formatDurationMs(record.durationMs)} ·{' '}
+                {record.volume} · {done} из {total} упражнений · {formatDurationMs(record.durationMs)} ·{' '}
                 {formatDate(record.completedAt)}
               </span>
             </aside>
@@ -164,37 +185,15 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
 
             {!editing && (
               <ul className="record-exercises">
-                {record.exercises.map((ex, index) => (
-                  <li key={ex.id} className="record-exercise">
-                    <div className="record-exercise__head">
-                      <span className="record-exercise__index">{index + 1}</span>
-                      <span className="record-exercise__name">{ex.name}</span>
-                      <span className={`record-exercise__status record-exercise__status--${ex.status}`}>
-                        {ex.status === 'completed' ? 'Выполнено' : 'Пропущено'}
-                      </span>
-                    </div>
-                    {ex.sets.length > 0 && (
-                      <table className="record-sets">
-                        <thead>
-                          <tr>
-                            <th scope="col">Подход</th>
-                            <th scope="col">Вес</th>
-                            <th scope="col">Повторения</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {ex.sets.map((s) => (
-                            <tr key={s.id}>
-                              <th scope="row">{s.setNumber}</th>
-                              <td>{s.weight ?? '—'}</td>
-                              <td>{s.reps ?? '—'}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </li>
-                ))}
+                {record.exercises.map((ex, index) => {
+                  const head = <><span className="record-exercise__index">{index + 1}</span><span className="record-exercise__name">{ex.name}</span><span className={`record-exercise__status record-exercise__status--${ex.status}`}>{ex.status === 'completed' ? 'Выполнено' : ex.partial ? 'Не завершено' : 'Пропущено'}</span></>;
+                  return <li key={ex.id} className="record-exercise">
+                    {ex.status === 'completed' ? <><div className="record-exercise__head">{head}</div><RecordedSets exercise={ex} /></> : <details className="record-exercise__details">
+                      <summary className="record-exercise__head">{head}<svg className="record-exercise__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg><span className="visually-hidden"><span className="record-exercise__show">Показать подходы</span><span className="record-exercise__hide">Скрыть подходы</span></span></summary>
+                      <RecordedSets exercise={ex} />
+                    </details>}
+                  </li>;
+                })}
               </ul>
             )}
 
@@ -207,10 +206,16 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
                   <input
                     id="record-date"
                     className="field__input"
-                    type="date"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder="ДД.ММ.ГГГГ"
+                    maxLength={10}
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
+                    aria-describedby="record-date-hint"
                   />
+                  <p className="field__hint" id="record-date-hint">Формат: ДД.ММ.ГГГГ</p>
                 </div>
 
                 <ul className="record-exercises">
@@ -220,11 +225,11 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
                         <span className="record-exercise__index">{index + 1}</span>
                         <span className="record-exercise__name">{ex.name}</span>
                         <button
-                          className="btn btn--ghost btn--sm"
-                          aria-pressed={ex.status === 'completed'}
-                          onClick={() => setStatus(ex.id, ex.status === 'completed' ? 'skipped' : 'completed')}
+                          className={`btn btn--ghost btn--sm record-status-btn record-status-btn--${ex.status}`}
+                          aria-label={`Статус: ${STATUS_LABELS[ex.status]}. Сменить`}
+                          onClick={() => setStatus(ex.id)}
                         >
-                          {ex.status === 'completed' ? 'Выполнено' : 'Пропущено'}
+                          {STATUS_LABELS[ex.status]}
                         </button>
                       </div>
                       <div className="record-exercise__tools">
@@ -267,26 +272,52 @@ export function RecordScreen({ sessionId, onBack }: RecordScreenProps) {
                 </ul>
               </>
             )}
-
-            <div className="screen__cta">
-              {!editing ? (
-                <button className="btn btn--primary" onClick={startEdit}>
-                  Редактировать запись
-                </button>
-              ) : (
-                <>
-                  <button className="btn btn--primary" disabled={saving} onClick={() => void save()}>
-                    Сохранить
-                  </button>
-                  <button className="btn btn--ghost" disabled={saving} onClick={() => setEditing(false)}>
-                    Отмена
-                  </button>
-                </>
-              )}
-            </div>
           </>
         )}
       </div>
+
+      {record !== undefined && (
+        <div className="screen__cta">
+          {!editing ? (
+            <button className="btn btn--primary" onClick={startEdit}>
+              Редактировать запись
+            </button>
+          ) : (
+            <>
+              <button className="btn btn--primary" disabled={saving} onClick={() => void save()}>
+                {saving ? 'Сохраняем…' : 'Сохранить'}
+              </button>
+              <button className="btn btn--ghost" disabled={saving} onClick={() => setEditing(false)}>
+                Отмена
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
+}
+/** Дата в интерфейсе — русский порядок ДД.ММ.ГГГГ. */
+function formatDateInput(date: Date): string {
+  return `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}`;
+}
+
+/** Строгий разбор ДД.ММ.ГГГГ: отсекает 31.02 и неполные даты. */
+function parseDateInput(value: string): Date | undefined {
+  const match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(value.trim());
+  if (match === null) return undefined;
+  const [day, month, year] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return undefined;
+  }
+  return date;
+}
+
+function RecordedSets({ exercise }: { exercise: RecordExercise }) {
+  const sets = exercise.status === 'completed' ? exercise.sets : exercise.sets.filter(set => set.done);
+  if (!sets.length) return <p className="body-muted record-exercise__empty">Нет отмеченных подходов.</p>;
+  return <table className="record-sets">{sets.some(set => set.weight === null) && <caption className="record-sets__caption">«—» — без дополнительного веса.</caption>}<thead><tr><th scope="col">Подход</th><th scope="col">Вес, кг</th><th scope="col">Повторы</th></tr></thead><tbody>
+    {sets.map(set => <tr key={set.id}><th scope="row">{set.setNumber}</th><td>{set.weight ?? '—'}</td><td>{set.reps ?? '—'}</td></tr>)}
+  </tbody></table>;
 }

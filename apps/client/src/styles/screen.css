@@ -1,47 +1,67 @@
 .screen {
   min-height: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
 .screen__body {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   padding: 0 var(--space-m) var(--space-m);
+}
+
+/* Подтверждение действия на уровне приложения (сохранение шаблона и т. п.). */
+.app-flash {
+  margin: var(--space-xs) var(--space-m) 0;
+  padding: var(--space-2xs) var(--space-s);
+  border: var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--step--1);
+}
+
+.app-flash--error {
+  border-left-color: var(--danger);
+  color: var(--danger);
 }
 
 .screen__cta {
   display: flex;
   flex-direction: column;
   gap: var(--space-2xs);
-  margin-top: auto;
-  padding-top: var(--space-m);
-}
-
-/* липкий низ: действия остаются в зоне досягаемости на длинных экранах */
-.screen__cta--sticky {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
+  flex-shrink: 0;
+  padding: var(--space-s) var(--space-m) calc(var(--space-m) + env(safe-area-inset-bottom) + var(--phone-bottom-inset, 0px));
+  border-top: var(--border);
   background: var(--base);
-  padding-bottom: calc(var(--space-m) + env(safe-area-inset-bottom) + var(--phone-bottom-inset, 0px));
 }
 
-.screen__cta--sticky::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 100%;
-  height: var(--space-m);
-  background: linear-gradient(to top, var(--base), transparent);
-  pointer-events: none;
+/* Экран с нижней панелью: шапка и кнопки закреплены, прокручивается только тело. */
+.screen:has(.screen__cta) {
+  flex: 1;
+  min-height: 0;
 }
 
-/* отступ body компенсирует сам липкий CTA */
-.screen:has(.screen__cta--sticky) .screen__body {
-  padding-bottom: 0;
+.screen:has(.screen__cta) .screen__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Внутри прокручиваемого тела элементы сохраняют свою высоту, а не сжимаются. */
+.screen:has(.screen__cta) .screen__body > * {
+  flex-shrink: 0;
+}
+
+/* Прокручиваемое тело без интерактивных элементов фокусируется с клавиатуры. */
+.screen__body:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .context {
@@ -54,20 +74,22 @@
 .context__type {
   font-family: var(--font-display);
   font-size: var(--step-3);
-  font-weight: 600;
+  font-weight: 550;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .context__volume {
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .context__count {
   margin-left: auto;
   font-size: var(--step--1);
-  font-weight: 500;
+  font-weight: 450;
   color: var(--ink-3);
 }
 
@@ -77,4 +99,100 @@
     margin: 0 auto;
     width: 100%;
   }
+}
+.auth-form { display: grid; gap: var(--space-s); padding-top: var(--space-m); }
+
+/* ——— Полоса статуса синхронизации (офлайн-first) ———
+ * Спокойное состояние — одна приглушённая строка; при ожидающих
+ * изменениях или ошибке появляются действия с крупными мишенями. */
+.sync-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs) var(--space-m);
+  font-size: var(--step--2);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.sync-notice__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.sync-notice__dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+
+.sync-notice[data-state='pending'] .sync-notice__dot { background: var(--accent); }
+.sync-notice[data-state='alert'] .sync-notice__dot { background: var(--danger); }
+
+.sync-notice__text {
+  min-width: 0;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.sync-notice[data-state='idle'] .sync-notice__text { color: var(--ink-3); }
+.sync-notice__text--muted { color: var(--ink-3); }
+
+.sync-notice__conflict {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-xs);
+  border: var(--border);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
+.sync-notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+
+.sync-notice__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--space-s);
+  border: var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--step--2);
+  font-weight: 550;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+
+.sync-notice__btn:hover {
+  border-color: var(--ink-3);
+  background: var(--surface-2);
+}
+
+.sync-notice__btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.sync-notice__btn--accent {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.sync-notice__btn--accent:hover {
+  background: var(--accent-hover);
+}
+
+.sync-notice__btn--accent:focus-visible {
+  outline: 3px solid var(--accent-ink);
+  outline-offset: -3px;
 }

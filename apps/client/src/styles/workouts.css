@@ -17,7 +17,7 @@
   padding-bottom: var(--space-s);
   border-radius: var(--radius-2xl);
   border: 1px solid var(--line);
-  background: #12171a;
+  background: var(--surface-hero);
   margin-bottom: var(--space-m);
 }
 
@@ -29,9 +29,7 @@
   right: -58px;
   border-radius: 50%;
   background: radial-gradient(circle at 33% 28%, #d6ff8e 0%, var(--accent) 48%, #79ae1b 100%);
-  box-shadow:
-    0 0 26px rgb(168 245 58 / 0.45),
-    0 0 70px rgb(168 245 58 / 0.16);
+  box-shadow: var(--glow-accent-strong);
   pointer-events: none;
 }
 
@@ -60,8 +58,8 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: var(--step--2);
-  font-weight: 600;
-  color: #cbe79a;
+  font-weight: 550;
+  color: var(--accent-soft-ink);
 }
 
 .hero__chip-dot {
@@ -78,13 +76,13 @@
   line-height: 1.05;
   letter-spacing: -0.02em;
   color: var(--ink);
-  margin-top: 8px;
+  margin-top: var(--space-2xs);
 }
 
 .hero__sub {
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: var(--step--1);
+  font-family: var(--font-text);
+  font-weight: 500;
+  font-size: var(--step-0);
   color: var(--ink-2);
 }
 
@@ -101,16 +99,17 @@
   border-radius: 999px;
   background: var(--accent);
   color: var(--accent-ink);
-  box-shadow:
-    0 0 26px rgb(168 245 58 / 0.45),
-    0 0 70px rgb(168 245 58 / 0.16);
+  box-shadow: var(--glow-accent-strong);
   transition: filter var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
 }
 
 .hero__cta-label {
+  flex: 1;
+  min-width: 0;
   font-size: var(--step-0);
-  font-weight: 600;
-  white-space: nowrap;
+  font-weight: 550;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .hero__cta-arrow {
@@ -126,15 +125,21 @@
   transform: scale(0.99);
 }
 
+/* Лаймовая кнопка: лаймовый ореол на ней не виден — затемняем изнутри. */
+.hero__cta:focus-visible {
+  outline: 3px solid var(--accent-ink);
+  outline-offset: -3px;
+}
+
 /* ——— Заголовки секций: обычный регистр, меньше главного. ——— */
 
 .section-title {
-  font-family: var(--font-display);
+  font-family: var(--font-text);
   font-size: var(--step-0);
   font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
-  white-space: nowrap;
+  letter-spacing: 0;
+  line-height: 1.3;
+  white-space: normal;
   color: var(--ink);
   margin-bottom: var(--space-2xs);
 }
@@ -157,7 +162,7 @@
   gap: var(--space-4xs);
   color: var(--ink-3);
   font-size: var(--step--1);
-  font-weight: 500;
+  font-weight: 450;
   white-space: nowrap;
 }
 
@@ -237,9 +242,14 @@ button.section-more {
 }
 
 .wk-card__title {
-  font-weight: 550;
+  font-weight: 500;
   font-size: var(--step-0);
-  white-space: nowrap;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 
 .wk-card__dot {
@@ -248,7 +258,7 @@ button.section-more {
 
 .wk-card__meta {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
@@ -260,12 +270,12 @@ button.section-more {
 }
 
 .wk-card__tag {
-  padding: 3px 10px;
+  padding: var(--space-4xs) var(--space-2xs);
   border-radius: 999px;
   background: var(--surface-2);
   color: var(--ink-2);
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 450;
   white-space: nowrap;
 }
 
@@ -292,7 +302,7 @@ button.section-more {
 .wk-card__date {
   color: var(--ink-3);
   font-size: var(--step--2);
-  font-weight: 450;
+  font-weight: 400;
 }
 
 .wk-card__menu svg {
@@ -363,13 +373,13 @@ button.section-more {
 .recent-row__body {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-4xs);
   min-width: 0;
 }
 
 .recent-row__title {
   font-size: var(--step-0);
-  font-weight: 600;
+  font-weight: 550;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -377,14 +387,14 @@ button.section-more {
 
 .recent-row__sub {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
 }
 
 .recent-row__value {
   flex-shrink: 0;
   font-size: var(--step--1);
-  font-weight: 500;
+  font-weight: 450;
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -396,13 +406,13 @@ button.section-more {
   border-radius: var(--radius-xl);
   color: var(--ink-3);
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   text-align: center;
 }
 
 .context-hint {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
   margin: var(--space-2xs) 0 var(--space-s);
 }
@@ -410,14 +420,14 @@ button.section-more {
 .body-muted {
   color: var(--ink-3);
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   padding: var(--space-s) 0;
 }
 
 .body-error {
-  color: var(--accent);
+  color: var(--danger);
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   padding: var(--space-s);
   border: 1px solid currentColor;
   border-radius: var(--radius-m);
@@ -464,18 +474,18 @@ button.section-more {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: var(--space-4xs);
 }
 
 .resume__title {
-  font-weight: 600;
+  font-weight: 550;
   font-size: var(--step-0);
   line-height: 1.25;
 }
 
 .resume__meta {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
@@ -505,14 +515,14 @@ button.section-more {
 }
 
 .empty-train__title {
-  font-family: var(--font-display);
+  font-family: var(--font-text);
   font-size: var(--step-1);
   font-weight: 600;
 }
 
 .empty-train__text {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
   line-height: 1.4;
   margin-bottom: var(--space-2xs);
@@ -531,7 +541,7 @@ button.section-more {
 
 .menu-action {
   min-height: 48px;
-  padding: var(--space-s) 12px;
+  padding: var(--space-s);
   background: none;
   border: 0;
   border-top: var(--border);
@@ -539,7 +549,7 @@ button.section-more {
   text-align: left;
   font-family: var(--font-text);
   font-size: var(--step-0);
-  font-weight: 500;
+  font-weight: 450;
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease);
 }
@@ -582,7 +592,7 @@ button.section-more {
 .settings-link__label {
   flex: 1;
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .settings-link svg {
@@ -601,6 +611,51 @@ button.section-more {
   gap: var(--space-m);
 }
 
+.settings + .settings {
+  margin-top: var(--space-m);
+}
+
+.settings--account {
+  padding: var(--space-s);
+  border: var(--border);
+  border-radius: var(--radius-l);
+  background: var(--surface);
+}
+
+/* Выход — последнее, что видно на экране: тихая текстовая кнопка, а не баннер. */
+.settings__signout {
+  align-self: flex-start;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--step--1);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.settings__signout:hover {
+  background: none;
+  text-decoration-thickness: 2px;
+}
+
+.settings__email {
+  font-size: var(--step--1);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.settings__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.settings__search {
+  width: 100%;
+}
+
 .settings__head {
   display: flex;
   flex-direction: column;
@@ -608,14 +663,14 @@ button.section-more {
 }
 
 .settings__title {
-  font-family: var(--font-display);
+  font-family: var(--font-text);
   font-size: var(--step-0);
   font-weight: 600;
 }
 
 .settings__text {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
   line-height: 1.4;
 }
@@ -653,11 +708,11 @@ button.section-more {
 
 .excluded__name {
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .excluded__meta {
   font-size: var(--step--2);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
 }

@@ -1,47 +1,23 @@
-import { useEffect, useState } from 'react';
-import { useDb } from '../hooks/useDb';
+import { typeLabel } from '../lib/workoutTypes';
+import { useLocalRead } from '../hooks/useLocalRead';
 import { formatDay, formatDurationMs } from '../lib/format';
-import { sessionsForHistory, type HistoryItem } from '../lib/session';
+import { type HistoryItem } from '../lib/session';
 
 interface HistoryScreenProps {
   onOpen: (sessionId: string) => void;
-  onBack?: () => void;
+  onStart: () => void;
 }
 
-export function HistoryScreen({ onOpen, onBack }: HistoryScreenProps) {
-  const { db } = useDb();
-  const [items, setItems] = useState<HistoryItem[] | undefined>(undefined);
-  const [error, setError] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (db === undefined) return;
-    let alive = true;
-    sessionsForHistory(db)
-      .then((rows) => alive && setItems(rows))
-      .catch((e: unknown) => alive && setError(String(e)));
-    return () => {
-      alive = false;
-    };
-  }, [db]);
+export function HistoryScreen({ onOpen, onStart }: HistoryScreenProps) {
+  const { data: items, error, reload } = useLocalRead<HistoryItem[]>('history');
 
   return (
-    <div className="screen">
-      <header className="topbar">
-        {onBack !== undefined && (
-          <button className="topbar__back" onClick={onBack} aria-label="Назад">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        )}
-        <h1 className="topbar__title">История</h1>
-      </header>
-
+    <div className="library__content">
       <div className="screen__body">
         {error !== undefined && (
-          <p className="body-error" role="alert">
-            Не удалось загрузить историю: {error}
-          </p>
+          <div className="note note--error" role="alert">
+            Не удалось загрузить историю. <button className="text-action" onClick={() => void reload()}>Повторить</button>
+          </div>
         )}
 
         {error === undefined && items === undefined && (
@@ -49,11 +25,14 @@ export function HistoryScreen({ onOpen, onBack }: HistoryScreenProps) {
         )}
 
         {error === undefined && items !== undefined && items.length === 0 && (
-          <div className="empty">
-            <h2 className="empty__title">Пока пусто</h2>
+          <div className="empty empty--history">
+            <h2 className="empty__title">Здесь появятся тренировки</h2>
             <p className="empty__text">
-              Заверши первую тренировку — она появится здесь как снимок сессии.
+              Заверши первую — сохраним упражнения, подходы и время занятия.
             </p>
+            <button className="btn btn--primary btn--sm" onClick={onStart}>
+              Собрать тренировку
+            </button>
           </div>
         )}
 
@@ -64,19 +43,24 @@ export function HistoryScreen({ onOpen, onBack }: HistoryScreenProps) {
                 <button
                   className="history-row"
                   onClick={() => onOpen(item.id)}
-                  aria-label={`Тренировка ${item.type}, ${formatDay(item.completedAt)}`}
+                  aria-label={`Тренировка ${typeLabel(item.type)}, ${formatDay(item.completedAt)}, выполнено ${item.done} из ${item.total} упражнений`}
                 >
-                  <div className="history-row__head">
-                    <span className="history-row__type">{item.type}</span>
-                    <span className="history-row__score">
-                      {item.done}
-                      <span className="history-row__score-total">/{item.total}</span>
+                  <span className="history-row__main">
+                    <span className="history-row__head">
+                      <span className="history-row__type">{typeLabel(item.type)}</span>
+                      <span className="history-row__date">{formatDay(item.completedAt)}</span>
                     </span>
-                  </div>
-                  <span className="history-row__meta">{item.volume}</span>
-                  <span className="history-row__sub">
-                    {formatDay(item.completedAt)} · {formatDurationMs(item.durationMs)}
+                    <span className="history-row__meta">
+                      {item.volume}
+                      <span aria-hidden="true"> · </span>
+                      {item.done} из {item.total} упражнений
+                      <span aria-hidden="true"> · </span>
+                      {formatDurationMs(item.durationMs)}
+                    </span>
                   </span>
+                  <svg className="history-row__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path d="m9 5 7 7-7 7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </button>
               </li>
             ))}

@@ -1,12 +1,19 @@
 import '@fontsource-variable/unbounded';
+import '@fontsource-variable/onest';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { PhonePreview } from './components/PhonePreview';
+import { registerOfflineSupport } from './lib/offline';
+
+registerOfflineSupport();
+import { AuthScreen } from './screens/AuthScreen';
+import { useAuth } from './hooks/useAuth';
 import { DbProvider } from './hooks/useDb';
 import './styles/app.css';
+import './styles/action-menu.css';
 import './styles/builder.css';
 import './styles/button.css';
-import './styles/device.css';
 import './styles/flow.css';
 import './styles/global.css';
 import './styles/history.css';
@@ -15,29 +22,16 @@ import './styles/segmented.css';
 import './styles/slots.css';
 import './styles/tabbar.css';
 import './styles/topbar.css';
-import './styles/transitions.css';
 import './styles/type-list.css';
 import './styles/workouts.css';
+import './styles/device.css';
+import './styles/refinements.css';
+import './styles/journal.css';
+import './styles/home.css';
+import './styles/exercise-picker.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('нет #root');
-
-// PGlite (Postgres в WASM) при первом монтировании пустого каталога в
-// IndexedDB отклоняет служебный промис с `FS.ErrnoError` из своей файловой
-// обвязки. Ошибка безвредна — база создаётся и засеивается корректно, — но
-// всплывает как непойманная и засоряет консоль. Гасим только её, прочие
-// ошибки пропускаем.
-function isPgliteFsNoise(reason: unknown): boolean {
-  if (typeof reason === 'string') return reason.startsWith('ErrnoError');
-  return (reason as { name?: unknown } | null | undefined)?.name === 'ErrnoError';
-}
-
-window.addEventListener('unhandledrejection', (event) => {
-  if (isPgliteFsNoise(event.reason)) event.preventDefault();
-});
-window.addEventListener('error', (event) => {
-  if (isPgliteFsNoise(event.error ?? event.message)) event.preventDefault();
-});
 
 function StatusBar() {
   return (
@@ -65,21 +59,17 @@ function StatusBar() {
   );
 }
 
+function AccountApp({ children }: { children: import('react').ReactNode; }) {
+  const session = useAuth();
+  if (!session) return <div className="app"><AuthScreen /></div>;
+  return <DbProvider key={`${session.user.id}:${session.deviceId}`} account={{ userId: session.user.id, email: session.user.email, deviceId: session.deviceId }}>{children}</DbProvider>;
+}
+
 createRoot(root).render(
   <StrictMode>
-    <DbProvider>
-      <div className="phone">
-        <div className="device">
-          <StatusBar />
-          <App />
-        </div>
-        <span className="phone__island" aria-hidden="true" />
-        <span className="phone__home" aria-hidden="true" />
-        <span className="phone__button phone__button--silent" aria-hidden="true" />
-        <span className="phone__button phone__button--vol-up" aria-hidden="true" />
-        <span className="phone__button phone__button--vol-down" aria-hidden="true" />
-        <span className="phone__button phone__button--power" aria-hidden="true" />
-      </div>
-    </DbProvider>
+    <PhonePreview>
+      <StatusBar />
+      <AccountApp><App /></AccountApp>
+    </PhonePreview>
   </StrictMode>,
 );

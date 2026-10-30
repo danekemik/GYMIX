@@ -6,17 +6,18 @@ import { useDb } from '../hooks/useDb';
 import { workoutTypeCards } from '../lib/workoutTypes';
 
 interface TypeScreenProps {
+  initialType?: WorkoutType;
   onSelect: (type: WorkoutType) => void;
   onClose: () => void;
 }
 
-export function TypeScreen({ onSelect, onClose }: TypeScreenProps) {
+export function TypeScreen({ initialType = 'Full Body', onSelect, onClose }: TypeScreenProps) {
   const { error } = useDb();
   const cards = useMemo(() => workoutTypeCards(), []);
-  const [selected, setSelected] = useState<WorkoutType>('Full Body');
+  const [selected, setSelected] = useState<WorkoutType>(initialType);
 
   return (
-    <div className="screen">
+    <div className="screen screen--formats">
       <header className="topbar">
         <button className="topbar__back" onClick={onClose} aria-label="Назад">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -28,9 +29,9 @@ export function TypeScreen({ onSelect, onClose }: TypeScreenProps) {
 
       <div className="screen__body">
         {error !== undefined && (
-          <p className="body-error" role="alert">
-            Не удалось открыть базу: {String(error)}
-          </p>
+          <div className="note note--error" role="alert">
+            Не удалось открыть локальную базу. Перезагрузи приложение — данные на устройстве сохранятся.
+          </div>
         )}
 
         <div className="type-list" role="radiogroup" aria-label="Формат">
@@ -43,12 +44,12 @@ export function TypeScreen({ onSelect, onClose }: TypeScreenProps) {
             />
           ))}
         </div>
+      </div>
 
-        <div className="screen__cta">
-          <Button variant="primary" className="vt-formats-cta" onClick={() => onSelect(selected)}>
-            Продолжить
-          </Button>
-        </div>
+      <div className="screen__cta">
+        <Button variant="primary" className="vt-formats-cta" onClick={() => onSelect(selected)}>
+          Продолжить
+        </Button>
       </div>
     </div>
   );

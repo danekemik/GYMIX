@@ -17,7 +17,8 @@ import { getPrincipal, requireAuth } from '../auth-mid.js';
 
 export function progressRouter(ctx: AppContext): Hono {
   const app = new Hono();
-  app.use('*', requireAuth(ctx));
+  app.use('/progress', requireAuth(ctx));
+  app.use('/progress/*', requireAuth(ctx));
 
   app.get('/progress', async (c) => {
     const { userId } = getPrincipal(c);
@@ -49,14 +50,14 @@ export function progressRouter(ctx: AppContext): Hono {
     const exercisesOfSessions = await ctx.db
       .select()
       .from(sessionExercises)
-      .where(inArray(sessionExercises.sessionId, sessionIds));
+      .where(and(inArray(sessionExercises.sessionId, sessionIds), eq(sessionExercises.status, 'completed')));
 
     const exIds = exercisesOfSessions.map((e) => e.id);
     const sets = exIds.length
       ? await ctx.db
-          .select()
-          .from(sessionSets)
-          .where(inArray(sessionSets.sessionExerciseId, exIds))
+        .select()
+        .from(sessionSets)
+        .where(inArray(sessionSets.sessionExerciseId, exIds))
       : [];
 
     const sessionById = new Map(sessions.map((s) => [s.id, s]));
@@ -72,7 +73,7 @@ export function progressRouter(ctx: AppContext): Hono {
       {
         exerciseId: string | null;
         name: string;
-        points: Array<{ date: string; weightKg: string; reps: number; sessionId: string }>;
+        points: Array<{ date: string; weightKg: string; reps: number; sessionId: string; }>;
       }
     >();
 
@@ -81,10 +82,10 @@ export function progressRouter(ctx: AppContext): Hono {
       if (!best) continue;
       const session = sessionById.get(exercise.sessionId);
       if (!session) continue;
-      const key = exercise.exerciseNameSnapshot;
+      const key = exercise.exerciseId ?? exercise.exerciseNameSnapshot;
       let entry = byExercise.get(key);
       if (!entry) {
-        entry = { exerciseId: exercise.exerciseId, name: key, points: [] };
+        entry = { exerciseId: exercise.exerciseId, name: exercise.exerciseNameSnapshot, points: [] };
         byExercise.set(key, entry);
       }
       entry.exerciseId ??= exercise.exerciseId;
@@ -115,10 +116,10 @@ function bestOfSets(
 ): (typeof sessionSets.$inferSelect) | null {
   return (
     sets
-      .filter((set) => set.weight !== null && set.reps !== null)
+      .filter((set) => set.completedAt !== null && set.weight !== null && set.reps !== null)
       .sort((a, b) => {
         const diff = Number(b.weight) - Number(a.weight);
-        return diff !== 0 ? diff : (b.reps ?? 0) - (a.reps ?? 0);
+        return diff !== 0 ? diff : (b.reps ?? 0) - (a.reps ?? 0) || a.setNumber - b.setNumber;
       })[0] ?? null
   );
 }

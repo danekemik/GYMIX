@@ -43,60 +43,17 @@ export function exerciseCount(draft: Draft): number {
  * Русские склонения: plural(5, ['упражнение', 'упражнения', 'упражнений'])
  * → «упражнений».
  */
-export function plural(n: number, [one, few, many]: [string, string, string]): string {
+export function plural(n: number, forms: [string, string, string]): string {
+  return `${n} ${pluralForm(n, forms)}`;
+}
+
+/** Только слово в нужной форме — для крупной цифры рядом с подписью. */
+export function pluralForm(n: number, [one, few, many]: [string, string, string]): string {
   const mod10 = n % 10;
   const mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${n} ${one}`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${n} ${few}`;
-  return `${n} ${many}`;
-}
-
-export interface RosterSlot {
-  readonly slotKey: string;
-  readonly label: string;
-  readonly alt?: string;
-}
-
-export interface RosterRow {
-  readonly key: string;
-  readonly label: string;
-  readonly alt?: string;
-  readonly count: number;
-  readonly slots: readonly RosterSlot[];
-}
-
-/**
- * Слоты структуры, сгруппированные по целевой группе, в порядке появления.
- * Слот с альтернативами («Бицепс или Трицепс») остаётся отдельной строкой.
- * Внутри строки сохраняется исходный порядок слотов — он нужен для раскрытия.
- */
-export function rosterRows(slots: readonly Slot[]): RosterRow[] {
-  const order: string[] = [];
-  const byKey = new Map<string, { label: string; alt?: string; slots: RosterSlot[] }>();
-
-  for (const slot of slots) {
-    const label = slot.allowedGroupIds[0] ?? 'Слот';
-    const alt = slot.alternativeGroupIds.join(' или ');
-    const key = alt ? `${label}±${alt}` : label;
-    let entry = byKey.get(key);
-    if (entry === undefined) {
-      entry = { label, ...(alt ? { alt } : {}), slots: [] };
-      byKey.set(key, entry);
-      order.push(key);
-    }
-    entry.slots.push({ slotKey: slot.slotKey, label, ...(alt ? { alt } : {}) });
-  }
-
-  return order.map((key) => {
-    const entry = byKey.get(key)!;
-    return {
-      key,
-      label: entry.label,
-      ...(entry.alt ? { alt: entry.alt } : {}),
-      count: entry.slots.length,
-      slots: entry.slots,
-    };
-  });
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
 }
 
 /** Уникальные группы охвата для карточки объёма. */

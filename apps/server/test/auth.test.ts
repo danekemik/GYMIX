@@ -1,4 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { cleanupExpiredAuthSessions } from '../src/jobs.js';
 import { api, createTestEnv, registerUser, loginOnDevice, type TestEnv } from './helpers.js';
 
 let env: TestEnv;
@@ -103,6 +104,7 @@ describe('сессии и токены', () => {
     expect(first.status).toBe(200);
     expect(first.body.refreshToken).not.toBe(user.refreshToken);
 
+    await cleanupExpiredAuthSessions(env.db, env.ctx.clock());
     const reuse = await api(env.app, 'POST', '/api/v1/auth/refresh', {
       body: { refreshToken: user.refreshToken },
     });
@@ -181,7 +183,7 @@ describe('устройства', () => {
     });
     expect(list.status).toBe(200);
     expect(list.body.devices).toHaveLength(2);
-    const current = list.body.devices.find((d: { current: boolean }) => d.current);
+    const current = list.body.devices.find((d: { current: boolean; }) => d.current);
     expect(current?.id).toBe(user.deviceId);
   });
 
@@ -197,4 +199,28 @@ describe('устройства', () => {
     const gone = await api(env.app, 'GET', '/api/v1/account', { token: second.accessToken });
     expect(gone.status).toBe(401);
   });
+});
+
+
+it('различает установки с одинаковым User-Agent и сохраняет идентичность при повторном входе', async () => {
+  const user = await registerUser(env.app, env.ctx);
+  const installationId = crypto.randomUUID();
+  const first = await api(env.app, 'POST', '/api/v1/auth/login', {
+    body: { email: user.email, password: user.password, installationId },
+  });
+  const second = await api(env.app, 'POST', '/api/v1/auth/login', {
+    body: { email: user.email, password: user.password, installationId },
+  });
+  expect(first.status).toBe(200);
+  expect(first.body.deviceId).not.toBe(user.deviceId);
+  expect(second.body.deviceId).toBe(first.body.deviceId);
+});
+
+it('одноразовый код подтверждения не выдаёт два входа при параллельных запросах', async () => {
+  const email = 'parallel@example.com';
+  const register = await api(env.app, 'POST', '/api/v1/auth/register', { body: { email, password: 'parallel-secret' } });
+  expect(register.status).toBe(201);
+  const code = codeOf(env);
+  const results = await Promise.all([1, 2].map(() => api(env.app, 'POST', '/api/v1/auth/verify-email', { body: { email, code } })));
+  expect(results.map((r) => r.status).sort()).toEqual([200, 400]);
 });
