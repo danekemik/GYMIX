@@ -1,4 +1,3 @@
-import { RestTimer } from '../components/RestTimer';
 import { queryPreviousSets, queryReadModel } from '../data/local/read-rpc';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GeneratedWorkout } from '@gymix/generator';
@@ -57,7 +56,6 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
   );
   const [modal, setModal] = useState<Modal>(null);
   const [skipIndex, setSkipIndex] = useState(0);
-  const [lastCompleted, setLastCompleted] = useState<{ ex: number; set: number; } | null>(null);
   const [attempted, setAttempted] = useState<ReadonlySet<string>>(new Set());
   const [removedSet, setRemovedSet] = useState<{ ex: number; index: number; value: SetEntry } | null>(null);
   const [detail, setDetail] = useState<CatalogExercise | null>(null);
@@ -190,12 +188,6 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
   useEffect(() => () => window.clearTimeout(toastTimer.current), []);
 
   useEffect(() => {
-    if (lastCompleted === null) return;
-    const timer = window.setTimeout(() => setLastCompleted(null), 5000);
-    return () => window.clearTimeout(timer);
-  }, [lastCompleted]);
-
-  useEffect(() => {
     if (removedSet === null) return;
     const timer = window.setTimeout(() => setRemovedSet(null), 5000);
     return () => window.clearTimeout(timer);
@@ -207,7 +199,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
         i === ex ? group.map((s, j) => {
           if (j !== set) return s;
           const next = { ...s, ...patch };
-          return next.done && !validSetInput(next) ? { ...next, done: false } : next;
+          return { ...next, done: validSetInput(next) };
         }) : group,
       ),
     );
@@ -220,7 +212,6 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
     const value = sets[ex]?.[index];
     if (!value || index < DEFAULT_SETS) return;
     setRemovedSet({ ex, index, value });
-    setLastCompleted(null);
     setAttempted(new Set());
     setSets(current => current.map((group, i) => i === ex ? group.filter((_, j) => j !== index) : group));
   };
@@ -229,7 +220,6 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
     const { ex, index, value } = removedSet;
     setSets(current => current.map((group, i) => i === ex ? [...group.slice(0, index), value, ...group.slice(index)] : group));
     setRemovedSet(null);
-    setLastCompleted(null);
     setAttempted(new Set());
   };
 
@@ -376,9 +366,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
         </div>
 
         <div className="exec-body">
-          <RestTimer sessionId={draft.sessionId} />
           {prefilled && <p className="exec-prefill">Прошлые значения подставлены — их можно изменить.</p>}
-          <p className="exec-roster-label">Упражнения · {total}</p>
           {workout.entries.map((entry, ex) => {
             const group = sets[ex] ?? [];
             const skippedHere = skipped[ex] === true;
@@ -401,7 +389,6 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                   aria-controls={`exercise-${ex}`}
                   onClick={() => setFocused(open ? -1 : ex)}
                 >
-                  <span className="exec-card__ordinal">{String(ex + 1).padStart(2, '0')}</span>{' '}
                   <span className="exec-card__head">
                     <span className="exec-card__group">{entry.groupUsed} · {skippedHere ? 'Пропущено' : done ? 'Выполнено' : open ? 'Сейчас' : `${group.filter(set => set.done).length}/${group.length} подходов`}</span>{' '}
                     <span className="exec-card__name">{entry.exercise.name}</span>
@@ -423,7 +410,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                 ) : (
                   <>
                     <button className="btn btn--ghost btn--sm exec-detail-button" onClick={() => setDetail(entry.exercise)}>Подробнее об упражнении</button>
-                    <div className="set-columns" aria-hidden="true"><span>№</span><span>кг</span><span>повт.</span><span>Готово</span></div>
+                    <div className="set-columns" aria-hidden="true"><span>№</span><span>кг</span><span>повт.</span></div>
                     <p className="set-input-hint">Без дополнительного веса — оставь «кг» пустым.</p>
                     <ul className="set-list">
                       {group.map((set, index) => {
@@ -462,25 +449,6 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                                 onBlur={() => markInvalid(ex, index, set)}
                               />
                             </label>
-                            <button
-                              className={`set-check ${set.done ? 'set-check--on' : ''}`}
-                              aria-pressed={set.done}
-                              aria-label={`Подход ${index + 1} выполнен`}
-                              onClick={event => {
-                                if (!set.done && !validSetInput(set)) {
-                                  setAttempted(previous => new Set([...previous, `${ex}:${index}`]));
-                                  const row = event.currentTarget.closest('li');
-                                  requestAnimationFrame(() => row?.querySelector<HTMLInputElement>('input[aria-invalid="true"]')?.focus());
-                                  return;
-                                }
-                                update(ex, index, { done: !set.done });
-                                setLastCompleted(set.done ? null : { ex, set: index });
-                              }}
-                            >
-                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
-                                <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </button>
                           </div>
                           {showErrors && (errors.weight || errors.reps) && <span className="set-row__error" id={errorId} role="alert">{[errors.weight, errors.reps].filter(Boolean).join(' ')}</span>}
                           {past?.[index] && <span className="set-row__previous">Ранее: {past[index]!.weight ? `${past[index]!.weight} кг × ` : ''}{past[index]!.reps || '—'} повт.</span>}
@@ -550,11 +518,6 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
             </div>
           )}
           {removedSet && <div className="exec-undo" role="status">Подход {removedSet.index + 1} убран <button type="button" className="exec-undo__action" onClick={restoreSet}>Вернуть</button></div>}
-          {lastCompleted && <div className="exec-undo" role="status">Подход {lastCompleted.set + 1} отмечен
-            <button type="button" className="exec-undo__action" onClick={() => {
-              update(lastCompleted.ex, lastCompleted.set, { done: false }); setLastCompleted(null);
-            }}>Отменить</button>
-          </div>}
           <div className="exec-footer__bar">
             <span className="exec-footer__hint">
               Выполнено {plural(doneSets, ['подход', 'подхода', 'подходов'])}

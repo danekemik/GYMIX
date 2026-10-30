@@ -32,7 +32,6 @@ button:disabled { cursor: default; }
 
 
 .set-field { min-height: 48px; height: 48px; }
-.set-check { min-width: 48px; width: 48px; min-height: 48px; height: 48px; }
 .app__main:has(.exec) { padding-bottom: 0; overflow: hidden; }
 .screen.exec { height: 100%; min-height: 0; }
 .sync-notice__details summary { min-height: 44px; }

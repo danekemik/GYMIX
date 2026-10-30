@@ -816,48 +816,6 @@
   outline: none;
 }
 
-.set-check {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--select-line);
-  border-radius: var(--radius-s);
-  background: transparent;
-  color: var(--ink-3);
-  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
-    color var(--dur-fast) var(--ease);
-}
-
-.set-check svg {
-  width: 18px;
-  height: 18px;
-}
-
-/* Частое действие тренировки: отметить подход. Лаймовой может быть только
- * одна кнопка в строке — текущий подход, а не весь список сразу. */
-.set-row--current .set-check {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
-.set-row--current .set-check:hover {
-  background: var(--accent-hover);
-}
-
-.set-check--on {
-  border-color: var(--accent);
-  background: transparent;
-  color: var(--accent);
-}
-
-.set-check--on:focus-visible {
-  outline: 3px solid var(--accent-ink);
-  outline-offset: -3px;
-}
-
 .exec-footer {
   display: flex;
   flex-direction: column;
