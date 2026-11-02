@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { prepareApp, startCompactWorkout } from './helpers';
+import { expectDoneSets, prepareApp, startCompactWorkout } from './helpers';
 
 test('без сети тренировка сохраняется как черновик и продолжается с тем же подходом', async ({ page, context }) => {
   await prepareApp(page);
@@ -10,9 +10,7 @@ test('без сети тренировка сохраняется как чер�
   const reps = page.getByRole('textbox', { name: /^Повторения, подход 1,/ });
   await weight.fill('32.5');
   await reps.fill('12');
-  const done = page.getByRole('button', { name: 'Подход 1 выполнен' });
-  await done.click();
-  await expect(done).toHaveAttribute('aria-pressed', 'true');
+  await expectDoneSets(page, 1);
 
   await page.getByRole('button', { name: 'Выйти из тренировки' }).click();
   const exit = page.getByRole('dialog', { name: 'Выйти из тренировки?' });

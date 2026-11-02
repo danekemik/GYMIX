@@ -28,8 +28,6 @@ button:disabled { cursor: default; }
 .sync-notice__details summary { cursor: pointer; min-height: 36px; display: flex; align-items: center; color: var(--ink-2); }
 .sync-notice__status { flex-wrap: wrap; }
 
-.exec-prefill { color: var(--ink-2); font-size: var(--step--1); grid-column: 1 / -1; }
-
 
 .set-field { min-height: 48px; height: 48px; }
 .app__main:has(.exec) { padding-bottom: 0; overflow: hidden; }

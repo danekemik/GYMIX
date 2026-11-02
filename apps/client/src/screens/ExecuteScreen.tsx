@@ -10,6 +10,8 @@ import { setInputErrors, validSetInput } from '../domain/setInput';
 import { ExerciseDetail } from '../components/ExerciseDetail';
 import type { CatalogExercise } from '@gymix/catalog/parse';
 import { useDialogFocus } from '../hooks/useDialogFocus';
+import { exerciseArt } from '../lib/exerciseArt';
+import { IconDumbbellArt } from '../lib/icons';
 
 import type { SetEntry, SessionSnapshot, FinishPayload } from '../domain/session';
 export type { SetEntry, SessionSnapshot, FinishPayload } from '../domain/session';
@@ -63,7 +65,6 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
   useDialogFocus(dialog, modal !== null, () => { if (!finishing && !exiting) setModal(null); });
   const [focused, setFocused] = useState(() => resume ? Math.max(0, resume.sets.findIndex((group, ex) => !resume.skipped[ex] && !group.every(set => set.done))) : 0);
   const [previous, setPrevious] = useState<Map<string, SetEntry[]>>(new Map());
-  const [prefilled, setPrefilled] = useState(false);
   const [toast, setToast] = useState<'ok' | 'error' | null>(null);
   const startedAt = useRef<number>(resume?.startedAt ?? Date.now());
   const draft = prepared;
@@ -151,31 +152,18 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
   const persistRef = useRef(persist);
   persistRef.current = persist;
 
+  // Прошлые значения только показываем подсказкой под подходом. Поля не
+  // заполняем: пользователь вводит фактические вес и повторения сам.
   useEffect(() => {
-    if (resume !== undefined || db === undefined) return;
+    if (db === undefined) return;
     let alive = true;
-    void (async () => {
-        const previous = await queryPreviousSets(db, workout.entries.map(entry => entry.exercise.name)).catch(() => new Map());
-        if (!alive || !previous.size) return;
-        setPrevious(previous);
-        setSets(current => current.map((group, ex) => group.map((set, index) => {
-          const suggestion = previous.get(workout.entries[ex]!.exercise.name)?.[index];
-          return suggestion && !set.done && set.weight === '' && set.reps === '' ? { ...suggestion } : set;
-        })));
-        setPrefilled(true);
-      })()
+    void queryPreviousSets(db, workout.entries.map(entry => entry.exercise.name))
+      .then(value => { if (alive) setPrevious(value); })
       .catch(() => { if (alive) setToast('error'); });
     return () => {
       alive = false;
     };
-  }, [db, workout, resume]);
-
-  useEffect(() => {
-    if (!resume || !db) return;
-    let alive = true;
-    queryPreviousSets(db, workout.entries.map(entry => entry.exercise.name)).then(value => { if (alive) setPrevious(value); }).catch(() => {});
-    return () => { alive = false; };
-  }, [db, workout, resume]);
+  }, [db, workout]);
 
   useEffect(() => {
     if (!db || finishingRef.current || readOnly || exiting) return;
@@ -239,7 +227,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
         setFocused(i);
         window.requestAnimationFrame(() => {
           cardRefs.current[i]?.scrollIntoView({ behavior: 'auto', block: 'start' });
-          cardRefs.current[i]?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+          cardRefs.current[i]?.querySelector<HTMLButtonElement>('.exec-card__toggle')?.focus({ preventScroll: true });
         });
         return;
       }
@@ -366,7 +354,6 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
         </div>
 
         <div className="exec-body">
-          {prefilled && <p className="exec-prefill">Прошлые значения подставлены — их можно изменить.</p>}
           {workout.entries.map((entry, ex) => {
             const group = sets[ex] ?? [];
             const skippedHere = skipped[ex] === true;
@@ -374,6 +361,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
             const state = skippedHere ? 'skipped' : done ? 'done' : 'active';
             const open = focused === ex;
             const past = previous.get(entry.exercise.name);
+            const art = exerciseArt(entry.exercise.name);
             const groupSize = workout.entries.filter((e) => e.groupUsed === entry.groupUsed).length;
             return (
               <article
@@ -383,21 +371,40 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                 }}
                 className={`exec-card exec-card--${state}`}
               >
-                <h2 className="exec-card__heading"><button
-                  className="exec-card__toggle"
-                  aria-expanded={open}
-                  aria-controls={`exercise-${ex}`}
-                  onClick={() => setFocused(open ? -1 : ex)}
-                >
-                  <span className="exec-card__head">
-                    <span className="exec-card__group">{entry.groupUsed} · {skippedHere ? 'Пропущено' : done ? 'Выполнено' : open ? 'Сейчас' : `${group.filter(set => set.done).length}/${group.length} подходов`}</span>{' '}
-                    <span className="exec-card__name">{entry.exercise.name}</span>
-                  </span>{' '}
-                  <svg className="exec-card__chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                    {open ? <path d="M5 12h14" strokeLinecap="round" /> : <><path d="M12 5v14" strokeLinecap="round" /><path d="M5 12h14" strokeLinecap="round" /></>}
-                  </svg>
-                  <span className="visually-hidden">{open ? 'Свернуть' : 'Развернуть'}</span>
-                </button></h2>
+                <div className="exec-card__heading">
+                  <button
+                    type="button"
+                    className="exec-card__art"
+                    aria-haspopup="dialog"
+                    aria-label={`Описание упражнения: ${entry.exercise.name}`}
+                    onClick={() => setDetail(entry.exercise)}
+                  >
+                    <span className={`exec-card__thumb${art !== undefined ? ' exec-card__thumb--art' : ''}`} aria-hidden="true">
+                      {art !== undefined ? (
+                        <img className="exec-card__thumb-img" src={art.src} alt="" loading="lazy" />
+                      ) : (
+                        <IconDumbbellArt className="exec-card__thumb-icon" />
+                      )}
+                    </span>
+                  </button>
+                  <h2 className="exec-card__title">
+                    <button
+                      className="exec-card__toggle"
+                      aria-expanded={open}
+                      aria-controls={`exercise-${ex}`}
+                      onClick={() => setFocused(open ? -1 : ex)}
+                    >
+                      <span className="exec-card__head">
+                        <span className="exec-card__group">{entry.groupUsed} · {skippedHere ? 'Пропущено' : done ? 'Выполнено' : open ? 'Сейчас' : `${group.filter(set => set.done).length}/${group.length}\u00A0подходов`}</span>{' '}
+                        <span className="exec-card__name">{entry.exercise.name}</span>
+                      </span>{' '}
+                      <svg className="exec-card__chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        {open ? <path d="M5 12h14" strokeLinecap="round" /> : <><path d="M12 5v14" strokeLinecap="round" /><path d="M5 12h14" strokeLinecap="round" /></>}
+                      </svg>
+                      <span className="visually-hidden">{open ? 'Свернуть' : 'Развернуть'}</span>
+                    </button>
+                  </h2>
+                </div>
 
                 <div id={`exercise-${ex}`} hidden={!open} className="exec-card__content">
                 {skippedHere ? (
@@ -409,9 +416,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                   </button>
                 ) : (
                   <>
-                    <button className="btn btn--ghost btn--sm exec-detail-button" onClick={() => setDetail(entry.exercise)}>Подробнее об упражнении</button>
                     <div className="set-columns" aria-hidden="true"><span>№</span><span>кг</span><span>повт.</span></div>
-                    <p className="set-input-hint">Без дополнительного веса — оставь «кг» пустым.</p>
                     <ul className="set-list">
                       {group.map((set, index) => {
                         const errors = setInputErrors(set);
@@ -456,6 +461,7 @@ export function ExecuteScreen({ workout, prepared, onFinish, onExit, resume }: E
                         </li>
                       ); })}
                     </ul>
+                    <p className="set-input-hint">Без дополнительного веса — оставь «кг» пустым.</p>
 
                     <div className="exec-card__actions">
                       <button className="exec-card__add" onClick={() => addSet(ex)}>

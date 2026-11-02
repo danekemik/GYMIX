@@ -43,6 +43,17 @@ export async function startCompactWorkout(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: /^Длительность тренировки/ })).toBeVisible();
 }
 
+/**
+ * Подход засчитывается автоматически, когда вес и повторения валидны:
+ * отдельной кнопки отметки в интерфейсе нет. Единственный наблюдаемый
+ * признак — счётчик «N из M подходов» в шапке выполнения.
+ */
+export async function expectDoneSets(page: Page, count: number): Promise<void> {
+  await expect(page.locator('.exec-progress__label > span').nth(1)).toHaveText(
+    new RegExp(`^${count} из \\d+ подходов$`),
+  );
+}
+
 export async function completeFirstExercise(page: Page): Promise<void> {
   const sets = [
     { index: 1, weight: '20', reps: '10' },
@@ -52,9 +63,7 @@ export async function completeFirstExercise(page: Page): Promise<void> {
   for (const set of sets) {
     await page.getByRole('textbox', { name: new RegExp(`^Вес, подход ${set.index},`) }).fill(set.weight);
     await page.getByRole('textbox', { name: new RegExp(`^Повторения, подход ${set.index},`) }).fill(set.reps);
-    const done = page.getByRole('button', { name: `Подход ${set.index} выполнен` });
-    await done.click();
-    await expect(done).toHaveAttribute('aria-pressed', 'true');
+    await expectDoneSets(page, set.index);
   }
 }
 

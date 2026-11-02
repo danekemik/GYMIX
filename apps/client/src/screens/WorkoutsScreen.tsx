@@ -1,7 +1,7 @@
 import { queryReadModel } from '../data/local/read-rpc';
 import { useLocalRead } from '../hooks/useLocalRead';
 import { takeOwnership } from '../data/sync/engine';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useDb } from '../hooks/useDb';
 import { useDialogFocus } from '../hooks/useDialogFocus';
 import fitnessIcon from '../assets/fitness.png';
@@ -63,6 +63,15 @@ export function WorkoutsScreen({
   const startDialog = useRef<HTMLDivElement>(null);
   useDialogFocus(removeDialog, removeDraft, () => { if (!busy) setRemoveDraft(false); });
   useDialogFocus(startDialog, startNew, () => { if (!busy) setStartNew(false); });
+
+  // В dev главная заполняет историю демо-тренировками один раз на браузер.
+  // Динамический импорт держит демо-модуль вне production-бандла.
+  useEffect(() => {
+    if (!import.meta.env.DEV || db === undefined) return;
+    void import('../lib/demoSeed')
+      .then(({ ensureDemoSeed }) => ensureDemoSeed(db))
+      .catch(() => undefined);
+  }, [db]);
 
   const continueDraft = async () => {
     if (db === undefined || draft === null || draft === 'loading') return;

@@ -1,4 +1,4 @@
-import { localChange, workoutReadOnly } from '../data/sync/store';
+import { localChange, notifyStore, workoutReadOnly } from '../data/sync/store';
 import { runSessionCommand } from '../data/local/read-rpc';
 import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { repsValue, validSetInput, weightValue } from '../domain/setInput';
@@ -536,6 +536,16 @@ function parseReps(value: string | undefined): number | null {
   return value === undefined ? null : repsValue(value);
 }
 export const saveSession = (db: GymixDb, payload: SessionSnapshot) => localChange(db, id => `workout:${id}`, scoped => _saveSession(scoped, payload));
+
+/**
+ * Запись завершённой сессии только в локальную БД, без очереди синхронизации.
+ * Нужна демо-заполнению: оно не должно попадать в аккаунт на сервере.
+ */
+export async function saveSessionLocalOnly(db: GymixDb, payload: SessionSnapshot): Promise<string> {
+  const id = await _saveSession(db, payload);
+  notifyStore();
+  return id;
+}
 export const persistDraft = async (db: GymixDb, id: string, byPosition: ReadonlyMap<number, string>, sets: readonly (readonly SetEntry[])[], skipped: readonly boolean[] = []): Promise<void> => {
   await (runSessionCommand(db, { kind: 'persist', draft: { sessionId: id, byPosition }, sets, skipped }) ?? localChange(db, `workout:${id}`, scoped => _persistDraft(scoped, id, byPosition, sets, skipped)));
 };
