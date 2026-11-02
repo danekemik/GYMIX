@@ -1,16 +1,13 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { z } from 'zod';
 import type { Db } from '@gymix/db/seed-data';
 import {
   sessionExercises,
   sessionIntervals,
   sessionSets,
-  sessionStatusEnum,
-  sessionExerciseStatusEnum,
   syncOperations,
   workoutSessions,
 } from '@gymix/db/schema';
-import { HttpError, type ErrorCode } from '../errors.js';
+import { HttpError, isHttpError, type ErrorCode } from '../errors.js';
 import type { AppContext } from '../app.js';
 
 /**
@@ -30,122 +27,19 @@ import type { AppContext } from '../app.js';
  * пользователя.
  */
 
-export type ExerciseStatus =
-  (typeof sessionExerciseStatusEnum.enumValues)[number];
-
-export interface OpBase {
-  operationId: string;
-  payload: Record<string, unknown>;
-}
-
-export type Op =
-  | (OpBase & {
-      type: 'set_upsert';
-      payload: {
-        sessionExerciseId: string;
-        setNumber: number;
-        weight?: number | string | null | undefined;
-        reps?: number | null | undefined;
-        completedAt?: string | null | undefined;
-      };
-    })
-  | (OpBase & { type: 'set_add'; payload: { sessionExerciseId: string; setNumber: number } })
-  | (OpBase & { type: 'exercise_status'; payload: { sessionExerciseId: string; status: ExerciseStatus } })
-  | (OpBase & { type: 'exercise_position'; payload: { sessionExerciseId: string; position: number } })
-  | (OpBase & { type: 'interval_open'; payload: Record<string, never> })
-  | (OpBase & { type: 'interval_close'; payload: Record<string, never> })
-  | (OpBase & { type: 'finish'; payload: { completedAt?: string | undefined } })
-  | (OpBase & { type: 'transfer_ownership'; payload: Record<string, never> });
-
-const uuid = z.string().uuid();
-
-const opSchemas: Record<Op['type'], z.ZodType<Op>> = {
-  set_upsert: z.object({
-    type: z.literal('set_upsert'),
-    operationId: uuid,
-    payload: z.object({
-      sessionExerciseId: uuid,
-      setNumber: z.number().int().positive(),
-      weight: z.union([z.number(), z.string()]).nullable().optional(),
-      reps: z.number().int().min(0).nullable().optional(),
-      completedAt: z.string().datetime({ offset: true }).nullable().optional(),
-    }),
-  }),
-  set_add: z.object({
-    type: z.literal('set_add'),
-    operationId: uuid,
-    payload: z.object({
-      sessionExerciseId: uuid,
-      setNumber: z.number().int().positive(),
-    }),
-  }),
-  exercise_status: z.object({
-    type: z.literal('exercise_status'),
-    operationId: uuid,
-    payload: z.object({
-      sessionExerciseId: uuid,
-      status: z.enum(sessionExerciseStatusEnum.enumValues),
-    }),
-  }),
-  exercise_position: z.object({
-    type: z.literal('exercise_position'),
-    operationId: uuid,
-    payload: z.object({
-      sessionExerciseId: uuid,
-      position: z.number().int().positive(),
-    }),
-  }),
-  interval_open: z.object({
-    type: z.literal('interval_open'),
-    operationId: uuid,
-    payload: z.object({}).strict(),
-  }),
-  interval_close: z.object({
-    type: z.literal('interval_close'),
-    operationId: uuid,
-    payload: z.object({}).strict(),
-  }),
-  finish: z.object({
-    type: z.literal('finish'),
-    operationId: uuid,
-    payload: z.object({
-      completedAt: z.string().datetime({ offset: true }).optional(),
-    }),
-  }),
-  transfer_ownership: z.object({
-    type: z.literal('transfer_ownership'),
-    operationId: uuid,
-    payload: z.object({}).strict(),
-  }),
-};
+export type { ExerciseStatus, Op, ApplyOpsResult } from '@gymix/contracts';
+import { operationSchema, type Op, type ApplyOpsResult } from '@gymix/contracts';
 
 export function parseOperation(value: unknown): Op {
-  if (typeof value !== 'object' || value === null) {
-    throw HttpError.invalidRequest('Операция должна быть объектом');
-  }
-  const type = (value as { type?: unknown }).type;
-  const schema = typeof type === 'string' ? opSchemas[type as keyof typeof opSchemas] : undefined;
-  if (!schema) {
-    throw HttpError.invalidRequest(`Неизвестный тип операции: ${String(type)}`);
-  }
-  return schema.parse(value) as Op;
+  return operationSchema.parse(value) as Op;
 }
 
 export function parseOperations(value: unknown): Op[] {
   if (!Array.isArray(value)) {
     throw HttpError.invalidRequest('ops должен быть массивом операций');
   }
+  if (value.length > 100) throw HttpError.invalidRequest('Не более 100 операций в пакете');
   return value.map(parseOperation);
-}
-
-export interface ApplyOpsResult {
-  revision: number;
-  applied: string[];
-  skipped: string[];
-  rejected: Array<{ operationId: string; code: ErrorCode; message: string }>;
-  conflict: boolean;
-  sessionStatus: (typeof sessionStatusEnum.enumValues)[number];
-  owningDeviceId: string;
 }
 
 export interface ApplyOpsInput {
@@ -176,93 +70,61 @@ export async function applyOps(
     }
 
     const baseRevision = session.revision;
-    if (baseRevision !== input.expectedRevision) {
+    const opIds = input.operations.map((o) => o.operationId);
+    const rows = opIds.length ? await tx.select().from(syncOperations)
+      .where(and(eq(syncOperations.userId, input.userId), inArray(syncOperations.operationId, opIds))) : [];
+    const known = new Map(rows.map((row) => [row.operationId, row]));
+    // An operation ID identifies its payload too, not just a successful request.
+    for (const op of input.operations) {
+      const previous = known.get(op.operationId);
+      if (previous && (previous.sessionId !== session.id || canonical(previous.payload) !== canonical(op))) {
+        throw new HttpError(409, 'conflict', 'operationId уже использован для другой операции');
+      }
+    }
+    const allKnown = input.operations.every((op) => known.has(op.operationId));
+    if (!allKnown && baseRevision !== input.expectedRevision) {
       return {
-        revision: baseRevision,
-        applied: [],
-        skipped: [],
-        rejected: [],
-        conflict: true,
-        sessionStatus: session.status,
-        owningDeviceId: session.owningDeviceId,
+        revision: baseRevision, applied: [], skipped: [], rejected: [], conflict: true,
+        sessionStatus: session.status, owningDeviceId: session.owningDeviceId
       };
     }
-
-    const exercisesOfSession = await tx
-      .select()
-      .from(sessionExercises)
-      .where(eq(sessionExercises.sessionId, session.id));
-    const byId = new Map(exercisesOfSession.map((e) => [e.id, e]));
-
-    const exIds = [...byId.keys()];
-    const sets = exIds.length
-      ? await tx.select().from(sessionSets).where(inArray(sessionSets.sessionExerciseId, exIds))
-      : [];
-    const setsByExercise = new Map<string, Array<(typeof sets)[number]>>();
-    for (const set of sets) {
-      const list = setsByExercise.get(set.sessionExerciseId);
-      if (list) list.push(set);
-      else setsByExercise.set(set.sessionExerciseId, [set]);
-    }
-
-    const opIds = input.operations.map((o) => o.operationId);
-    const known = opIds.length
-      ? await tx
-          .select({ operationId: syncOperations.operationId })
-          .from(syncOperations)
-          .where(
-            and(
-              eq(syncOperations.userId, input.userId),
-              inArray(syncOperations.operationId, opIds),
-            ),
-          )
-      : [];
-    const knownIds = new Set(known.map((r) => r.operationId));
-
     const applied: string[] = [];
-    const rejected: Array<{ operationId: string; code: ErrorCode; message: string }> = [];
-
+    const skipped = new Set<string>();
+    const rejected: Array<{ operationId: string; code: ErrorCode; message: string; }> = [];
     for (const op of input.operations) {
-      if (knownIds.has(op.operationId)) continue;
-
-      const ownershipOk =
-        op.type === 'transfer_ownership' || session.owningDeviceId === input.deviceId;
-      if (!ownershipOk) {
-        rejected.push({
-          operationId: op.operationId,
-          code: 'ownership_required',
-          message: 'Тренировку ведёт другое устройство',
-        });
+      const previous = known.get(op.operationId);
+      if (previous) {
+        if (canonical(previous.payload) !== canonical(op)) {
+          rejected.push({ operationId: op.operationId, code: 'operation_rejected', message: 'operationId уже использован для другой операции' });
+        } else skipped.add(op.operationId);
         continue;
       }
-
       try {
-        await applyOne(tx, op, {
-          session,
-          byId,
-          setsByExercise,
-          now,
-          ownerDeviceId: input.deviceId,
+        // Each operation and its journal record share a savepoint. A rejected
+        // operation leaves the remaining batch and the in-memory view intact.
+        const recorded = await tx.transaction(async (opTx) => {
+          const context = await loadContext(opTx, session.id, now, input.deviceId);
+          if (context.session.status === 'active' && op.type !== 'transfer_ownership' &&
+            context.session.owningDeviceId !== input.deviceId) {
+            throw new HttpError(423, 'ownership_required', 'Тренировку ведёт другое устройство');
+          }
+          if (context.session.status === 'completed' &&
+            !['set_upsert', 'exercise_status', 'exercise_position'].includes(op.type)) {
+            throw HttpError.invalidRequest('Операция недоступна для завершённой тренировки');
+          }
+          await applyOne(opTx, op, context);
+          const [row] = await opTx.insert(syncOperations).values({
+            operationId: op.operationId,
+            userId: input.userId, deviceId: input.deviceId, sessionId: session.id,
+            payload: op as unknown as Record<string, unknown>
+          }).returning();
+          return row!;
         });
+        known.set(op.operationId, recorded);
         applied.push(op.operationId);
-        await tx.insert(syncOperations).values({
-          operationId: op.operationId,
-          userId: input.userId,
-          deviceId: input.deviceId,
-          sessionId: session.id,
-          payload: op as unknown as Record<string, unknown>,
-        });
       } catch (error) {
-        if (isUniqueViolation(error)) {
-          // interval_open / set_add уже состоялись: повторяемость без вреда.
-          applied.push(op.operationId);
-          continue;
-        }
-        rejected.push({
-          operationId: op.operationId,
-          code: 'operation_rejected',
-          message: error instanceof Error ? error.message : 'Операция отклонена',
-        });
+        if (!isHttpError(error)) throw error;
+        rejected.push({ operationId: op.operationId, code: error.code === 'ownership_required' ? error.code : 'operation_rejected', message: error.message });
       }
     }
 
@@ -286,7 +148,7 @@ export async function applyOps(
     return {
       revision,
       applied,
-      skipped: [...knownIds],
+      skipped: [...skipped],
       rejected,
       conflict: false,
       sessionStatus: fresh[0]!.status,
@@ -295,11 +157,27 @@ export async function applyOps(
   });
 }
 
-function isUniqueViolation(error: unknown): boolean {
-  const message = String(error instanceof Error ? error.message : error);
-  const cause = (error as { cause?: unknown }).cause;
-  const causeText = cause instanceof Error ? cause.message : '';
-  return /duplicate key|unique constraint/i.test(`${message} ${causeText}`);
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
+    return `{${Object.entries(value).filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => a.localeCompare(b)).map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
+async function loadContext(db: Db, sessionId: string, now: Date, ownerDeviceId: string): Promise<ApplyContext> {
+  const [session] = await db.select().from(workoutSessions).where(eq(workoutSessions.id, sessionId));
+  const entries = await db.select().from(sessionExercises).where(eq(sessionExercises.sessionId, sessionId));
+  const ids = entries.map((e) => e.id);
+  const sets = ids.length ? await db.select().from(sessionSets).where(inArray(sessionSets.sessionExerciseId, ids)) : [];
+  const setsByExercise = new Map<string, typeof sets>();
+  for (const set of sets) {
+    const list = setsByExercise.get(set.sessionExerciseId) ?? [];
+    list.push(set);
+    setsByExercise.set(set.sessionExerciseId, list);
+  }
+  return { session: session!, byId: new Map(entries.map((e) => [e.id, e])), setsByExercise, now, ownerDeviceId };
 }
 
 interface ApplyContext {
@@ -318,11 +196,11 @@ async function applyOne(tx: Db, op: Op, ctx: ApplyContext): Promise<void> {
   switch (op.type) {
     case 'set_upsert': {
       const exercise = ctx.byId.get(op.payload.sessionExerciseId);
-      if (!exercise) throw new Error('Упражнение не принадлежит тренировке');
+      if (!exercise) throw HttpError.invalidRequest('Упражнение не принадлежит тренировке');
       const set = ctx.setsByExercise
         .get(op.payload.sessionExerciseId)
         ?.find((s) => s.setNumber === op.payload.setNumber);
-      if (!set) throw new Error(`Нет подхода №${op.payload.setNumber}`);
+      if (!set) throw HttpError.invalidRequest(`Нет подхода №${op.payload.setNumber}`);
       const patches = defined({
         weight:
           op.payload.weight === undefined
@@ -338,12 +216,13 @@ async function applyOne(tx: Db, op: Op, ctx: ApplyContext): Promise<void> {
               ? null
               : new Date(op.payload.completedAt),
       });
+      if (Object.keys(patches).length === 0) throw HttpError.invalidRequest('Нет изменений подхода');
       await tx.update(sessionSets).set(patches).where(eq(sessionSets.id, set.id));
       return;
     }
     case 'set_add': {
       const exercise = ctx.byId.get(op.payload.sessionExerciseId);
-      if (!exercise) throw new Error('Упражнение не принадлежит тренировке');
+      if (!exercise) throw HttpError.invalidRequest('Упражнение не принадлежит тренировке');
       const exists = ctx.setsByExercise
         .get(op.payload.sessionExerciseId)
         ?.some((s) => s.setNumber === op.payload.setNumber);
@@ -351,13 +230,13 @@ async function applyOne(tx: Db, op: Op, ctx: ApplyContext): Promise<void> {
         await tx.insert(sessionSets).values({
           sessionExerciseId: op.payload.sessionExerciseId,
           setNumber: op.payload.setNumber,
-        });
+        }).onConflictDoNothing();
       }
       return;
     }
     case 'exercise_status': {
       const exercise = ctx.byId.get(op.payload.sessionExerciseId);
-      if (!exercise) throw new Error('Упражнение не принадлежит тренировке');
+      if (!exercise) throw HttpError.invalidRequest('Упражнение не принадлежит тренировке');
       await tx
         .update(sessionExercises)
         .set({ status: op.payload.status })
@@ -366,12 +245,15 @@ async function applyOne(tx: Db, op: Op, ctx: ApplyContext): Promise<void> {
     }
     case 'exercise_position': {
       const exercise = ctx.byId.get(op.payload.sessionExerciseId);
-      if (!exercise) throw new Error('Упражнение не принадлежит тренировке');
+      if (!exercise) throw HttpError.invalidRequest('Упражнение не принадлежит тренировке');
+      if (op.payload.position > ctx.byId.size) throw HttpError.invalidRequest('Позиция вне тренировки');
       if (exercise.position === op.payload.position) return;
       const occupant = [...ctx.byId.values()].find(
         (e) => e.position === op.payload.position && e.id !== exercise.id,
       );
       if (occupant) {
+        const temporary = Math.min(0, ...[...ctx.byId.values()].map((e) => e.position)) - 1;
+        await tx.update(sessionExercises).set({ position: temporary }).where(eq(sessionExercises.id, exercise.id));
         await tx
           .update(sessionExercises)
           .set({ position: exercise.position })
@@ -384,7 +266,7 @@ async function applyOne(tx: Db, op: Op, ctx: ApplyContext): Promise<void> {
       return;
     }
     case 'interval_open': {
-      await tx.insert(sessionIntervals).values({ sessionId: ctx.session.id });
+      await tx.insert(sessionIntervals).values({ sessionId: ctx.session.id }).onConflictDoNothing();
       return;
     }
     case 'interval_close': {
@@ -404,7 +286,7 @@ async function applyOne(tx: Db, op: Op, ctx: ApplyContext): Promise<void> {
         (e) => e.status === 'completed',
       ).length;
       if (completedCount === 0) {
-        throw new Error('Тренировка с нулём выполненных упражнений не засчитывается');
+        throw HttpError.invalidRequest('Тренировка с нулём выполненных упражнений не засчитывается');
       }
       await tx
         .update(sessionIntervals)
@@ -415,9 +297,8 @@ async function applyOne(tx: Db, op: Op, ctx: ApplyContext): Promise<void> {
             sql`${sessionIntervals.endedAt} IS NULL`,
           ),
         );
-      const completedAt = op.payload.completedAt
-        ? new Date(op.payload.completedAt)
-        : ctx.now;
+      const completedAt = op.payload.completedAt ? new Date(op.payload.completedAt) : ctx.now;
+      if (completedAt < ctx.session.startedAt) throw HttpError.invalidRequest('Дата завершения раньше начала');
       await tx
         .update(workoutSessions)
         .set({ status: 'completed', completedAt })

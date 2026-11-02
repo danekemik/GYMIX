@@ -1,13 +1,29 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": ["tsconfig.base.json"],
+  "globalDependencies": [
+    "tsconfig.base.json",
+    "reference/*.md",
+    "packages/db/drizzle/**"
+  ],
   "concurrency": "4",
   "tasks": {
     "typecheck": {
-      "dependsOn": ["^typecheck"]
+      "dependsOn": [
+        "^typecheck"
+      ]
     },
     "test": {
-      "dependsOn": ["^typecheck"]
+      "dependsOn": [
+        "^typecheck"
+      ]
+    },
+    "build": {
+      "dependsOn": [
+        "^typecheck"
+      ],
+      "outputs": [
+        "dist/**"
+      ]
     }
   }
 }

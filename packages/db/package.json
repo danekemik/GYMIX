@@ -23,6 +23,10 @@
     "./browser": {
       "types": "./src/browser.ts",
       "default": "./src/browser.ts"
+    },
+    "./sync-data": {
+      "types": "./src/sync-data.ts",
+      "default": "./src/sync-data.ts"
     }
   },
   "scripts": {
@@ -33,7 +37,8 @@
   "dependencies": {
     "@gymix/catalog": "workspace:*",
     "@gymix/structures": "workspace:*",
-    "drizzle-orm": "^0.45.3"
+    "drizzle-orm": "^0.45.3",
+    "@gymix/contracts": "workspace:*"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",

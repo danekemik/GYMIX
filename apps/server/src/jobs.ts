@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, lt, or } from 'drizzle-orm';
+import { and, eq, isNotNull, lt } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import {
   authSessions,
@@ -60,7 +60,7 @@ export function cleanupJobs(): CleanupJob[] {
 export async function cleanupExpiredAuthSessions(db: Db, now: Date): Promise<number> {
   const rows = await db
     .delete(authSessions)
-    .where(or(lt(authSessions.expiresAt, now), isNotNull(authSessions.revokedAt)))
+    .where(lt(authSessions.expiresAt, now))
     .returning({ id: authSessions.id });
   return rows.length;
 }
@@ -100,7 +100,7 @@ export async function finalizeDeletedAccounts(db: Db, now: Date): Promise<number
 export class JobRunner {
   private timer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private readonly ctx: AppContext) {}
+  constructor(private readonly ctx: AppContext) { }
 
   start(intervalMs: number): void {
     void this.tick();
@@ -137,8 +137,8 @@ export class JobRunner {
   private async runOnce(job: CleanupJob): Promise<void> {
     await this.ctx.db.transaction(async (tx) => {
       const res = (await tx.execute(
-        sql`select pg_try_advisory_lock(${job.key}) as locked`,
-      )) as { rows: Array<{ locked: boolean }> };
+        sql`select pg_try_advisory_xact_lock(${job.key}) as locked`,
+      )) as { rows: Array<{ locked: boolean; }>; };
       if (!(res.rows[0]?.locked ?? false)) return;
       const removed = await job.run(tx as unknown as Db, this.ctx.clock());
       if (removed > 0) {

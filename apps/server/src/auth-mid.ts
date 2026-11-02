@@ -1,6 +1,6 @@
 import type { Context, Next } from 'hono';
 import { eq } from 'drizzle-orm';
-import { authSessions } from '@gymix/db/schema';
+import { authSessions, devices, users } from '@gymix/db/schema';
 import { HttpError } from './errors.js';
 import type { AppContext } from './app.js';
 
@@ -25,16 +25,22 @@ export function requireAuth(ctx: AppContext) {
     const token = header.slice('Bearer '.length).trim();
     const claims = await ctx.tokens.verifyAccess(token);
 
-    const [session] = await ctx.db
-      .select()
+    const [record] = await ctx.db
+      .select({ session: authSessions, device: devices, user: users })
       .from(authSessions)
+      .innerJoin(devices, eq(devices.id, authSessions.deviceId))
+      .innerJoin(users, eq(users.id, authSessions.userId))
       .where(eq(authSessions.id, claims.sessionId));
+    const session = record?.session;
     const now = ctx.clock();
     if (
       !session ||
       session.revokedAt !== null ||
       session.expiresAt.getTime() <= now.getTime() ||
-      session.userId !== claims.userId
+      session.userId !== claims.userId ||
+      session.deviceId !== claims.deviceId ||
+      record?.device.revokedAt !== null ||
+      record?.user.deletedAt !== null
     ) {
       throw HttpError.unauthorized('Сессия недействительна, войдите заново');
     }

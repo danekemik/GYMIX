@@ -1,4 +1,6 @@
-import { eq, sql } from 'drizzle-orm';
+import { localChange } from '../data/sync/store';
+import { runSessionCommand } from '../data/local/read-rpc';
+import { eq, inArray, sql } from 'drizzle-orm';
 import {
   sessionExercises,
   sessionIntervals,
@@ -14,16 +16,19 @@ export interface RecordSet {
   readonly setNumber: number;
   readonly weight: string | null;
   readonly reps: number | null;
+  readonly done: boolean;
 }
 
 export interface RecordExercise {
   readonly id: string;
   readonly name: string;
-  readonly status: 'completed' | 'skipped';
+  readonly status: 'completed' | 'skipped' | 'pending';
   readonly sets: readonly RecordSet[];
+  readonly partial: boolean;
 }
 
 export interface RecordSnapshot {
+  readonly revision: number;
   readonly id: string;
   readonly type: string;
   readonly volume: string;
@@ -45,6 +50,7 @@ export async function loadRecord(db: GymixDb, sessionId: string): Promise<Record
   const session = await db.db
     .select({
       id: workoutSessions.id,
+      revision: workoutSessions.revision,
       type: workoutTypes.key,
       volume: workoutVolumes.key,
       startedAt: workoutSessions.startedAt,
@@ -72,22 +78,17 @@ export async function loadRecord(db: GymixDb, sessionId: string): Promise<Record
     .orderBy(sessionExercises.position);
 
   const exerciseIds = exercises.map((e) => e.id);
-  const setRows = (
-    await Promise.all(
-      exerciseIds.map((id) =>
-        db.db
-          .select({
-            id: sessionSets.id,
-            sessionExerciseId: sessionSets.sessionExerciseId,
-            setNumber: sessionSets.setNumber,
-            weight: sessionSets.weight,
-            reps: sessionSets.reps,
-          })
-          .from(sessionSets)
-          .where(eq(sessionSets.sessionExerciseId, id)),
-      ),
-    )
-  ).flat();
+  const setRows = exerciseIds.length ? await db.db
+    .select({
+      id: sessionSets.id,
+      sessionExerciseId: sessionSets.sessionExerciseId,
+      setNumber: sessionSets.setNumber,
+      weight: sessionSets.weight,
+      reps: sessionSets.reps,
+      completedAt: sessionSets.completedAt,
+    })
+    .from(sessionSets)
+    .where(inArray(sessionSets.sessionExerciseId, exerciseIds)) : [];
 
   const intervalRows = await db.db
     .select({
@@ -104,6 +105,7 @@ export async function loadRecord(db: GymixDb, sessionId: string): Promise<Record
 
   return {
     id: row.id,
+    revision: row.revision,
     type: row.type,
     volume: row.volume,
     startedAt: row.startedAt,
@@ -112,10 +114,11 @@ export async function loadRecord(db: GymixDb, sessionId: string): Promise<Record
     exercises: exercises.map((e) => ({
       id: e.id,
       name: e.name,
-      status: e.status === 'completed' ? 'completed' : 'skipped',
+      status: e.status === 'active' ? 'pending' : e.status,
+      partial: (e.status === 'pending' || e.status === 'active') && setRows.some(set => set.sessionExerciseId === e.id && set.completedAt !== null),
       sets: setRows
         .filter((s) => s.sessionExerciseId === e.id)
-        .map((s) => ({ id: s.id, setNumber: s.setNumber, weight: formatWeight(s.weight), reps: s.reps }))
+        .map((s) => ({ id: s.id, setNumber: s.setNumber, weight: formatWeight(s.weight), reps: s.reps, done: s.completedAt !== null }))
         .sort((a, b) => a.setNumber - b.setNumber),
     })),
   };
@@ -123,11 +126,12 @@ export async function loadRecord(db: GymixDb, sessionId: string): Promise<Record
 
 export interface RecordPatchExercise {
   readonly id: string;
-  readonly status: 'completed' | 'skipped';
-  readonly sets: readonly { id: string; weight: string | null; reps: number | null }[];
+  readonly status: 'completed' | 'skipped' | 'pending';
+  readonly sets: readonly { id: string; weight: string | null; reps: number | null; }[];
 }
 
 export interface RecordPatch {
+  readonly baseRevision: number;
   readonly startedAt: Date;
   readonly completedAt: Date;
   readonly exercises: readonly RecordPatchExercise[];
@@ -149,8 +153,10 @@ function parseReps(value: number | null): number | null {
  * упражнений, порядок, дату. Порядок переписывается заново по массиву —
  * двухфазно, чтобы не нарушить уникальный (session, position).
  */
-export async function saveRecord(db: GymixDb, sessionId: string, patch: RecordPatch): Promise<void> {
+async function _saveRecord(db: GymixDb, sessionId: string, patch: RecordPatch): Promise<void> {
   await db.db.transaction(async (tx) => {
+    const [current] = await tx.select().from(workoutSessions).where(eq(workoutSessions.id, sessionId));
+    if (!current || current.revision !== patch.baseRevision) throw new Error('Запись обновилась на другом устройстве. Ввод оставлен на экране; откройте запись заново перед сохранением.');
     await tx
       .update(workoutSessions)
       .set({
@@ -185,3 +191,6 @@ export async function saveRecord(db: GymixDb, sessionId: string, patch: RecordPa
     }
   });
 }
+export const saveRecord = async (db: GymixDb, id: string, patch: RecordPatch): Promise<void> => {
+  await (runSessionCommand(db, { kind: 'save-record', sessionId: id, patch }) ?? localChange(db, `workout:${id}`, scoped => _saveRecord(scoped, id, patch)));
+};

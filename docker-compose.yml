@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: gymix
-      POSTGRES_PASSWORD: gymix
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       POSTGRES_DB: gymix
     volumes:
       - gymix-db:/var/lib/postgresql/data
@@ -27,15 +27,21 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgres://gymix:gymix@db:5432/gymix
-      APP_ORIGINS: http://localhost:5173
+      DATABASE_URL: postgres://gymix:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/gymix
+      APP_ORIGINS: ${APP_ORIGINS:?Set APP_ORIGINS}
       MIGRATIONS_DIR: /repo/packages/db/drizzle
       REFERENCE_DIR: /repo/reference
       APP_MIGRATE: "true"
       APP_SEED: "true"
-      EMAIL_MODE: console
+      EMAIL_MODE: smtp
+      SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-Gymix <no-reply@gymix.app>}
       # Обязательно замените в боевом окружении: openssl rand -base64 48
-      JWT_SECRET: dev-only-secret-change-me-in-production-0000
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
     ports:
       - "3000:3000"
     healthcheck:

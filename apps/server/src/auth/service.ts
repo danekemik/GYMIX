@@ -1,4 +1,4 @@
-import { and, desc, eq, ne } from 'drizzle-orm';
+import { and, desc, eq, isNull, ne } from 'drizzle-orm';
 import type { Db } from '@gymix/db/seed-data';
 import {
   authSessions,
@@ -42,11 +42,12 @@ export function validatePassword(password: string): void {
 
 export async function issueTokens(
   ctx: AppContext,
-  user: { id: string },
+  user: { id: string; },
   deviceLabel: string,
+  installationId: string = crypto.randomUUID(),
 ): Promise<IssuedTokens> {
   const now = ctx.clock();
-  const device = await findOrCreateDevice(ctx.db, user.id, deviceLabel, now);
+  const device = await findOrCreateDevice(ctx.db, user.id, installationId, deviceLabel, now);
   const { token: refreshToken, hash } = ctx.tokens.createRefreshToken();
   const [session] = await ctx.db
     .insert(authSessions)
@@ -72,90 +73,92 @@ export async function issueTokens(
 async function findOrCreateDevice(
   db: Db,
   userId: string,
+  installationId: string,
   label: string,
   now: Date,
-): Promise<{ id: string }> {
-  const [existing] = await db
-    .select({ id: devices.id })
-    .from(devices)
-    .where(and(eq(devices.userId, userId), eq(devices.label, label)))
-    .limit(1);
-  if (existing) return existing;
-  const [created] = await db
-    .insert(devices)
-    .values({ userId, label, lastSeenAt: now })
+): Promise<{ id: string; }> {
+  const [device] = await db.insert(devices)
+    .values({ userId, installationId, label, lastSeenAt: now })
+    .onConflictDoUpdate({
+      target: [devices.userId, devices.installationId],
+      set: { label, lastSeenAt: now, revokedAt: null },
+    })
     .returning({ id: devices.id });
-  return { id: created!.id };
+  return device!;
 }
 
 /** Создание кода подтверждения с кулдауном и отправкой. */
 export async function createAndSendCode(
   ctx: AppContext,
-  input: { userId?: string; email: string; purpose: 'signup' | 'password_reset' },
+  input: { userId?: string; email: string; purpose: 'signup' | 'password_reset'; pendingPasswordHash?: string; },
 ): Promise<void> {
   const now = ctx.clock();
-  const [latest] = await ctx.db
-    .select()
-    .from(emailCodes)
-    .where(
-      and(
-        eq(emailCodes.email, input.email),
-        eq(emailCodes.purpose, input.purpose),
-      ),
-    )
-    .orderBy(desc(emailCodes.createdAt))
-    .limit(1);
-  if (
-    latest &&
-    !latest.consumedAt &&
-    now.getTime() - latest.createdAt.getTime() < CODE_COOLDOWN_MS
-  ) {
-    throw new HttpError(429, 'rate_limited', 'Код уже отправлен, подождите минуту');
-  }
-
   const code = generateEmailCode();
-  await ctx.db.insert(emailCodes).values({
-    userId: input.userId ?? null,
-    email: input.email,
-    purpose: input.purpose,
-    codeHash: codeDigest(ctx.config.jwtSecret, input.purpose, input.email, code),
-    expiresAt: new Date(now.getTime() + CODE_TTL_MS),
+  await ctx.db.transaction(async (tx) => {
+    // Serialize code creation for one account, including the cooldown check.
+    if (input.userId) {
+      await tx.select({ id: users.id }).from(users)
+        .where(eq(users.id, input.userId)).for('update');
+    }
+    const [latest] = await tx.select().from(emailCodes)
+      .where(and(eq(emailCodes.email, input.email), eq(emailCodes.purpose, input.purpose)))
+      .orderBy(desc(emailCodes.createdAt)).limit(1);
+    if (latest && !latest.consumedAt && now.getTime() - latest.createdAt.getTime() < CODE_COOLDOWN_MS) {
+      throw new HttpError(429, 'rate_limited', 'Код уже отправлен, подождите минуту');
+    }
+    await tx.insert(emailCodes).values({
+      userId: input.userId ?? null,
+      email: input.email,
+      purpose: input.purpose,
+      codeHash: codeDigest(ctx.config.jwtSecret, input.purpose, input.email, code),
+      pendingPasswordHash: input.pendingPasswordHash ??
+        (input.purpose === 'signup' ? latest?.pendingPasswordHash ?? null : null),
+      expiresAt: new Date(now.getTime() + CODE_TTL_MS),
+    });
   });
   await ctx.mailer.sendCode(input.email, code, input.purpose);
 }
 
 export async function consumeCode(
   ctx: AppContext,
-  input: { email: string; purpose: 'signup' | 'password_reset'; code: string },
-): Promise<boolean> {
+  input: { email: string; purpose: 'signup' | 'password_reset'; code: string; },
+  db: Db = ctx.db,
+): Promise<typeof emailCodes.$inferSelect | null> {
   const now = ctx.clock();
-  const [row] = await ctx.db
-    .select()
-    .from(emailCodes)
-    .where(
-      and(
-        eq(emailCodes.email, input.email),
-        eq(emailCodes.purpose, input.purpose),
-      ),
-    )
-    .orderBy(desc(emailCodes.createdAt))
-    .limit(1);
-  if (!row || row.consumedAt || row.expiresAt.getTime() <= now.getTime()) {
-    return false;
-  }
-  const expected = codeDigest(
-    ctx.config.jwtSecret,
-    input.purpose,
-    input.email,
-    input.code,
-  );
-  if (!safeEqual(expected, row.codeHash)) return false;
+  const [row] = await db.select().from(emailCodes)
+    .where(and(eq(emailCodes.email, input.email), eq(emailCodes.purpose, input.purpose)))
+    .orderBy(desc(emailCodes.createdAt)).limit(1);
+  if (!row || row.consumedAt || row.expiresAt.getTime() <= now.getTime()) return null;
+  const expected = codeDigest(ctx.config.jwtSecret, input.purpose, input.email, input.code);
+  if (!safeEqual(expected, row.codeHash)) return null;
+  // Conditional consumption prevents two requests from using the same code.
+  const consumed = await db.update(emailCodes).set({ consumedAt: now })
+    .where(and(eq(emailCodes.id, row.id), isNull(emailCodes.consumedAt)))
+    .returning();
+  return consumed[0] ?? null;
+}
 
-  await ctx.db
-    .update(emailCodes)
-    .set({ consumedAt: now })
-    .where(eq(emailCodes.id, row.id));
-  return true;
+export async function verifyEmail(ctx: AppContext, email: string, code: string) {
+  return ctx.db.transaction(async (tx) => {
+    const [user] = await tx.select().from(users).where(eq(users.email, email)).for('update');
+    if (!user) throw new HttpError(400, 'invalid_code', 'Неверный или истёкший код');
+    const proof = await consumeCode(ctx, { email, purpose: 'signup', code }, tx);
+    if (!proof || proof.userId !== user.id) {
+      throw new HttpError(400, 'invalid_code', 'Неверный или истёкший код');
+    }
+    const now = ctx.clock();
+    if (user.deletedAt && (!proof.pendingPasswordHash ||
+      user.deletedAt.getTime() + 7 * 86_400_000 <= now.getTime())) {
+      throw new HttpError(403, 'account_deleted', 'Срок восстановления аккаунта истёк');
+    }
+    const [verified] = await tx.update(users).set({
+      emailVerifiedAt: user.emailVerifiedAt ?? now,
+      deletedAt: null,
+      passwordHash: user.deletedAt ? proof.pendingPasswordHash! : user.passwordHash,
+      updatedAt: now,
+    }).where(eq(users.id, user.id)).returning();
+    return verified!;
+  });
 }
 
 export async function sendPasswordReset(ctx: AppContext, email: string): Promise<void> {
@@ -167,33 +170,23 @@ export async function sendPasswordReset(ctx: AppContext, email: string): Promise
 
 export async function endorsePasswordReset(
   ctx: AppContext,
-  input: { email: string; code: string; newPassword: string },
+  input: { email: string; code: string; newPassword: string; },
 ): Promise<void> {
   validatePassword(input.newPassword);
-  const ok = await consumeCode(ctx, {
-    email: input.email,
-    purpose: 'password_reset',
-    code: input.code,
-  });
-  if (!ok) throw new HttpError(400, 'invalid_code', 'Неверный или истёкший код');
-  const user = await findByEmail(ctx.db, input.email);
-  if (!user || user.deletedAt) {
-    throw new HttpError(400, 'invalid_code', 'Аккаунт не найден');
-  }
   const passwordHash = await hashPassword(input.newPassword);
   await ctx.db.transaction(async (tx) => {
-    await tx
-      .update(users)
-      .set({ passwordHash, updatedAt: ctx.clock() })
-      .where(eq(users.id, user.id));
-    // Пароль изменён — все сессии выходят, кроме той, что выйдет следом.
+    const [user] = await tx.select().from(users).where(eq(users.email, input.email)).for('update');
+    if (!user || user.deletedAt) throw new HttpError(400, 'invalid_code', 'Неверный или истёкший код');
+    const proof = await consumeCode(ctx, { email: input.email, purpose: 'password_reset', code: input.code }, tx);
+    if (!proof || proof.userId !== user.id) throw new HttpError(400, 'invalid_code', 'Неверный или истёкший код');
+    await tx.update(users).set({ passwordHash, updatedAt: ctx.clock() }).where(eq(users.id, user.id));
     await tx.delete(authSessions).where(eq(authSessions.userId, user.id));
   });
 }
 
 export async function changePassword(
   ctx: AppContext,
-  input: { currentPassword: string; newPassword: string },
+  input: { currentPassword: string; newPassword: string; },
   userId: string,
   deviceId: string,
 ): Promise<void> {
@@ -218,73 +211,35 @@ export async function changePassword(
 export async function refreshAccess(
   ctx: AppContext,
   refreshToken: string,
-): Promise<{ tokens: IssuedTokens; email: string }> {
+): Promise<{ tokens: IssuedTokens; email: string; }> {
   const hash = ctx.tokens.hashRefreshToken(refreshToken);
   const now = ctx.clock();
-
-  const [session] = await ctx.db
-    .select()
-    .from(authSessions)
-    .where(eq(authSessions.refreshHash, hash));
-
-  if (!session) {
-    throw new HttpError(401, 'invalid_refresh', 'Сессия не найдена, войдите заново');
-  }
-  if (session.revokedAt) {
-    // Повторное использование отозванного токена — попытка кражи.
-    await ctx.db.delete(authSessions).where(eq(authSessions.userId, session.userId));
-    throw new HttpError(401, 'invalid_refresh', 'Сессия отозвана, войдите заново');
-  }
-  if (session.expiresAt.getTime() <= now.getTime()) {
-    throw new HttpError(401, 'invalid_refresh', 'Сессия истекла, войдите заново');
-  }
-
-  const [user] = await ctx.db.select().from(users).where(eq(users.id, session.userId));
-  if (!user || user.deletedAt) {
-    throw new HttpError(401, 'invalid_refresh', 'Аккаунт недоступен');
-  }
-
-  // Ротация: старая сессия гасится, новая выдаётся на то же устройство.
-  const { token, hash: newHash } = ctx.tokens.createRefreshToken();
-  const newSessionId = await ctx.db.transaction(async (tx) => {
-    await tx
-      .update(authSessions)
-      .set({ revokedAt: now })
-      .where(eq(authSessions.id, session.id));
-    const [created] = await tx
-      .insert(authSessions)
-      .values({
-        userId: session.userId,
-        deviceId: session.deviceId,
-        refreshHash: newHash,
-        expiresAt: new Date(now.getTime() + ctx.config.refreshTtlMs),
-      })
-      .returning({ id: authSessions.id });
-    await tx
-      .update(devices)
-      .set({ lastSeenAt: now })
-      .where(eq(devices.id, session.deviceId));
-    return created!.id;
+  const result = await ctx.db.transaction(async (tx) => {
+    const [session] = await tx.select().from(authSessions)
+      .where(eq(authSessions.refreshHash, hash)).for('update');
+    if (!session || session.expiresAt.getTime() <= now.getTime()) return null;
+    if (session.revokedAt) {
+      await tx.update(authSessions).set({ revokedAt: now })
+        .where(eq(authSessions.userId, session.userId));
+      return null;
+    }
+    const [user] = await tx.select().from(users).where(eq(users.id, session.userId));
+    const [device] = await tx.select().from(devices).where(eq(devices.id, session.deviceId));
+    if (!user || user.deletedAt || !device || device.revokedAt) return null;
+    const { token, hash: newHash } = ctx.tokens.createRefreshToken();
+    await tx.update(authSessions).set({ revokedAt: now }).where(eq(authSessions.id, session.id));
+    const [created] = await tx.insert(authSessions).values({
+      userId: session.userId, deviceId: session.deviceId, refreshHash: newHash,
+      expiresAt: new Date(now.getTime() + ctx.config.refreshTtlMs),
+    }).returning({ id: authSessions.id });
+    await tx.update(devices).set({ lastSeenAt: now }).where(eq(devices.id, session.deviceId));
+    const accessToken = await ctx.tokens.signAccess({
+      userId: session.userId, deviceId: session.deviceId, sessionId: created!.id,
+    });
+    return { tokens: { accessToken, refreshToken: token, deviceId: session.deviceId }, email: user.email };
   });
-
-  const deviceLookup = await ctx.db
-    .select({ id: devices.id })
-    .from(devices)
-    .where(eq(devices.id, session.deviceId));
-
-  const accessToken = await ctx.tokens.signAccess({
-    userId: session.userId,
-    deviceId: session.deviceId,
-    sessionId: newSessionId,
-  });
-  return {
-    tokens: {
-      accessToken,
-      refreshToken: token,
-      deviceId: deviceLookup[0]?.id ?? session.deviceId,
-    },
-    email: user.email,
-  };
+  if (!result) throw new HttpError(401, 'invalid_refresh', 'Сессия недействительна, войдите заново');
+  return result;
 }
 
 export interface PublicUser {

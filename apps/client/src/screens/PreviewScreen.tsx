@@ -1,4 +1,7 @@
+import { queryExcludedNames } from '../data/local/read-rpc';
+import { isMgs, typeLabel } from '../lib/workoutTypes';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useDialogFocus } from '../hooks/useDialogFocus';
 import {
   replacementCandidates,
   slotFor,
@@ -9,9 +12,14 @@ import type { CatalogExercise } from '@gymix/catalog/parse';
 import { plural, type Draft } from '../lib/draft';
 import { getCatalog } from '../lib/catalog';
 import { useDb } from '../hooks/useDb';
-import { excludedExerciseNames, excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
+import { excludeExerciseByName, includeExerciseByName } from '../lib/exclusions';
+import { ExerciseDetail } from '../components/ExerciseDetail';
+import { ActionMenu } from '../components/ActionMenu';
+import { exerciseArt } from '../lib/exerciseArt';
+import { IconDumbbellArt } from '../lib/icons';
 
 interface PreviewScreenProps {
+  starting?: boolean;
   workout: GeneratedWorkout;
   draft: Draft;
   onStart: () => void;
@@ -21,48 +29,65 @@ interface PreviewScreenProps {
   onReplace: (index: number, exercise: CatalogExercise) => void;
   /** Порядок упражнений внутри групп изменён (S08). */
   onReorder: (entries: readonly GeneratedEntry[]) => void;
-  /** Вернуться к ручному выбору упражнений (S08 → S06). */
-  onEditSelection?: () => void;
+  onEditParameters?: () => void;
   /** Шаблон не перегенерируется — упражнения зафиксированы. */
   regenerable?: boolean;
+  /** Режим редактирования сохранённого шаблона. */
+  templateTitle?: string;
+  templateMode?: boolean;
+  savingTemplate?: boolean;
+  saveError?: string;
+  onSaveTemplate?: () => void;
 }
 
 export function PreviewScreen({
   workout,
+  starting = false,
   draft,
   onStart,
   onRegenerate,
   onBack,
   onReplace,
   onReorder,
-  onEditSelection,
+  onEditParameters,
   regenerable = true,
+  templateTitle,
+  templateMode = false,
+  savingTemplate = false,
+  saveError,
+  onSaveTemplate,
 }: PreviewScreenProps) {
-  const { db } = useDb();
+  const { db, revision } = useDb();
   const [replacing, setReplacing] = useState<number | null>(null);
   const [query, setQuery] = useState('');
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
   const [saving, setSaving] = useState<string | undefined>(undefined);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [confirmExit, setConfirmExit] = useState(false);
-
-  const snapshot = (entries: readonly GeneratedEntry[]) =>
-    entries.map((e) => `${e.slotKey}:${e.exercise.name}`).join('|');
-  const initialRef = useRef(snapshot(workout.entries));
-  const changed = snapshot(workout.entries) !== initialRef.current;
+  const [detail, setDetail] = useState<CatalogExercise | null>(null);
+  const [actionError, setActionError] = useState('');
+  const [undoExclude, setUndoExclude] = useState<string>();
 
   useEffect(() => {
     if (db === undefined) return;
     let alive = true;
-    void excludedExerciseNames(db)
+    void queryExcludedNames(db)
       .then((names) => alive && setExcluded(new Set(names)))
       .catch(() => alive && setExcluded(new Set()));
     return () => {
       alive = false;
     };
-  }, [db]);
+  }, [db, revision]);
 
   const total = workout.entries.length;
+  const displayTitle = templateTitle ?? (isMgs(workout.type)
+    ? workout.entries[0]?.groupUsed ?? typeLabel(workout.type)
+    : typeLabel(workout.type));
+
+  useEffect(() => {
+    if (undoExclude === undefined) return;
+    const timer = window.setTimeout(() => setUndoExclude(undefined), 5000);
+    return () => window.clearTimeout(timer);
+  }, [undoExclude]);
 
   const current = replacing !== null ? workout.entries[replacing] : undefined;
 
@@ -87,15 +112,12 @@ export function PreviewScreen({
     setReplacing(null);
     setQuery('');
   };
+  const replacementDialog = useRef<HTMLElement>(null);
+  useDialogFocus(replacementDialog, replacing !== null, closeSheet);
 
-  const requestBack = () => {
-    if (changed) setConfirmExit(true);
-    else onBack();
-  };
-
-  const toggleExclude = async (name: string) => {
+  const toggleExclude = async (name: string, allowUndo = true) => {
     if (db === undefined || saving !== undefined) return;
-    setSaving(name);
+    setSaving(name); setActionError('');
     try {
       if (excluded.has(name)) {
         await includeExerciseByName(db, name);
@@ -108,6 +130,9 @@ export function PreviewScreen({
         next.add(name);
         setExcluded(next);
       }
+      setUndoExclude(allowUndo ? name : undefined);
+    } catch {
+      setActionError('Не удалось изменить исключение. Попробуй ещё раз.');
     } finally {
       setSaving(undefined);
     }
@@ -131,32 +156,43 @@ export function PreviewScreen({
 
   return (
     <div className="screen">
+      <fieldset disabled={starting} style={{ display: 'contents', border: 0, padding: 0, margin: 0, minWidth: 0 }}>
       <header className="topbar">
-        <button className="topbar__back" onClick={requestBack} aria-label="Назад">
+        <button className="topbar__back" onClick={onBack} aria-label="Назад">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M15 5l-7 7 7 7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <h1 className="topbar__title topbar__title--step">Предпросмотр</h1>
+        <h1 className="topbar__title topbar__title--step">{templateMode ? 'Состав шаблона' : 'Состав тренировки'}</h1>
       </header>
 
       <div className="screen__body">
-        <div className="volume-head">
-          <span className="context__type">{workout.type}</span>
-          <span className="volume-head__meta">
-            {workout.volume} · {plural(total, ['упражнение', 'упражнения', 'упражнений'])}
-          </span>
-        </div>
+        <section className="plan-summary" aria-label="Итог тренировки">
+          <h2 className="plan-summary__title">{displayTitle}</h2>
+          <p className="plan-summary__meta">
+            {plural(total, ['упражнение', 'упражнения', 'упражнений'])}
+            <span className="plan-summary__dot" aria-hidden="true">·</span>
+            {plural(total * 3, ['подход', 'подхода', 'подходов'])}
+            <span className="plan-summary__dot" aria-hidden="true">·</span>
+            {workout.volume}
+          </p>
+          {isMgs(workout.type) && <p className="plan-summary__type">{typeLabel(workout.type)}</p>}
+        </section>
 
-        <ol className="plan" aria-label="Упражнения по порядку">
+        {actionError && <p className="body-error" role="alert">{actionError}</p>}
+        {undoExclude && <p className="note" role="status">«{undoExclude}»: {excluded.has(undoExclude) ? 'исключено из подбора' : 'снова доступно для подбора'}. <button className="text-action" disabled={saving !== undefined} onClick={() => void toggleExclude(undoExclude, false)}>Отменить</button></p>}
+
+        <ol className="plan" aria-label="Упражнения тренировки">
           {workout.entries.map((entry, index) => {
             const up = canMove(index, index - 1);
             const down = canMove(index, index + 1);
             const isExcluded = excluded.has(entry.exercise.name);
+            const art = exerciseArt(entry.exercise.name);
+            const badges = [entry.isRepeat ? 'повтор' : '', isExcluded ? 'исключено' : ''].filter(Boolean).join(' ');
             return (
               <li
                 key={entry.slotKey}
-                className={`plan__row${dragIndex === index ? ' plan__row--dragging' : ''}`}
+                className={`plan__card${dragIndex === index ? ' plan__card--dragging' : ''}${isExcluded ? ' plan__card--muted' : ''}`}
                 draggable={up || down}
                 onDragStart={(e) => {
                   if (!(up || down)) return;
@@ -177,117 +213,85 @@ export function PreviewScreen({
                 }}
                 onDragEnd={() => setDragIndex(null)}
               >
-                <div className="plan__main">
-                  <span className="plan__handle" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="currentColor">
-                      <circle cx="9" cy="6" r="1.5" />
-                      <circle cx="15" cy="6" r="1.5" />
-                      <circle cx="9" cy="12" r="1.5" />
-                      <circle cx="15" cy="12" r="1.5" />
-                      <circle cx="9" cy="18" r="1.5" />
-                      <circle cx="15" cy="18" r="1.5" />
-                    </svg>
-                  </span>
-                  <span className="plan__index">{index + 1}</span>
-                  <span className="plan__body">
-                    <span className="plan__exercise">{entry.exercise.name}</span>
-                    <span className="plan__group">
-                      {entry.groupUsed}
-                      {isExcluded ? ' · не предлагать' : ''}
-                    </span>
-                    {entry.exercise.equipment.length > 0 && (
-                      <span className="plan__equip">{entry.exercise.equipment.join(', ')}</span>
+                <button className="plan__open" onClick={() => setDetail(entry.exercise)} aria-label={`${index + 1} ${entry.exercise.name}${badges ? ` ${badges}` : ''} ${entry.groupUsed}. Подробнее`} aria-haspopup="dialog">
+                  <span className="plan__order" aria-hidden="true">{index + 1}</span>{' '}
+                  <span className={`plan__thumb${art !== undefined ? ' plan__thumb--art' : ''}`} aria-hidden="true">
+                    {art !== undefined ? (
+                      <img className="plan__thumb-img" src={art.src} alt="" loading="lazy" />
+                    ) : (
+                      <IconDumbbellArt className="plan__thumb-art" />
                     )}
                   </span>
-                  {entry.isRepeat && <span className="plan__badge">повтор</span>}
-                </div>
-                <div className="plan__controls">
-                  <span className="plan__move">
-                    <button
-                      className="plan__move-btn"
-                      aria-label={`Переместить выше: ${entry.exercise.name}`}
-                      disabled={!up}
-                      onClick={() => move(index, index - 1)}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                        <path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                    <button
-                      className="plan__move-btn"
-                      aria-label={`Переместить ниже: ${entry.exercise.name}`}
-                      disabled={!down}
-                      onClick={() => move(index, index + 1)}
-                    >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                        <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </button>
+                  <span className="plan__info">
+                    <span className="plan__name">{entry.exercise.name}</span>{' '}
+                    {(entry.isRepeat || isExcluded) && (
+                      <span className="plan__tags">
+                        {entry.isRepeat && <span className="plan__badge">повтор</span>}
+                        {isExcluded && <span className="plan__badge plan__badge--muted">исключено</span>}
+                      </span>
+                    )}
+                    <span className="plan__group">{entry.groupUsed}</span>
                   </span>
-                  <button className="btn btn--ghost btn--sm" onClick={() => setReplacing(index)}>
-                    Заменить
-                  </button>
-                  <button
-                    className="btn btn--ghost btn--sm"
-                    aria-pressed={isExcluded}
-                    disabled={saving !== undefined}
-                    onClick={() => void toggleExclude(entry.exercise.name)}
-                  >
-                    {isExcluded ? 'Предлагать снова' : 'Не предлагать'}
-                  </button>
-                </div>
+                </button>
+                <ActionMenu label={`Действия: ${entry.exercise.name}`}>
+                  {(close) => (
+                    <>
+                      <button className="action-menu__item" role="menuitem" onClick={() => { setReplacing(index); close(); }}>
+                        Заменить упражнение
+                      </button>
+                      {(up || down) && <span className="action-menu__group">
+                        <button className="action-menu__item" role="menuitem" aria-label={`Переместить выше: ${entry.exercise.name}`} disabled={!up} onClick={() => { move(index, index - 1); close(); }}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 15l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          Переместить выше
+                        </button>
+                        <button className="action-menu__item" role="menuitem" aria-label={`Переместить ниже: ${entry.exercise.name}`} disabled={!down} onClick={() => { move(index, index + 1); close(); }}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          Переместить ниже
+                        </button>
+                      </span>}
+                      <button className="action-menu__item" role="menuitem" aria-pressed={isExcluded} disabled={saving !== undefined} onClick={() => { void toggleExclude(entry.exercise.name); close(); }}>
+                        {isExcluded ? 'Вернуть в подбор' : 'Исключить из подбора'}
+                      </button>
+                    </>
+                  )}
+                </ActionMenu>
               </li>
             );
           })}
         </ol>
 
-        <aside className="note">
-          Перетаскивай упражнения за ⠿ или используй стрелки — менять можно порядок
-          внутри группы. Состав групп и число слотов фиксированы.
-        </aside>
-
-        <div className="screen__cta">
-          <button className="btn btn--primary" onClick={onStart}>
-            Начать тренировку
-          </button>
-          {regenerable && (
-            <button className="btn btn--ghost" onClick={onRegenerate}>
-              Перегенерировать
-            </button>
-          )}
-          {regenerable && onEditSelection !== undefined && (
-            <button className="btn btn--ghost" onClick={onEditSelection}>
-              Редактировать выбор
-            </button>
-          )}
-        </div>
+        {!templateMode && regenerable && <details className="preview-options">
+          <summary>Изменить тренировку</summary>
+          <div className="preview-options__panel">
+            {onEditParameters && <button className="btn btn--ghost" onClick={onEditParameters}>Формат и объём подбора</button>}
+            <button className="btn btn--ghost" onClick={onRegenerate}>Подобрать заново</button>
+          </div>
+        </details>}
       </div>
 
-      {confirmExit && (
-        <div className="overlay">
-          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="exit-preview-title">
-            <h2 id="exit-preview-title" className="dialog__title">
-              Выйти без сохранения?
-            </h2>
-            <p className="dialog__text">
-              Изменения порядка и замен не сохранятся. Упражнения можно выбрать заново.
-            </p>
-            <div className="dialog__actions">
-              <button className="btn btn--ghost" onClick={() => setConfirmExit(false)}>
-                Отмена
-              </button>
-              <button className="btn btn--primary" onClick={onBack}>
-                Выйти
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="screen__cta">
+        {templateMode ? (
+          <>
+            <button className="btn btn--primary" onClick={onSaveTemplate} disabled={starting || savingTemplate || onSaveTemplate === undefined}>
+              {savingTemplate ? 'Сохраняем…' : 'Сохранить изменения'}
+            </button>
+            <button className="btn btn--ghost" onClick={onStart} disabled={starting || savingTemplate}>
+              {starting ? 'Открываем…' : 'Начать тренировку'}
+            </button>
+            {saveError !== undefined && saveError !== '' && <p className="body-error" role="alert">{saveError}</p>}
+          </>
+        ) : (
+          <button className="btn btn--primary" onClick={onStart} disabled={starting}>
+            {starting ? 'Открываем…' : 'Начать тренировку'}
+          </button>
+        )}
+      </div>
 
       {replacing !== null && current !== undefined && (
         <div className="overlay" onClick={closeSheet}>
           <section
             className="dialog dialog--sheet"
+            ref={replacementDialog}
             role="dialog"
             aria-modal="true"
             aria-label={`Замена упражнения «${current.exercise.name}»`}
@@ -307,6 +311,7 @@ export function PreviewScreen({
             </header>
 
             <div className="replace__search field">
+              {actionError && <p className="body-error" role="alert">{actionError}</p>}
               <label className="field__label" htmlFor="replace-query">
                 Поиск
               </label>
@@ -340,21 +345,14 @@ export function PreviewScreen({
                       {candidate.equipment.length > 0 ? ` · ${candidate.equipment.join(', ')}` : ''}
                     </span>
                   </button>
-                  {!excluded.has(candidate.name) && (
-                    <button
-                      className="replace__exclude"
-                      disabled={saving !== undefined}
-                      onClick={() => void toggleExclude(candidate.name)}
-                    >
-                      Не предлагать
-                    </button>
-                  )}
                 </li>
               ))}
             </ul>
           </section>
         </div>
       )}
+      {detail && <ExerciseDetail exercise={detail} onClose={() => setDetail(null)} />}
+      </fieldset>
     </div>
   );
 }

@@ -118,3 +118,11 @@ describe('uuid', () => {
     expect(a).not.toBe(uuid());
   });
 });
+
+it.skipIf(!process.env['TEST_DATABASE_URL'])('освобождает все advisory locks после фонового цикла', async () => {
+  const { sql } = await import('drizzle-orm');
+  await new JobRunner(env.ctx).tick();
+  const result = await env.db.execute(sql`SELECT count(*)::int AS n FROM pg_locks
+    WHERE locktype = 'advisory' AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`);
+  expect((result as { rows: Array<{ n: number; }>; }).rows[0]!.n).toBe(0);
+});

@@ -15,6 +15,7 @@ import { exclusionsRouter } from './routes/exclusions.js';
 import { healthRouter } from './routes/health.js';
 import { progressRouter } from './routes/progress.js';
 import { templatesRouter } from './routes/templates.js';
+import { syncRouter } from './routes/sync.js';
 import { workoutsRouter } from './routes/workouts.js';
 
 /**
@@ -73,6 +74,7 @@ export function createApp(ctx: AppContext): Hono {
   app.route(API_PREFIX, workoutsRouter(ctx));
   app.route(API_PREFIX, bodyWeightRouter(ctx));
   app.route(API_PREFIX, progressRouter(ctx));
+  app.route(API_PREFIX, syncRouter(ctx));
 
   app.notFound(() => {
     throw HttpError.notFound('Путь не найден');
@@ -108,10 +110,10 @@ export function createApp(ctx: AppContext): Hono {
 }
 
 function isUniqueViolation(error: unknown): boolean {
-  const code = (error as { code?: unknown }).code;
+  const code = (error as { code?: unknown; }).code;
   if (code === '23505') return true;
   const message = String(error instanceof Error ? error.message : error);
-  const cause = (error as { cause?: unknown }).cause;
+  const cause = (error as { cause?: unknown; }).cause;
   const causeText = cause instanceof Error ? cause.message : '';
   return /duplicate key|unique constraint/i.test(`${message} ${causeText}`);
 }

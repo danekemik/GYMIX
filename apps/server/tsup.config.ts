@@ -7,7 +7,7 @@ import { defineConfig } from 'tsup';
  * (hono, pg, drizzle-orm, pino, ...) остаются в node_modules образа.
  */
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry: ['src/index.ts', 'src/migrate.ts'],
   format: ['esm'],
   target: 'node22',
   platform: 'node',

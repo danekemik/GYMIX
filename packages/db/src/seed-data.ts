@@ -1,3 +1,4 @@
+import { referenceId } from './reference-ids.js';
 import type { Catalog, CatalogExercise } from '@gymix/catalog/parse';
 import { ANATOMICAL_TAGS, MUSCLE_GROUPS, VOLUME_LEVELS, WORKOUT_TYPES } from '@gymix/structures';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
@@ -48,16 +49,16 @@ export async function seedFromData(
   reference: Reference,
 ): Promise<SeedCounts> {
   await db.insert(muscleGroups).values(
-    MUSCLE_GROUPS.map((name, index) => ({ name, displayOrder: index + 1 })),
+    MUSCLE_GROUPS.map((name, index) => ({ id: referenceId('muscle', name), name, displayOrder: index + 1 })),
   );
-  await db.insert(anatomicalTags).values(ANATOMICAL_TAGS.map((key) => ({ key })));
+  await db.insert(anatomicalTags).values(ANATOMICAL_TAGS.map((key) => ({ id: referenceId('tag', key), key })));
   await db.insert(movementPatterns).values(
-    reference.movementPatterns.map((canonicalName) => ({ canonicalName })),
+    reference.movementPatterns.map((canonicalName) => ({ id: referenceId('pattern', canonicalName), canonicalName })),
   );
 
   const equipmentRows = await db
     .insert(equipment)
-    .values(reference.equipment.map((canonicalName) => ({ canonicalName })))
+    .values(reference.equipment.map((canonicalName) => ({ id: referenceId('equipment', canonicalName), canonicalName })))
     .returning({ id: equipment.id, name: equipment.canonicalName });
   const equipmentId = new Map(equipmentRows.map((r) => [r.name, r.id]));
 
@@ -74,14 +75,14 @@ export async function seedFromData(
 
   await db
     .insert(workoutTypes)
-    .values(WORKOUT_TYPES.map((key, index) => ({ key, displayOrder: index + 1 })));
+    .values(WORKOUT_TYPES.map((key, index) => ({ id: referenceId('type', key), key, displayOrder: index + 1 })));
   await db
     .insert(workoutVolumes)
-    .values(VOLUME_LEVELS.map((key, index) => ({ key, displayOrder: index + 1 })));
+    .values(VOLUME_LEVELS.map((key, index) => ({ id: referenceId('volume', key), key, displayOrder: index + 1 })));
 
   const exerciseRows = await db
     .insert(exercises)
-    .values(catalog.exercises.map((e) => ({ canonicalNameRu: e.name })))
+    .values(catalog.exercises.map((e) => ({ id: referenceId('exercise', e.name), canonicalNameRu: e.name })))
     .returning({ id: exercises.id, name: exercises.canonicalNameRu });
   const exerciseId = new Map(exerciseRows.map((r) => [r.name, r.id]));
 
@@ -113,7 +114,7 @@ export async function seedFromData(
   const equipmentValues = catalog.exercises.flatMap((e) => {
     const exId = requireId(exerciseId, e.name);
     const seen = new Set<string>();
-    const rows: Array<{ exerciseId: string; equipmentId: string; requirement: 'required' }> = [];
+    const rows: Array<{ exerciseId: string; equipmentId: string; requirement: 'required'; }> = [];
     for (const label of e.equipment) {
       for (const target of resolveEquipmentLabel(reference, label)) {
         const id = equipmentId.get(target);

@@ -6,24 +6,8 @@
  * и документированы, чтобы клиент мог ветвиться без разбора текста.
  */
 
-export type ErrorCode =
-  | 'invalid_request'
-  | 'invalid_credentials'
-  | 'invalid_code'
-  | 'invalid_refresh'
-  | 'requires_verification'
-  | 'account_deleted'
-  | 'email_taken'
-  | 'unauthorized'
-  | 'forbidden'
-  | 'not_found'
-  | 'conflict'
-  | 'session_conflict'
-  | 'ownership_required'
-  | 'operation_rejected'
-  | 'unknown_exercise'
-  | 'rate_limited'
-  | 'internal';
+import type { ErrorCode } from '@gymix/contracts';
+export type { ErrorCode } from '@gymix/contracts';
 
 export class HttpError extends Error {
   readonly status: number;

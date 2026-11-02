@@ -11,14 +11,16 @@
 ```text
 .
 ├── apps/
-│   ├── client/          React + Vite + PGlite — локальный UI
+│   ├── client/          React + Vite + PGlite — офлайн-клиент с синхронизацией
 │   └── server/          Hono + PostgreSQL — REST API
 ├── packages/
 │   ├── structures/      Матрица «формат × объём», модель слота
+│   ├── contracts/       Общие типы и валидация API
 │   ├── catalog/         Каталог упражнений из reference/ в типы
 │   ├── generator/       Заполнение слотов упражнениями
 │   └── db/              Схема Drizzle, миграции, seed (PostgreSQL + PGlite)
 ├── reference/           Канон: спецификации, решения, каталог, данные
+├── docs/                Backend, офлайн-синхронизация и эксплуатация
 ├── scripts/             verify_sync.py — проверка канона
 └── .github/workflows/   CI
 ```
@@ -44,9 +46,16 @@ PostgreSQL на сервере, одна схема на Drizzle и одни м�
 
 ```bash
 pnpm install
+pnpm db:up      # локальная PostgreSQL, порт 55432
+pnpm db:prepare # миграции и справочники
+pnpm build      # production-сборки клиента и сервера
 pnpm test        # тесты доменного слоя и сервера
 pnpm typecheck   # строгий TypeScript, включая тесты
-pnpm check       # типы + тесты + проверка канона, то же что в CI
+pnpm check       # типы + типы E2E + тесты + проверка канона, то же что в CI
+
+pnpm exec playwright install chromium # один раз: браузер для E2E
+pnpm e2e         # браузерные сценарии на локальной PGlite с заглушкой API
+pnpm e2e:typecheck
 
 pnpm server:dev  # бэкенд в режиме разработки
 pnpm server:build
@@ -61,6 +70,17 @@ pnpm --filter @gymix/client build
 
 Папки-дубли нет намеренно: раньше `sources/` была копией `reference/`, и держать
 два одинаковых набора файлов смысла не имело.
+
+Текущий backend, запуск PostgreSQL и границы готовности синхронизации: [docs/backend.md](docs/backend.md).
+
+### Браузерные тесты
+
+`e2e/` — Playwright-сценарии на реальном клиенте: полный цикл тренировки и
+шаблона, история и редактирование записи, офлайн-черновик, axe (WCAG AA),
+переполнение на 320/393/820 px, 200% текста и reduced motion. Тесты поднимают
+dev-сервер сами (`playwright.config.ts`), работают на локальной PGlite и
+подменяют `/api/v1/**` ответом 503 — сервер и база для них не нужны. Артефакты
+упавших прогонов (`playwright-report/`, `test-results/`) сохраняет CI.
 
 Ключевые решения, структура каталога и что уже закрыто — в
 [`reference/README.md`](reference/README.md).

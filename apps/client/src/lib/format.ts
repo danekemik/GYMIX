@@ -7,11 +7,13 @@ export function formatDurationMs(ms: number): string {
 }
 
 export function formatDate(date: Date): string {
-  return date.toLocaleDateString('ru-RU', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+  return date
+    .toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+    .replace(/\s*г\.$/, '');
 }
 
 /** Сегодня/вчера/дата — для ленты «Истории» и карточки активности. */
@@ -21,4 +23,10 @@ export function formatDay(date: Date): string {
   if (days <= 0) return 'Сегодня';
   if (days === 1) return 'Вчера';
   return formatDate(date);
+}
+
+/** Локальная календарная дата в формате YYYY-MM-DD (без UTC-сдвига). */
+export function localDateKey(date: Date = new Date()): string {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }

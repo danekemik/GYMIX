@@ -43,12 +43,12 @@ async function completeWorkoutWithBestSet(): Promise<void> {
         {
           type: 'set_upsert',
           operationId: uuid(),
-          payload: { sessionExerciseId: exId, setNumber: 1, weight: 100, reps: 8 },
+          payload: { sessionExerciseId: exId, setNumber: 1, weight: 100, reps: 8, completedAt: new Date().toISOString() },
         },
         {
           type: 'set_upsert',
           operationId: uuid(),
-          payload: { sessionExerciseId: exId, setNumber: 2, weight: 80, reps: 10 },
+          payload: { sessionExerciseId: exId, setNumber: 2, weight: 80, reps: 10, completedAt: new Date().toISOString() },
         },
         {
           type: 'exercise_status',
@@ -72,7 +72,7 @@ describe('прогресс по лучшему подходу', () => {
     expect(res.status).toBe(200);
     const series = res.body.series as Array<{
       exerciseName: string;
-      points: Array<{ weightKg: string; reps: number }>;
+      points: Array<{ weightKg: string; reps: number; }>;
     }>;
     const point = series.find((s) => s.exerciseName === exA);
     expect(point).toBeDefined();
@@ -107,4 +107,33 @@ describe('вес тела', () => {
     expect(list.body.entries[0]).toMatchObject({ measuredAt: '2026-01-05', value: '81.90' });
     expect(list.body.entries[1]).toMatchObject({ measuredAt: '2026-02-01', value: '80.50' });
   });
+});
+
+it('исключает незавершённые подходы и пропущенные упражнения из прогресса', async () => {
+  await completeWorkoutWithBestSet();
+  const activeHistory = await api(env.app, 'GET', '/api/v1/workouts', { token: user.accessToken });
+  const sessionId = activeHistory.body.history[0].id;
+  const snapshot = await api(env.app, 'GET', `/api/v1/workouts/${sessionId}`, { token: user.accessToken });
+  const exerciseId = snapshot.body.session.exercises[0].id;
+  const correction = await api(env.app, 'POST', `/api/v1/workouts/${sessionId}/ops`, {
+    token: user.accessToken,
+    body: {
+      expectedRevision: snapshot.body.session.revision, ops: [
+        { type: 'set_upsert', operationId: uuid(), payload: { sessionExerciseId: exerciseId, setNumber: 1, weight: 999, completedAt: null } },
+      ]
+    },
+  });
+  expect(correction.status).toBe(200);
+  const progress = await api(env.app, 'GET', '/api/v1/progress', { token: user.accessToken });
+  expect(Number(progress.body.series[0].points[0].weightKg)).toBe(80);
+  const skipped = await api(env.app, 'POST', `/api/v1/workouts/${sessionId}/ops`, {
+    token: user.accessToken,
+    body: {
+      expectedRevision: correction.body.session.revision, ops: [
+        { type: 'exercise_status', operationId: uuid(), payload: { sessionExerciseId: exerciseId, status: 'skipped' } },
+      ]
+    },
+  });
+  expect(skipped.status).toBe(200);
+  expect((await api(env.app, 'GET', '/api/v1/progress', { token: user.accessToken })).body.series).toEqual([]);
 });

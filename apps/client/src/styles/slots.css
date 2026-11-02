@@ -5,7 +5,7 @@
 
 .slots__hint {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
   padding: var(--space-s) 0;
   line-height: 1.5;
@@ -21,7 +21,7 @@
 }
 
 .slots__group {
-  font-weight: 500;
+  font-weight: 450;
   font-size: var(--step-0);
 }
 
@@ -29,14 +29,14 @@
   display: block;
   font-style: normal;
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
 }
 
 .slots__count {
   font-family: var(--font-text);
   font-size: var(--step--1);
-  font-weight: 500;
+  font-weight: 450;
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;

@@ -69,7 +69,10 @@ export function createMailer(config: AppConfig, logger: Logger): Mailer {
       const subject = `Gymix: код ${EMAIL_COOLDOWN_LABEL[purpose]}`;
       const text = `Ваш код для Gymix: ${code}\n\nКод действует 15 минут.`;
 
-      sent.push({ to, subject, text, code, purpose, sentAt: new Date() });
+      if (config.env !== 'production') {
+        sent.push({ to, subject, text, code, purpose, sentAt: new Date() });
+        if (sent.length > 100) sent.shift();
+      }
 
       if (config.emailMode === 'console') {
         if (config.env === 'production' && !configWarned.dev) {

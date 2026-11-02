@@ -1,3 +1,5 @@
+:root { --tabbar-height: 4.25rem; }
+
 .app {
   height: 100%;
   display: flex;
@@ -15,10 +17,13 @@
 
 /* когда показана плавающая навигация — резерв под высоту пилюли и её отступ */
 .app__main--tabs {
-  padding-bottom: calc(108px + env(safe-area-inset-bottom) + var(--phone-bottom-inset, 0px));
+  padding-bottom: calc(var(--tabbar-height) + var(--space-2xs) + var(--space-m) + env(safe-area-inset-bottom) + var(--phone-bottom-inset, 0px));
 }
 
-/* экран с липким CTA сам держит нижний отступ — резерв не нужен */
-.app__main:has(.screen__cta--sticky) {
+/* экран с нижней панелью: панель закреплена, прокручивается только тело */
+.app__main:has(.screen__cta) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding-bottom: 0;
 }

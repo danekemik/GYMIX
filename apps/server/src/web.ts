@@ -1,6 +1,7 @@
 import type { Context, Next } from 'hono';
 import { HttpError } from './errors.js';
 import type { AppContext } from './app.js';
+import { getConnInfo } from '@hono/node-server/conninfo';
 
 /**
  * Короткие помощники для роутов: чтение JSON-тела, IP клиента
@@ -30,7 +31,9 @@ export function getClientIp(ctx: AppContext, c: Context): string {
     const first = forwarded?.split(',')[0]?.trim();
     if (first) return first;
   }
-  return 'local';
+  // app.request() in tests has no socket. Production uses the actual peer,
+  // ignoring forwarded headers unless a trusted proxy was explicitly enabled.
+  try { return getConnInfo(c).remote.address ?? 'local'; } catch { return 'local'; }
 }
 
 const WINDOWS = new WeakMap<AppContext, Map<string, number[]>>();
@@ -53,9 +56,12 @@ function windowsFor(ctx: AppContext): Map<string, number[]> {
 export function rateLimit(ctx: AppContext, scope: string, max: number, windowMs: number) {
   return async (c: Context, next: Next): Promise<void> => {
     const windows = windowsFor(ctx);
-    const key = `${scope}:${getClientIp(ctx, c)}`;
-    const now = Date.now();
+    const key = `${scope}:${c.req.path}:${getClientIp(ctx, c)}`;
+    const now = ctx.clock().getTime();
     const cutoff = now - windowMs;
+    for (const [key, timestamps] of windows) {
+      if ((timestamps.at(-1) ?? 0) <= cutoff) windows.delete(key);
+    }
     const hits = (windows.get(key) ?? []).filter((t) => t > cutoff);
     if (hits.length >= max) {
       throw new HttpError(

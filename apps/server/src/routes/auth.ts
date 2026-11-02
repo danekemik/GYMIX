@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { authSessions, devices, users } from '@gymix/db/schema';
 import type { AppContext } from '../app.js';
@@ -9,7 +9,7 @@ import { normalizeEmail, rateLimit, readJson } from '../web.js';
 import { hashPassword, verifyPassword } from '../crypto.js';
 import {
   changePassword,
-  consumeCode,
+  verifyEmail,
   createAndSendCode,
   endorsePasswordReset,
   findByEmail,
@@ -36,12 +36,10 @@ export function authRouter(ctx: AppContext): Hono {
 
     const existing = await findByEmail(ctx.db, email);
     if (existing?.deletedAt) {
-      // Повторная регистрация в grace-период восстанавливает аккаунт.
-      await ctx.db
-        .update(users)
-        .set({ deletedAt: null, passwordHash, updatedAt: ctx.clock() })
-        .where(eq(users.id, existing.id));
-      await createAndSendCode(ctx, { userId: existing.id, email, purpose: 'signup' });
+      if (existing.deletedAt.getTime() + 7 * 86_400_000 <= ctx.clock().getTime()) {
+        throw new HttpError(403, 'account_deleted', 'Срок восстановления аккаунта истёк');
+      }
+      await createAndSendCode(ctx, { userId: existing.id, email, purpose: 'signup', pendingPasswordHash: passwordHash });
       return c.json(
         { email, needsVerification: true, restored: true },
         201,
@@ -61,27 +59,13 @@ export function authRouter(ctx: AppContext): Hono {
 
   app.post('/auth/verify-email', limit(10), async (c) => {
     const body = z
-      .object({ email: emailSchema, code: z.string().min(6).max(6) })
+      .object({ email: emailSchema, code: z.string().regex(/^\d{6}$/), installationId: z.string().uuid().optional() })
       .parse(await readJson(c));
     const email = normalizeEmail(body.email);
-    const ok = await consumeCode(ctx, { email, purpose: 'signup', code: body.code });
-    if (!ok) {
-      throw new HttpError(400, 'invalid_code', 'Неверный или истёкший код');
-    }
-    const user = await findByEmail(ctx.db, email);
-    if (!user) throw new HttpError(400, 'invalid_code', 'Аккаунт не найден');
-    if (user.deletedAt) {
-      throw new HttpError(403, 'account_deleted', 'Аккаунт в периоде удаления');
-    }
-    if (!user.emailVerifiedAt) {
-      await ctx.db
-        .update(users)
-        .set({ emailVerifiedAt: ctx.clock(), updatedAt: ctx.clock() })
-        .where(eq(users.id, user.id));
-    }
-    const tokens = await issueTokens(ctx, user, resolveDeviceLabel(c));
+    const user = await verifyEmail(ctx, email, body.code);
+    const tokens = await issueTokens(ctx, user, resolveDeviceLabel(c), body.installationId);
     return c.json({
-      user: { ...toPublicUser(user), emailVerifiedAt: ctx.clock().toISOString() },
+      user: toPublicUser(user),
       deviceId: tokens.deviceId,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
@@ -98,11 +82,12 @@ export function authRouter(ctx: AppContext): Hono {
     const email = normalizeEmail(body.email);
     const user = await findByEmail(ctx.db, email);
     if (body.purpose === 'signup') {
-      if (!user || user.emailVerifiedAt) {
+      if (!user || (user.emailVerifiedAt && !user.deletedAt)) {
         return c.json({ email, needsVerification: false });
       }
     }
-    const input: { userId?: string; email: string; purpose: 'signup' | 'password_reset' } = {
+    if (!user) return c.json({ email, needsVerification: false });
+    const input: { userId?: string; email: string; purpose: 'signup' | 'password_reset'; } = {
       email,
       purpose: body.purpose,
     };
@@ -113,7 +98,7 @@ export function authRouter(ctx: AppContext): Hono {
 
   app.post('/auth/login', limit(10), async (c) => {
     const body = z
-      .object({ email: emailSchema, password: z.string() })
+      .object({ email: emailSchema, password: z.string().max(200), installationId: z.string().uuid().optional() })
       .parse(await readJson(c));
     const email = normalizeEmail(body.email);
     const user = await findByEmail(ctx.db, email);
@@ -134,7 +119,7 @@ export function authRouter(ctx: AppContext): Hono {
         'Подтвердите email перед входом',
       );
     }
-    const tokens = await issueTokens(ctx, user, resolveDeviceLabel(c));
+    const tokens = await issueTokens(ctx, user, resolveDeviceLabel(c), body.installationId);
     return c.json({
       user: toPublicUser(user),
       deviceId: tokens.deviceId,
@@ -209,7 +194,7 @@ export function authRouter(ctx: AppContext): Hono {
     const rows = await ctx.db
       .select()
       .from(devices)
-      .where(eq(devices.userId, userId))
+      .where(and(eq(devices.userId, userId), isNull(devices.revokedAt)))
       .orderBy(devices.lastSeenAt);
     return c.json({
       devices: rows.map((device) => ({
@@ -224,12 +209,12 @@ export function authRouter(ctx: AppContext): Hono {
   app.delete('/auth/devices/:id', requireAuth(ctx), async (c) => {
     const { userId } = getPrincipal(c);
     const deviceId = z.string().uuid().parse(c.req.param('id'));
-    await ctx.db
-      .delete(authSessions)
-      .where(and(eq(authSessions.userId, userId), eq(authSessions.deviceId, deviceId)));
-    await ctx.db
-      .delete(devices)
-      .where(and(eq(devices.userId, userId), eq(devices.id, deviceId)));
+    await ctx.db.transaction(async (tx) => {
+      await tx.update(devices).set({ revokedAt: ctx.clock() })
+        .where(and(eq(devices.userId, userId), eq(devices.id, deviceId)));
+      await tx.delete(authSessions)
+        .where(and(eq(authSessions.userId, userId), eq(authSessions.deviceId, deviceId)));
+    });
     return c.body(null, 204);
   });
 

@@ -14,7 +14,8 @@ import { readJson } from '../web.js';
 
 export function exclusionsRouter(ctx: AppContext): Hono {
   const app = new Hono();
-  app.use('*', requireAuth(ctx));
+  app.use('/exclusions', requireAuth(ctx));
+  app.use('/exclusions/*', requireAuth(ctx));
 
   app.get('/exclusions', async (c) => {
     const { userId } = getPrincipal(c);
@@ -56,7 +57,7 @@ export function exclusionsRouter(ctx: AppContext): Hono {
 export async function listExclusions(
   ctx: AppContext,
   userId: string,
-): Promise<Array<{ exerciseId: string; name: string }>> {
+): Promise<Array<{ exerciseId: string; name: string; }>> {
   const rows = await ctx.db
     .select({
       exerciseId: userExcludedExercises.exerciseId,

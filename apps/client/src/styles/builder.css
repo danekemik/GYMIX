@@ -2,20 +2,22 @@
 
 .volume-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: var(--space-s);
+  gap: var(--space-xs) var(--space-s);
   padding: var(--space-xs) 0 var(--space-s);
+  min-width: 0;
 }
 
 .volume-head__group {
   font-size: var(--step--1);
   color: var(--accent);
-  font-weight: 600;
+  font-weight: 550;
 }
 
 .volume-head__meta {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
 }
 
@@ -34,13 +36,22 @@
   white-space: nowrap;
 }
 
+.volume-head__template {
+  font-size: var(--step--2);
+  font-weight: 500;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
 .volume-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-xs);
 }
 
 .volume-card {
   width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-2xs);
@@ -59,22 +70,26 @@
 
 .volume-card--on {
   border-color: var(--accent);
-  background: var(--accent-soft);
+  background: var(--select-bg);
 }
 
 .volume-card__top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-xs);
+  min-width: 0;
 }
 
 .volume-card__name {
   font-family: var(--font-display);
   font-size: var(--step-1);
-  font-weight: 600;
+  font-weight: 550;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  min-width: 0;
+  hyphens: auto;
+  overflow-wrap: break-word;
 }
 
 .volume-card__check {
@@ -89,46 +104,64 @@
 
 .volume-card__bottom {
   margin-top: var(--space-2xs);
+  min-width: 0;
 }
 
 .volume-card__count {
   font-family: var(--font-text);
   font-size: var(--step-0);
-  font-weight: 600;
+  font-weight: 550;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 /* MGS — категории и группы */
 
 .mgs-cats {
   display: flex;
-  gap: var(--space-2xs);
-  margin-bottom: var(--space-s);
-  flex-wrap: wrap;
+  gap: var(--space-s);
+  margin-bottom: var(--space-m);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mgs-cats::-webkit-scrollbar {
+  display: none;
 }
 
 .mgs-cat {
-  padding: var(--space-2xs) var(--space-s);
-  border-radius: var(--radius-s);
-  border: var(--border);
-  background: var(--surface);
-  color: var(--ink-2);
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 0 var(--space-2xs);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--ink-3);
   font-size: var(--step--1);
-  font-weight: 600;
-  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
-    background var(--dur-fast) var(--ease);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 
 .mgs-cat:hover {
   color: var(--ink);
-  border-color: var(--ink-3);
 }
 
 .mgs-cat--on {
-  border-color: var(--accent);
-  background: var(--accent-soft);
   color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.mgs-groups__label {
+  margin-bottom: var(--space-2xs);
+  font-size: var(--step--2);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
 
 .mgs-groups {
@@ -137,6 +170,10 @@
 }
 
 .mgs-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-s);
   padding: var(--space-s);
   text-align: left;
   border: var(--border);
@@ -145,6 +182,18 @@
   color: var(--ink);
   transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease),
     transform var(--dur-fast) var(--ease);
+}
+
+.mgs-group[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--select-bg);
+}
+
+.mgs-group__check {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: var(--accent);
 }
 
 .mgs-group:hover {
@@ -157,7 +206,7 @@
 
 .mgs-group__name {
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 /* S05 — структура */
@@ -171,7 +220,7 @@
 
 .progress__label {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-2);
 }
 
@@ -195,94 +244,6 @@
   border-top: var(--border);
 }
 
-.structure__row {
-  padding: var(--space-s) 0;
-  border-bottom: var(--border);
-}
-
-.structure__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-s);
-}
-
-.structure__group {
-  font-weight: 500;
-  font-size: var(--step-0);
-}
-
-.structure__side {
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
-  flex-shrink: 0;
-}
-
-.structure__status {
-  font-size: var(--step--1);
-  font-weight: 450;
-  color: var(--ink-3);
-}
-
-.structure__status--ok {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.structure__slots {
-  list-style: none;
-  display: grid;
-  gap: var(--space-2xs);
-  margin-top: var(--space-xs);
-}
-
-.slot-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-s);
-  width: 100%;
-  padding: var(--space-xs) var(--space-s);
-  border: 1px dashed var(--line);
-  border-radius: var(--radius-m);
-  background: transparent;
-  color: var(--ink-2);
-  font-size: var(--step--1);
-  text-align: left;
-  transition:
-    border-color var(--dur) var(--ease),
-    color var(--dur) var(--ease),
-    background var(--dur) var(--ease);
-}
-
-.slot-row:hover,
-.slot-row:focus-visible {
-  border-color: var(--accent);
-  color: var(--ink);
-}
-
-.slot-row--done {
-  border-style: solid;
-  background: var(--surface);
-  color: var(--ink);
-  font-weight: 500;
-}
-
-.slot-row__value {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.slot-row__chev {
-  width: 14px;
-  height: 14px;
-  color: var(--ink-3);
-  flex-shrink: 0;
-}
-
 /* --- S06: ручной выбор упражнений --- */
 
 .manual-group {
@@ -293,15 +254,15 @@
 }
 
 .manual-group__label {
-  font-family: var(--font-display);
-  font-size: var(--step-1);
+  font-family: var(--font-text);
+  font-size: var(--step-0);
   font-weight: 600;
 }
 
 .manual-group__count {
   font-family: var(--font-text);
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
   font-variant-numeric: tabular-nums;
 }
@@ -318,25 +279,27 @@
 }
 
 .manual-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-s);
   border: var(--border);
   border-radius: var(--radius-m);
   background: var(--surface);
-  padding: var(--space-s);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xs);
+  padding: var(--space-2xs) var(--space-s) var(--space-2xs) var(--space-xs);
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
 }
 
 .manual-card--active {
   border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent) inset;
 }
 
 .manual-card__open {
   display: flex;
   align-items: center;
-  gap: var(--space-2xs);
-  width: 100%;
+  gap: var(--space-xs);
+  flex: 1;
+  min-width: 0;
+  min-height: 64px;
   padding: 0;
   border: 0;
   background: none;
@@ -344,12 +307,17 @@
   text-align: left;
   font: inherit;
   cursor: pointer;
+  border-radius: var(--radius-s);
+}
+
+.manual-card--empty .manual-card__open {
+  min-height: 56px;
 }
 
 .manual-card__thumb {
   flex-shrink: 0;
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   display: grid;
   place-items: center;
   border-radius: var(--radius-s);
@@ -363,9 +331,9 @@
   height: auto;
 }
 
-/* Иллюстрация упражнения (Everkinetic) — чёрная линия на светлой плитке. */
+/* Иллюстрация упражнения (Open Exercise Art) — чёрная линия на светлой плитке. */
 .manual-card__thumb--art {
-  background: #eef1f2;
+  background: var(--art-tile);
 }
 
 .manual-card__thumb-img {
@@ -377,13 +345,47 @@
 .manual-card__info {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3xs);
+  gap: 2px;
   min-width: 0;
+  flex: 1;
 }
 
 .manual-card__name {
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* Подпись действия остаётся частью карточки-кнопки и не отнимает
+ * у названия упражнения половину строки. */
+.manual-card__action {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--ink-3);
+  font-size: var(--step--2);
+  font-weight: 450;
+  white-space: nowrap;
+}
+
+.manual-card__action-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.manual-card__open:hover .manual-card__action {
+  color: var(--ink);
+}
+
+.manual-card__equip {
+  font-size: var(--step--2);
+  line-height: 1.4;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .manual-card__meta {
@@ -394,33 +396,11 @@
 
 .manual-card__chip {
   padding: var(--space-3xs) var(--space-2xs);
-  border-radius: var(--radius-s);
+  border-radius: 999px;
   background: var(--surface-2);
   color: var(--ink-2);
   font-size: var(--step--2);
-  font-weight: 500;
-}
-
-.manual-card__row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2xs);
-  margin-top: var(--space-3xs);
-}
-
-.manual-card__pick {
-  margin-left: auto;
-  flex-shrink: 0;
-  border: 1px solid var(--accent);
-  background: none;
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.manual-card__pick[aria-pressed='true'] {
-  background: var(--accent);
-  color: var(--accent-ink);
+  font-weight: 450;
 }
 
 .manual-card__exclude {
@@ -431,7 +411,7 @@
   background: none;
   color: var(--ink-2);
   font-size: var(--step--2);
-  font-weight: 500;
+  font-weight: 450;
   cursor: pointer;
 }
 
@@ -447,7 +427,7 @@
 .manual-empty {
   padding: var(--space-m) 0;
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
   text-align: center;
 }
@@ -461,13 +441,13 @@
 
 .manual-current__slot {
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   color: var(--ink-3);
 }
 
 .manual-current__name {
   font-size: var(--step-0);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .note {
@@ -477,7 +457,7 @@
   border-radius: var(--radius-m);
   background: var(--surface);
   font-size: var(--step--1);
-  font-weight: 450;
+  font-weight: 400;
   line-height: 1.5;
   color: var(--ink-2);
 }
